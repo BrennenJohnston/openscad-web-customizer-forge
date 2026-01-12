@@ -1,40 +1,52 @@
 # OpenSCAD Web Customizer Forge
 
-> Transform OpenSCAD Customizer-enabled `.scad` files into deployable web applications with automatic parameter extraction, schema-driven UI generation, and iterative validation.
+> **Customize parametric 3D models directly in your browser.** Upload any OpenSCAD Customizer-enabled `.scad` file, adjust parameters through an accessible UI, and download STL files—all without installing software or creating an account.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
 [![OpenSCAD](https://img.shields.io/badge/OpenSCAD-WASM-orange.svg)](https://openscad.org/)
 
-## 🎯 What This Tool Does
+## 🎯 What This Does
 
-**OpenSCAD Web Customizer Forge** bridges the gap between OpenSCAD's powerful parametric modeling and modern web deployment:
+**Think**: classic “web parametric customizer” UX, but:
+- ✅ **100% client-side** — Runs entirely in your browser (no server costs)
+- ✅ **No installation** — Just upload and customize
+- ✅ **No account needed** — Start using immediately
+- ✅ **Accessible** — WCAG 2.1 AA compliant, keyboard navigable
+- ✅ **Open source** — GPL-3.0-or-later
 
 ```
-┌─────────────────┐      ┌──────────────────┐      ┌─────────────────────┐
-│  OpenSCAD File  │ ──▶  │  Parameter Schema │ ──▶  │  Vercel Web App     │
-│  (.scad)        │      │  (JSON Schema)    │      │  + STL Generation   │
-│  + Customizer   │      │  + UI Metadata    │      │  + 3D Preview       │
-└─────────────────┘      └──────────────────┘      └─────────────────────┘
-        ▲                                                    │
-        │              ┌──────────────────┐                  │
-        └───────────── │  Validation      │ ◀────────────────┘
-                       │  Harness         │
-                       │  (Schema/UI/STL) │
-                       └──────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              HOW IT WORKS                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   1. UPLOAD         2. CUSTOMIZE           3. DOWNLOAD                       │
+│                                                                              │
+│   📁 Drop your      🎛️  Adjust sliders,    📥 Get your STL                   │
+│   .scad file        dropdowns, toggles     ready for 3D printing             │
+│                     for each parameter                                       │
+│                                                                              │
+│   Parameters are    Real-time preview      Share via URL                     │
+│   auto-detected     shows your changes     (optional)                        │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Key Features
+## 🚀 Try It Now
 
-- **Extract** → Parse OpenSCAD Customizer annotations into a standardized parameter schema
-- **Scaffold** → Generate a complete, deployable web application from the schema
-- **Validate** → Compare parameter schemas, UI rendering, and STL outputs between OpenSCAD and web versions
-- **Sync** → Apply safe auto-fixes for detected parity issues
+**[🔗 Live Demo](https://openscad-web-customizer-forge.vercel.app)** *(coming soon)*
 
-## 📋 Requirements
+Or run locally:
 
-### For v1 (OpenSCAD → Web)
+```bash
+git clone https://github.com/YOUR_ORG/openscad-web-customizer-forge.git
+cd openscad-web-customizer-forge
+npm install
+npm run dev
+```
 
-Your `.scad` file must include **OpenSCAD Customizer annotations**:
+## 📋 Supported File Format
+
+Your `.scad` file should include **OpenSCAD Customizer annotations**:
 
 ```scad
 /*[Dimensions]*/
@@ -51,110 +63,111 @@ $fn = 100;
 ```
 
 **Supported annotation types:**
-- `/*[Group Name]*/` — Parameter grouping
-- `// [min:max]` or `// [min:step:max]` — Numeric ranges
-- `// [opt1, opt2, opt3]` — Dropdown enums
-- `// Comment text` — Help/description text
-- `/*[Hidden]*/` — Internal parameters (not shown in UI)
+| Annotation | Example | UI Control |
+|------------|---------|------------|
+| `/*[Group Name]*/` | `/*[Dimensions]*/` | Collapsible section |
+| `// [min:max]` | `// [10:100]` | Range slider |
+| `// [min:step:max]` | `// [1:0.5:5]` | Step slider |
+| `// [opt1, opt2]` | `// [round, square]` | Dropdown |
+| `// [yes, no]` | `// [yes, no]` | Toggle switch |
+| `// Comment` | `// Wall thickness` | Help tooltip |
+| `/*[Hidden]*/` | Internal params | Not shown |
 
-## 🚀 Quick Start
+## ✨ Features
 
-```bash
-# Install the CLI
-npm install -g openscad-web-customizer-forge
+### v1 (Current Focus) — Web Application
 
-# Extract parameters from your .scad file
-forge extract my-model.scad --out params.schema.json
+| Feature | Status |
+|---------|--------|
+| 📁 Drag-and-drop file upload | 🔄 In Progress |
+| 🎛️ Auto-generated parameter UI | 🔄 In Progress |
+| ⚙️ Client-side STL generation (WASM) | 🔄 In Progress |
+| 👁️ 3D preview (Three.js) | ⏳ Planned |
+| 🔗 Shareable URL parameters | ⏳ Planned |
+| ♿ WCAG 2.1 AA accessibility | ⏳ Planned |
 
-# Generate a web app scaffold
-forge scaffold --schema params.schema.json --scad my-model.scad --out ./my-web-app
+### v2 (Future) — Developer Toolchain
 
-# Validate parity between OpenSCAD and web versions
-forge validate ./my-web-app --ref openscad-cli
-```
+| Feature | Status |
+|---------|--------|
+| 🛠️ CLI parameter extraction | ⏳ Planned |
+| 📦 Standalone app scaffolding | ⏳ Planned |
+| ✅ Validation harness | ⏳ Planned |
+| 🔄 Auto-sync and fixes | ⏳ Planned |
 
 ## 📖 Documentation
 
-- [Build Plan](docs/BUILD_PLAN.md) — Development roadmap and phased implementation
-- [Parameter Schema Specification](docs/specs/PARAMETER_SCHEMA_SPEC.md) — JSON Schema format for parameters
-- [Examples](examples/) — Sample projects demonstrating the workflow
+- [Build Plan](docs/BUILD_PLAN.md) — Development roadmap and architecture
+- [Parameter Schema Spec](docs/specs/PARAMETER_SCHEMA_SPEC.md) — JSON Schema format
+- [Examples](examples/) — Sample OpenSCAD projects
 
-## 🔧 How It Works
-
-### 1. Parameter Extraction
-
-The tool parses your `.scad` file and extracts Customizer annotations into a `params.schema.json`:
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "properties": {
-    "width": {
-      "type": "number",
-      "default": 50,
-      "minimum": 10,
-      "maximum": 100,
-      "x-ui-group": "Dimensions",
-      "x-ui-order": 0
-    }
-  }
-}
-```
-
-### 2. Web App Generation
-
-The scaffold command generates a Vercel-ready web application:
+## 🏗️ Architecture
 
 ```
-my-web-app/
-├── public/
-│   ├── index.html          # Schema-driven UI
-│   ├── worker.js           # OpenSCAD WASM runner
-│   └── my-model.scad       # Your OpenSCAD file
-├── vercel.json             # Deployment config
-├── params.schema.json      # Parameter schema
-└── THIRD_PARTY_NOTICES.md  # License compliance
+Browser
+├── Main Thread
+│   ├── File Upload Handler
+│   ├── Parameter UI (auto-generated)
+│   ├── 3D Preview (Three.js)
+│   └── Download Manager
+│
+└── Web Worker (isolated)
+    └── OpenSCAD WASM Runtime
+        ├── Parameter Parser
+        ├── Virtual Filesystem
+        └── STL Export Engine
 ```
 
-### 3. Validation
-
-The validation harness compares:
-
-| Layer | What's Compared | Auto-fixable? |
-|-------|-----------------|---------------|
-| Schema | Names, types, defaults, ranges | ✅ Yes |
-| UI | Labels, help text, grouping | ⚠️ Partial |
-| STL | Bounding box, volume, surface distance | ❌ No (tolerances only) |
+**Key architectural decisions:**
+- **Client-side only** — No backend server required
+- **Web Worker isolation** — WASM runs in worker to keep UI responsive
+- **Lazy loading** — 15-30MB WASM bundle loads on demand
+- **Vanilla JS** — No framework dependencies, accessibility-first
 
 ## ⚖️ Licensing
 
-- **This tool**: MIT License
-- **Generated web apps**: Include OpenSCAD (GPL) — see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
-- **Your .scad files**: Your license (preserved in generated apps)
+| Component | License |
+|-----------|---------|
+| This project | GPL-3.0-or-later |
+| OpenSCAD WASM | GPL-2.0+ |
+| Your `.scad` files | Your license |
+| Generated STL files | Your ownership |
+
+See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## 🙏 Acknowledgments
 
-This project was inspired by the validation patterns developed in:
-- [braille-card-and-cylinder-stl-generator](https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator)
-- [braille-stl-generator-openscad](https://github.com/BrennenJohnston/braille-stl-generator-openscad)
+**Inspired by:**
+- The broader ecosystem of web-based parametric model customizers
+- [braille-card-and-cylinder-stl-generator](https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator) — Validation patterns
 
-OpenSCAD WASM integration references:
-- [openscad-web-gui](https://github.com/seasick/openscad-web-gui) (GPL-3.0)
-- [OpenSCAD](https://openscad.org/) (GPL-2.0+)
+**Built on:**
+- [OpenSCAD](https://openscad.org/) — The parametric CAD engine (GPL-2.0+)
+- [seasick/openscad-web-gui](https://github.com/seasick/openscad-web-gui) — WASM integration patterns (GPL-3.0)
+- [openscad/openscad-playground](https://github.com/openscad/openscad-playground) — Official web playground
 
 ## 🤝 Contributing
 
-Contributions welcome! Please read the build plan first to understand the phased approach.
+Contributions welcome! Please read the [Build Plan](docs/BUILD_PLAN.md) first to understand our phased approach.
+
+**Good first issues:**
+- Improve accessibility (ARIA labels, keyboard navigation)
+- Add example OpenSCAD models
+- Improve error messages
+- Documentation improvements
 
 ## 📊 Project Status
 
-**Current Phase**: Phase 0 — Specification & Planning
+**Current Phase**: Phase 1 — Core Infrastructure
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 0 | Finalize specs + baseline artifacts | 🔄 In Progress |
-| 1 | OpenSCAD Customizer extractor | ⏳ Pending |
-| 2 | Vercel web template | ⏳ Pending |
-| 3 | Validation harness | ⏳ Pending |
-| 4 | Iterative correction loop | ⏳ Pending |
+| 1 | WASM worker + file upload | 🔄 In Progress |
+| 2 | Parameter UI generation | ⏳ Pending |
+| 3 | Polish + accessibility + deploy | ⏳ Pending |
+
+---
+
+<p align="center">
+  <strong>No installation. No account. Just customize.</strong>
+</p>

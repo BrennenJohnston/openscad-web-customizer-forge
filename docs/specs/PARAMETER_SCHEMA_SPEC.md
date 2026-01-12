@@ -1,12 +1,17 @@
 # Parameter Schema Specification
 
-**Version**: 1.0.0-draft
-**Status**: Draft
-**Last Updated**: 2026-01-12
+**Version**: 1.0.0-draft  
+**Status**: Draft  
+**Last Updated**: 2026-01-12  
+**Applies To**: v1 (web app) and v2 (CLI toolchain)
 
 ## Overview
 
 This document defines the **Parameter Schema** format used by OpenSCAD Web Customizer Forge. The schema serves as the intermediate representation between OpenSCAD Customizer annotations and generated web application UIs.
+
+**Usage in v1 (Web App)**: Parameters are extracted at runtime in the browser and converted to this schema format internally for UI generation.
+
+**Usage in v2 (CLI Toolchain)**: The `forge extract` command generates `params.schema.json` files following this specification.
 
 The Parameter Schema is based on **JSON Schema (draft 2020-12)** with custom extensions for UI metadata.
 
@@ -57,6 +62,23 @@ All custom extensions use the `x-forge-` prefix to avoid conflicts with standard
 | `x-forge-unit` | property | Unit of measurement (mm, deg, etc.) |
 | `x-forge-hidden` | property | Parameter should not appear in UI |
 | `x-forge-depends` | property | Conditional visibility rules |
+| `x-forge-render-as` | property | UI rendering hint (e.g. `"toggle"`, `"select"`, `"slider"`) |
+
+### Group IDs vs Labels (Important)
+
+- **`x-forge-groups[].id`** is the stable identifier used by code and stored on each property in **`x-forge-group`**.
+- **`x-forge-groups[].label`** is the human-visible label shown in the UI.
+
+**Rule**: `properties.<name>.x-forge-group` MUST reference a group `id` (not the label).
+
+**Recommended group-id generation (when extracting from `/*[Label]*/`)**:
+- Lowercase
+- Trim whitespace
+- Replace spaces/underscores with `-`
+- Remove non-alphanumeric characters except `-`
+- Collapse multiple `-`
+
+Example: `"Palm Loop Info"` → `palm-loop-info`
 
 ---
 
@@ -78,7 +100,7 @@ height = 30.5;        // [10:0.5:80]
     "default": 50,
     "minimum": 10,
     "maximum": 100,
-    "x-forge-group": "Dimensions",
+    "x-forge-group": "dimensions",
     "x-forge-order": 0
   },
   "height": {
@@ -87,7 +109,7 @@ height = 30.5;        // [10:0.5:80]
     "minimum": 10,
     "maximum": 80,
     "multipleOf": 0.5,
-    "x-forge-group": "Dimensions",
+    "x-forge-group": "dimensions",
     "x-forge-order": 1
   }
 }
@@ -112,11 +134,15 @@ shape = "round";  // [round, square, hexagon]
     "type": "string",
     "default": "round",
     "enum": ["round", "square", "hexagon"],
-    "x-forge-group": "Options",
+    "x-forge-group": "options",
     "x-forge-order": 0
   }
 }
 ```
+
+**Notes:**
+- `enum` may contain **strings or numbers**. Example: `"enum": [0, 2, 4, 6]`.
+- If `enum` contains numbers, set `"type": "integer"` (or `"number"`).
 
 **UI Rendering:**
 - Dropdown select or radio button group
@@ -136,7 +162,7 @@ hollow = true;  // Make hollow version
     "type": "boolean",
     "default": true,
     "description": "Make hollow version",
-    "x-forge-group": "Options",
+    "x-forge-group": "options",
     "x-forge-order": 1
   }
 }
@@ -160,7 +186,7 @@ include_mount = "yes";  // [yes, no]
     "type": "string",
     "default": "yes",
     "enum": ["yes", "no"],
-    "x-forge-group": "Options",
+    "x-forge-group": "options",
     "x-forge-order": 2,
     "x-forge-render-as": "toggle"
   }
@@ -170,6 +196,12 @@ include_mount = "yes";  // [yes, no]
 **UI Rendering:**
 - Can render as toggle (recommended) or dropdown
 - `x-forge-render-as: "toggle"` hints at preferred rendering
+
+### Variable Naming (Extraction Guidance)
+
+OpenSCAD commonly uses special variables like **`$fn`**. When extracting parameters from OpenSCAD source, parameter names MAY start with `$`.
+
+**Recommended identifier matcher**: `[$]?[A-Za-z_][A-Za-z0-9_]*`
 
 ### String (Free Text)
 

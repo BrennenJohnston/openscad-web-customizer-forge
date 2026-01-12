@@ -21,10 +21,11 @@ When you deploy a generated web application that includes OpenSCAD WASM:
 
 2. **You must include this notice** (or equivalent) in your deployed application's "About" or "Licenses" section
 
-3. **The GPL applies to OpenSCAD itself**, not to:
-   - Your `.scad` model files (your license)
-   - The generated web application's UI code (MIT, from this tool)
-   - Your parameter configurations
+3. **The GPL applies to OpenSCAD and this tool**, which means:
+   - Your `.scad` model files retain your license
+   - The web application (including OpenSCAD WASM) is GPL-3.0-or-later
+   - Your parameter configurations are not affected
+   - Generated STL files (data output) are not GPL-licensed
 
 ### Obtaining OpenSCAD Source
 
@@ -104,9 +105,19 @@ If your model is licensed under GPL or a similar copyleft license, the generated
 
 ---
 
+## Trademarks / No Affiliation
+
+Any third-party product names, company names, or logos mentioned in this repository (including in historical references) are the property of their respective owners.
+
+- Such mentions are for **identification/informational purposes only**.
+- This project is **not affiliated with, sponsored by, or endorsed by** any third parties unless explicitly stated.
+- Do **not** use third-party logos or branding in this project without permission.
+
+---
+
 ## Questions?
 
 For licensing questions about:
-- **This tool** → See [LICENSE](LICENSE) (MIT)
+- **This tool** → See [LICENSE](LICENSE) (GPL-3.0-or-later)
 - **OpenSCAD** → See https://openscad.org/about.html
 - **Your models** → Consult your own licensing terms

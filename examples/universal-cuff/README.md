@@ -2,6 +2,10 @@
 
 This example demonstrates parameter extraction from a real-world OpenSCAD project with comprehensive Customizer annotations.
 
+**v1 Usage (Web App)**: Upload this `.scad` file to the web app to see automatic parameter extraction in action.
+
+**v2 Usage (CLI)**: Use `forge extract universal_cuff_utensil_holder.scad` to generate a schema file.
+
 ## Source
 
 - **Author**: Volksswitch (www.volksswitch.org)
