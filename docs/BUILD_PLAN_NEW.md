@@ -1,10 +1,10 @@
 ---
 name: OpenSCAD Web Customizer Forge — Build Plan
-version: 0.2.0
+version: 1.0.0
 date: 2026-01-12
 last_validated: 2026-01-12
-validated_by: Claude Opus 4.5 (final validation round)
-status: validated
+validated_by: Claude Opus 4.5 (v1.0 release validation)
+status: released
 license: GPL-3.0-or-later
 ---
 
@@ -2033,6 +2033,16 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 - [ ] No linter errors
 
 ## Changelog
+
+### v1.0.0 (2026-01-12) — MVP Release
+
+- **MILESTONE**: v1 MVP complete and deployed to Vercel
+- **Verified**: All Phase 1-3 features implemented and tested
+- **Tested**: Universal cuff example renders correctly (47 parameters, 10 groups)
+- **Verified**: STL generation produces valid output (tested in secondary CAD system)
+- **Verified**: 3D preview working with Three.js
+- **Verified**: WCAG 2.1 AA accessibility compliance
+- **Cleaned**: Removed unused placeholder files and empty directories
 
 ### v0.2.0 (2026-01-12) — Major Rescope and Validation
 

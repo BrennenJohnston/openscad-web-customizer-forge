@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Web-based OpenSCAD customizer - customize and generate 3D printable STL files directly in your browser" />
+    <title>OpenSCAD Web Customizer</title>
+  </head>
+  <body>
+    <!-- Skip to content link for keyboard users -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    
+    <div id="app" role="application" aria-label="OpenSCAD Web Customizer">
+      <header class="app-header">
+        <h1>OpenSCAD Web Customizer</h1>
+        <p class="app-tagline">Customize 3D models directly in your browser</p>
+      </header>
+      
+      <main class="app-main" id="main-content">
+        <div class="welcome-screen" id="welcomeScreen">
+          <div class="welcome-content">
+            <h2>Get Started</h2>
+            <p>Upload an OpenSCAD (.scad) file to customize its parameters and generate STL files</p>
+            
+            <div class="upload-zone" id="uploadZone" role="button" tabindex="0" aria-label="Upload OpenSCAD file. Drop file here or click to browse">
+              <svg class="upload-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <p class="upload-text">Drop .scad file here or click to browse</p>
+              <input type="file" id="fileInput" accept=".scad" class="file-input" aria-label="Choose OpenSCAD file to upload" />
+            </div>
+            
+            <div class="examples-section">
+              <p>Or try an example:</p>
+              <button id="loadExampleBtn" class="btn btn-secondary">Load Universal Cuff Example</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="main-interface hidden" id="mainInterface">
+          <div class="param-panel" role="region" aria-label="Model parameters">
+            <div class="panel-header">
+              <h2 id="parameters-heading">Parameters</h2>
+              <button id="resetBtn" class="btn btn-sm" aria-label="Reset all parameters to default values">Reset</button>
+            </div>
+            <div id="parametersContainer" class="parameters-container" aria-labelledby="parameters-heading">
+              <!-- Parameters will be dynamically generated here -->
+            </div>
+          </div>
+          
+          <div class="preview-panel" role="region" aria-label="3D preview and actions">
+            <div class="panel-header">
+              <h2 id="preview-heading">Preview</h2>
+              <div class="file-info" id="fileInfo" aria-live="polite"></div>
+            </div>
+            
+            <div class="status-area" id="statusArea" role="status" aria-live="polite" aria-atomic="true">
+              Ready
+            </div>
+            
+            <div class="preview-container" id="previewContainer" role="img" aria-label="3D model preview">
+              <!-- 3D preview or placeholder -->
+              <div class="preview-placeholder">
+                <p>3D preview will appear here after generating STL</p>
+              </div>
+            </div>
+            
+            <div class="actions">
+              <button id="generateBtn" class="btn btn-primary btn-large" aria-label="Generate STL file from current parameters">Generate STL</button>
+              <button id="downloadBtn" class="btn btn-success btn-large" disabled aria-label="Download generated STL file">Download STL</button>
+            </div>
+            
+            <div class="stats" id="stats" role="status" aria-live="polite"></div>
+          </div>
+        </div>
+      </main>
+      
+      <div class="error-message hidden" id="errorMessage" role="alert" aria-live="assertive" aria-atomic="true"></div>
+    </div>
+    
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

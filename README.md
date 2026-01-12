@@ -4,14 +4,15 @@
 
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
 [![OpenSCAD](https://img.shields.io/badge/OpenSCAD-WASM-orange.svg)](https://openscad.org/)
+[![Accessibility](https://img.shields.io/badge/WCAG-2.1%20AA-green.svg)](https://www.w3.org/WAI/WCAG21/quickref/)
 
 ## 🎯 What This Does
 
-**Think**: classic “web parametric customizer” UX, but:
+**Think**: classic "web parametric customizer" UX, but:
 - ✅ **100% client-side** — Runs entirely in your browser (no server costs)
 - ✅ **No installation** — Just upload and customize
 - ✅ **No account needed** — Start using immediately
-- ✅ **Accessible** — WCAG 2.1 AA compliant, keyboard navigable
+- ✅ **Accessible** — WCAG 2.1 AA compliant, fully keyboard navigable
 - ✅ **Open source** — GPL-3.0-or-later
 
 ```
@@ -25,15 +26,15 @@
 │   .scad file        dropdowns, toggles     ready for 3D printing             │
 │                     for each parameter                                       │
 │                                                                              │
-│   Parameters are    Real-time preview      Share via URL                     │
-│   auto-detected     shows your changes     (optional)                        │
+│   Parameters are    Real-time 3D preview   Share via URL                     │
+│   auto-detected     shows your changes     (coming in v1.1)                  │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## 🚀 Try It Now
 
-**[🔗 Live Demo](https://openscad-web-customizer-forge.vercel.app)** *(coming soon)*
+**[🔗 Live Demo](https://openscad-web-customizer-forge.vercel.app)**
 
 Or run locally:
 
@@ -43,6 +44,8 @@ cd openscad-web-customizer-forge
 npm install
 npm run dev
 ```
+
+Then open http://localhost:5173 in your browser.
 
 ## 📋 Supported File Format
 
@@ -55,7 +58,7 @@ height = 30;      // [10:80]
 shape = "round";  // [round, square, hexagon]
 
 /*[Options]*/
-hollow = true;    // Create hollow version
+hollow = "yes";   // [yes, no]
 wall_thickness = 2; // [1:0.5:5]
 
 /*[Hidden]*/
@@ -63,6 +66,7 @@ $fn = 100;
 ```
 
 **Supported annotation types:**
+
 | Annotation | Example | UI Control |
 |------------|---------|------------|
 | `/*[Group Name]*/` | `/*[Dimensions]*/` | Collapsible section |
@@ -71,22 +75,33 @@ $fn = 100;
 | `// [opt1, opt2]` | `// [round, square]` | Dropdown |
 | `// [yes, no]` | `// [yes, no]` | Toggle switch |
 | `// Comment` | `// Wall thickness` | Help tooltip |
-| `/*[Hidden]*/` | Internal params | Not shown |
+| `/*[Hidden]*/` | Internal params | Not shown in UI |
 
 ## ✨ Features
 
-### v1 (Current Focus) — Web Application
+### v1.0 (Current) — Web Application ✅
 
 | Feature | Status |
 |---------|--------|
-| 📁 Drag-and-drop file upload | 🔄 In Progress |
-| 🎛️ Auto-generated parameter UI | 🔄 In Progress |
-| ⚙️ Client-side STL generation (WASM) | 🔄 In Progress |
-| 👁️ 3D preview (Three.js) | ⏳ Planned |
-| 🔗 Shareable URL parameters | ⏳ Planned |
-| ♿ WCAG 2.1 AA accessibility | ⏳ Planned |
+| 📁 Drag-and-drop file upload | ✅ Complete |
+| 🎛️ Auto-generated parameter UI | ✅ Complete |
+| ⚙️ Client-side STL generation (WASM) | ✅ Complete |
+| 👁️ 3D preview (Three.js) | ✅ Complete |
+| 📥 Smart filename downloads | ✅ Complete |
+| ♿ WCAG 2.1 AA accessibility | ✅ Complete |
+| 🌙 Dark mode support | ✅ Complete |
 
-### v2 (Future) — Developer Toolchain
+### v1.1 (Planned) — Enhanced Usability
+
+| Feature | Status |
+|---------|--------|
+| 🔗 Shareable URL parameters | ⏳ Planned |
+| 💾 Browser localStorage persistence | ⏳ Planned |
+| ⌨️ Keyboard shortcuts | ⏳ Planned |
+| 📦 ZIP upload for multi-file projects | ⏳ Planned |
+| 📚 More example models | ⏳ Planned |
+
+### v2.0 (Future) — Developer Toolchain
 
 | Feature | Status |
 |---------|--------|
@@ -97,8 +112,10 @@ $fn = 100;
 
 ## 📖 Documentation
 
-- [Build Plan](docs/BUILD_PLAN.md) — Development roadmap and architecture
+- [Build Plan](docs/BUILD_PLAN_NEW.md) — Development roadmap and architecture
 - [Parameter Schema Spec](docs/specs/PARAMETER_SCHEMA_SPEC.md) — JSON Schema format
+- [Progress Report](PROGRESS.md) — Detailed development status
+- [Test Report](TEST_REPORT.md) — Comprehensive testing results
 - [Examples](examples/) — Sample OpenSCAD projects
 
 ## 🏗️ Architecture
@@ -109,20 +126,34 @@ Browser
 │   ├── File Upload Handler
 │   ├── Parameter UI (auto-generated)
 │   ├── 3D Preview (Three.js)
+│   ├── State Manager (pub/sub)
 │   └── Download Manager
 │
 └── Web Worker (isolated)
     └── OpenSCAD WASM Runtime
         ├── Parameter Parser
-        ├── Virtual Filesystem
         └── STL Export Engine
 ```
 
 **Key architectural decisions:**
 - **Client-side only** — No backend server required
 - **Web Worker isolation** — WASM runs in worker to keep UI responsive
-- **Lazy loading** — 15-30MB WASM bundle loads on demand
+- **Lazy loading** — WASM bundle loads on demand
 - **Vanilla JS** — No framework dependencies, accessibility-first
+- **NPM package** — Uses `openscad-wasm-prebuilt` for easy setup
+
+## 🧪 Testing
+
+The application has been comprehensively tested:
+
+- ✅ **47 parameters** extracted from universal cuff example
+- ✅ **10 parameter groups** correctly identified
+- ✅ **STL generation** working (13-44s render time)
+- ✅ **3D preview** with orbit controls
+- ✅ **Full keyboard navigation**
+- ✅ **WCAG 2.1 AA** accessibility compliance
+
+See [TEST_REPORT.md](TEST_REPORT.md) for detailed results.
 
 ## ⚖️ Licensing
 
@@ -137,34 +168,63 @@ See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## 🙏 Acknowledgments
 
-**Inspired by:**
-- The broader ecosystem of web-based parametric model customizers
-- [braille-card-and-cylinder-stl-generator](https://github.com/BrennenJohnston/braille-card-and-cylinder-stl-generator) — Validation patterns
-
 **Built on:**
 - [OpenSCAD](https://openscad.org/) — The parametric CAD engine (GPL-2.0+)
+- [openscad-wasm-prebuilt](https://www.npmjs.com/package/openscad-wasm-prebuilt) — Pre-built WASM binaries
+- [Three.js](https://threejs.org/) — 3D preview rendering
+- [Vite](https://vitejs.dev/) — Build tooling
+
+**Reference implementations:**
 - [seasick/openscad-web-gui](https://github.com/seasick/openscad-web-gui) — WASM integration patterns (GPL-3.0)
 - [openscad/openscad-playground](https://github.com/openscad/openscad-playground) — Official web playground
 
 ## 🤝 Contributing
 
-Contributions welcome! Please read the [Build Plan](docs/BUILD_PLAN.md) first to understand our phased approach.
+Contributions welcome! Please read the [Build Plan](docs/BUILD_PLAN_NEW.md) first to understand our architecture.
 
 **Good first issues:**
-- Improve accessibility (ARIA labels, keyboard navigation)
-- Add example OpenSCAD models
-- Improve error messages
+- Add more example OpenSCAD models
+- Improve error messages for common OpenSCAD errors
 - Documentation improvements
+- Add keyboard shortcuts
+
+### Development Setup
+
+```bash
+# Clone and install
+git clone https://github.com/YOUR_ORG/openscad-web-customizer-forge.git
+cd openscad-web-customizer-forge
+npm install
+
+# Start dev server
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+```
 
 ## 📊 Project Status
 
-**Current Phase**: Phase 1 — Core Infrastructure
+**Current Version**: v1.0.0-mvp
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 1 | WASM worker + file upload | 🔄 In Progress |
-| 2 | Parameter UI generation | ⏳ Pending |
-| 3 | Polish + accessibility + deploy | ⏳ Pending |
+| 0 | Repo bootstrap | ✅ Complete |
+| 1.1 | UI shell + layout | ✅ Complete |
+| 1.2 | WASM worker | ✅ Complete |
+| 1.3 | File upload | ✅ Complete |
+| 1.4 | Download manager | ✅ Complete |
+| 2.1 | Parameter parser | ✅ Complete |
+| 2.2 | UI generator | ✅ Complete |
+| 2.3 | State management | ✅ Complete |
+| 3.1 | 3D Preview | ✅ Complete |
+| 3.2 | Accessibility | ✅ Complete |
+| 3.4 | Deployment | ✅ Complete |
+
+**v1.0 MVP: COMPLETE** 🎉
 
 ---
 

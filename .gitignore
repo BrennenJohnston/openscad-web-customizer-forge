@@ -1,51 +1,11 @@
-# Dependencies
 node_modules/
-package-lock.json
-
-# Build outputs
 dist/
-build/
-*.tsbuildinfo
-
-# Generated web apps (gitignore by default; commit selectively)
-generated/
-
-# IDE
+.DS_Store
+*.log
+.env
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
+public/wasm/openscad.*
 
-# OS
-.DS_Store
-Thumbs.db
-Desktop.ini
-
-# Logs
-*.log
-npm-debug.log*
-
-# Test outputs
-coverage/
-.nyc_output/
-
-# Environment
-.env
-.env.local
-.env.*.local
-
-# Python (if we add Python tooling)
-__pycache__/
-*.py[cod]
-*$py.class
-.pytest_cache/
-venv/
-.venv/
-
-# OpenSCAD outputs (generated STLs should not be committed)
-*.stl
-
-# Temporary files
-*.tmp
-*.temp
+.vercel
+.env*.local
