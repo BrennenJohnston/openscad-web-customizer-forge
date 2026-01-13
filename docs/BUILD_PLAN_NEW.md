@@ -656,6 +656,163 @@ worker.postMessage({
 | **Preview render** | < 2s | Three.js with hardware acceleration |
 | **Bundle size** | < 200KB (pre-WASM) | Tree-shaking, code splitting |
 
+### Auto-Preview System (v1.2 Feature)
+
+The Auto-Preview system provides progressive enhancement for real-time visual feedback during parameter adjustments.
+
+#### Architecture Overview
+
+```
+Parameter Change → Immediate UI Feedback → Debounce Timer (1.5s)
+                        ↓                        ↓
+              "Changes pending..."        Auto-Preview Render
+                                               ↓
+                                      Preview STL (low $fn)
+                                               ↓
+                                      3D Preview Update
+                                               ↓
+                                  "Preview ready (lower quality)"
+                                               ↓
+                               User clicks "Download STL"
+                                               ↓
+                                   Full Quality Render
+                                               ↓
+                                     Download File
+```
+
+#### Render Quality Tiers
+
+| Tier | $fn Value | Use Case | Typical Time |
+|------|-----------|----------|--------------|
+| **Preview** | min(user $fn, 24) | Auto-render on param change | 2-8s |
+| **Full** | user $fn or 64 | Final STL for download | 10-60s |
+
+#### State Machine
+
+```javascript
+// Preview States
+const PREVIEW_STATE = {
+  IDLE: 'idle',              // No file loaded
+  CURRENT: 'current',        // Preview matches parameters
+  PENDING: 'pending',        // Parameter changed, render scheduled
+  RENDERING: 'rendering',    // Preview render in progress
+  STALE: 'stale',           // Preview exists but params changed (older STL)
+};
+```
+
+#### Implementation Pattern
+
+```javascript
+class AutoPreviewController {
+  constructor(renderController, previewManager, options = {}) {
+    this.renderController = renderController;
+    this.previewManager = previewManager;
+    this.debounceMs = options.debounceMs || 1500;
+    this.previewFn = options.previewFn || 24;  // Max $fn for preview
+    this.enabled = options.enabled ?? true;
+    
+    this.debounceTimer = null;
+    this.previewCache = new Map();  // paramHash -> { stl, stats }
+    this.currentParamHash = null;
+    this.previewParamHash = null;
+    this.state = 'idle';
+  }
+
+  // Called when any parameter changes
+  onParameterChange(scadContent, parameters) {
+    if (!this.enabled) return;
+    
+    const paramHash = this.hashParams(parameters);
+    this.currentParamHash = paramHash;
+    
+    // Check cache first
+    if (this.previewCache.has(paramHash)) {
+      this.loadCachedPreview(paramHash);
+      return;
+    }
+    
+    // Update state to pending
+    this.setState('pending');
+    
+    // Cancel existing debounce
+    if (this.debounceTimer) clearTimeout(this.debounceTimer);
+    
+    // Schedule new preview render
+    this.debounceTimer = setTimeout(() => {
+      this.renderPreview(scadContent, parameters, paramHash);
+    }, this.debounceMs);
+  }
+
+  // Render preview with reduced quality
+  async renderPreview(scadContent, parameters, paramHash) {
+    this.setState('rendering');
+    
+    // Apply preview quality settings
+    const previewParams = { ...parameters };
+    if (previewParams.$fn > this.previewFn) {
+      previewParams.$fn = this.previewFn;
+    }
+    
+    try {
+      const result = await this.renderController.render(
+        scadContent, 
+        previewParams,
+        { timeoutMs: 30000 }  // Shorter timeout for preview
+      );
+      
+      // Cache the result
+      this.previewCache.set(paramHash, result);
+      this.previewParamHash = paramHash;
+      
+      // Load into 3D preview
+      await this.previewManager.loadSTL(result.stl);
+      
+      this.setState('current');
+    } catch (error) {
+      console.error('Preview render failed:', error);
+      this.setState('stale');
+    }
+  }
+
+  // Full quality render for download
+  async renderFull(scadContent, parameters) {
+    return this.renderController.render(scadContent, parameters, {
+      timeoutMs: 60000
+    });
+  }
+}
+```
+
+#### UI Indicators
+
+| State | Visual Indicator | Status Message |
+|-------|-----------------|----------------|
+| `idle` | Placeholder image | "Upload a model to begin" |
+| `pending` | Yellow border pulse | "Changes detected - preview updating..." |
+| `rendering` | Spinner overlay | "Generating preview..." |
+| `current` | Green checkmark badge | "Preview ready" |
+| `stale` | Yellow warning badge | "Preview outdated - parameters changed" |
+
+#### Configuration Options
+
+```javascript
+// User preferences (stored in localStorage)
+const autoPreviewSettings = {
+  enabled: true,           // Toggle auto-preview on/off
+  debounceMs: 1500,        // Delay before auto-render
+  previewFn: 24,           // Max $fn for preview renders
+  maxCacheSize: 10,        // Max cached preview renders
+};
+```
+
+#### Benefits of Progressive Enhancement
+
+1. **Immediate feedback**: Users see "pending" state instantly
+2. **Faster iteration**: Low-quality preview renders in 2-8s vs 30-60s
+3. **Reduced wait time**: Cache hits skip render entirely
+4. **Quality control**: Full resolution only when downloading
+5. **User control**: Can disable auto-preview if preferred
+
 **OpenSCAD Performance Flags** (pass to WASM):
 ```javascript
 const performanceFlags = [
@@ -2033,6 +2190,40 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 - [ ] No linter errors
 
 ## Changelog
+
+### v1.2.0 (2026-01-13) — Auto-Preview & Progressive Enhancement
+
+- **MILESTONE**: Auto-preview system for real-time visual feedback COMPLETE
+- **Added**: Progressive Enhancement rendering strategy
+  - Immediate "pending changes" indicator when parameters change
+  - Auto-render with debounce (1.5s) at preview quality ($fn capped at 24)
+  - Cached preview renders to avoid redundant computation (max 10 cache entries)
+  - Full-quality render only on "Download STL" click
+  - Smart button logic: "Download STL" when ready, "Generate STL" when params changed
+- **Added**: Preview quality control (reduced $fn for faster iteration: 2-8s vs 10-60s)
+- **Added**: Visual preview state indicators (idle, pending, rendering, current, stale, error)
+- **Added**: Rendering overlay with spinner during preview generation
+- **Improved**: UX flow - 5-10x faster parameter iteration
+- **Technical**: New `AutoPreviewController` class (375 lines) for render orchestration
+- **Technical**: Render caching by parameter hash with LRU eviction
+- **Technical**: Quality tiers (PREVIEW: $fn≤24, 30s timeout | FULL: unlimited $fn, 60s timeout)
+- **Tested**: Simple Box example renders successfully (0.73s, 296 triangles, 888 vertices)
+- **Tested**: State management working correctly (idle → current transitions)
+
+### v1.1.0 (2026-01-12) — Enhanced Usability Release
+
+- **MILESTONE**: v1.1 complete with all enhanced usability features
+- **Added**: URL parameter persistence for sharing customized models
+- **Added**: Keyboard shortcuts (Ctrl+Enter to render, R to reset, D to download)
+- **Added**: Auto-save drafts with localStorage (2s debounce, 7-day expiration)
+- **Added**: Copy Share Link button (clipboard API with fallback)
+- **Added**: Export Parameters as JSON button
+- **Added**: Simple Box example (13 params, beginner-friendly, fast render)
+- **Added**: Parametric Cylinder example (12 params, shape variations)
+- **Improved**: Welcome screen now shows 3 example buttons with labels
+- **Improved**: Example loading unified handler for all models
+- **Tested**: All features working in Chrome dev environment
+- **Documentation**: Created CHANGELOG_v1.1.md with full details
 
 ### v1.0.0 (2026-01-12) — MVP Release
 

@@ -3,6 +3,22 @@
  * @license GPL-3.0-or-later
  */
 
+/**
+ * Render quality presets
+ */
+export const RENDER_QUALITY = {
+  PREVIEW: {
+    name: 'preview',
+    maxFn: 24,        // Cap $fn at 24 for faster preview
+    timeoutMs: 30000, // 30 second timeout for preview
+  },
+  FULL: {
+    name: 'full',
+    maxFn: null,      // No cap, use model's $fn
+    timeoutMs: 60000, // 60 second timeout for full render
+  },
+};
+
 export class RenderController {
   constructor() {
     this.worker = null;
@@ -62,6 +78,17 @@ export class RenderController {
   }
 
   /**
+   * Restart the worker (workaround for OpenSCAD WASM state corruption between renders)
+   * @returns {Promise<void>}
+   */
+  async restart() {
+    this.terminate();
+    this.initPromise = null;
+    this.ready = false;
+    await this.init();
+  }
+
+  /**
    * Handle messages from worker
    * @param {Object} message - Message from worker
    */
@@ -105,15 +132,48 @@ export class RenderController {
   }
 
   /**
+   * Apply quality settings to parameters
+   * @param {Object} parameters - Original parameters
+   * @param {Object} quality - Quality preset (RENDER_QUALITY.PREVIEW or RENDER_QUALITY.FULL)
+   * @returns {Object} Parameters with quality adjustments
+   */
+  applyQualitySettings(parameters, quality) {
+    const adjusted = { ...parameters };
+    
+    // Cap $fn if quality has a maxFn limit
+    if (quality.maxFn !== null && adjusted.$fn !== undefined) {
+      adjusted.$fn = Math.min(adjusted.$fn, quality.maxFn);
+    }
+    
+    // If no $fn is set but we have a maxFn limit, don't add it
+    // (let the model use its defaults)
+    
+    return adjusted;
+  }
+
+  /**
    * Render OpenSCAD to STL
    * @param {string} scadContent - OpenSCAD source code
    * @param {Object} parameters - Parameter overrides
    * @param {Object} options - Render options
    * @param {number} options.timeoutMs - Timeout in milliseconds
    * @param {Function} options.onProgress - Progress callback
+   * @param {Object} options.quality - Quality preset (optional, defaults to FULL)
    * @returns {Promise<Object>} Render result with STL data and stats
    */
   async render(scadContent, parameters = {}, options = {}) {
+    const quality = options.quality || RENDER_QUALITY.FULL;
+    const adjustedParams = this.applyQualitySettings(parameters, quality);
+    const timeoutMs = options.timeoutMs || quality.timeoutMs;
+
+    const shouldRetryOnce = (err) => {
+      const msg = err?.message || String(err);
+      // Pattern we see in logs: "Failed to render model: 1101176" (numeric code, no stack)
+      return /^Failed to render model:\s*\d+/.test(msg);
+    };
+
+    const renderOnce = async () => {
+    
     if (!this.ready) {
       throw new Error('Worker not ready. Call init() first.');
     }
@@ -123,7 +183,6 @@ export class RenderController {
     }
 
     const requestId = `render-${++this.requestId}`;
-    const timeoutMs = options.timeoutMs || 60000;
 
     return new Promise((resolve, reject) => {
       this.currentRequest = {
@@ -138,11 +197,50 @@ export class RenderController {
         payload: {
           requestId,
           scadContent,
-          parameters,
+          parameters: adjustedParams,
           timeoutMs,
           outputFormat: 'binstl',
         },
       });
+    });
+    };
+
+    try {
+      return await renderOnce();
+    } catch (err) {
+      if (!shouldRetryOnce(err)) {
+        throw err;
+      }
+      await this.restart();
+      return await renderOnce();
+    }
+  }
+
+  /**
+   * Render preview with reduced quality for faster feedback
+   * @param {string} scadContent - OpenSCAD source code
+   * @param {Object} parameters - Parameter overrides
+   * @param {Object} options - Render options
+   * @returns {Promise<Object>} Render result with STL data and stats
+   */
+  async renderPreview(scadContent, parameters = {}, options = {}) {
+    return this.render(scadContent, parameters, {
+      ...options,
+      quality: RENDER_QUALITY.PREVIEW,
+    });
+  }
+
+  /**
+   * Render full quality for final export
+   * @param {string} scadContent - OpenSCAD source code
+   * @param {Object} parameters - Parameter overrides
+   * @param {Object} options - Render options
+   * @returns {Promise<Object>} Render result with STL data and stats
+   */
+  async renderFull(scadContent, parameters = {}, options = {}) {
+    return this.render(scadContent, parameters, {
+      ...options,
+      quality: RENDER_QUALITY.FULL,
     });
   }
 

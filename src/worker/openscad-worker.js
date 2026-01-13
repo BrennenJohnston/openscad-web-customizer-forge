@@ -11,6 +11,15 @@ let initialized = false;
 let currentRenderTimeout = null;
 
 /**
+ * Escape a string for use in a RegExp
+ * @param {string} s
+ * @returns {string}
+ */
+function escapeRegExp(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Initialize OpenSCAD WASM
  */
 async function initWASM() {
@@ -72,6 +81,59 @@ function parametersToScad(parameters) {
 }
 
 /**
+ * Apply parameter overrides by replacing existing assignments when possible.
+ * This avoids the "assigned but overwritten" issue when prepending overrides.
+ *
+ * @param {string} scadContent
+ * @param {Object} parameters
+ * @returns {{scad: string, replacedKeys: string[], prependedKeys: string[]}}
+ */
+function applyOverrides(scadContent, parameters) {
+  if (!parameters || Object.keys(parameters).length === 0) {
+    return { scad: scadContent, replacedKeys: [], prependedKeys: [] };
+  }
+
+  let updated = scadContent;
+  const replacedKeys = [];
+  const prependedKeys = [];
+
+  const formatValue = (value) => {
+    if (typeof value === 'string') {
+      const escaped = value.replace(/"/g, '\\"');
+      return `"${escaped}"`;
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+    return JSON.stringify(value);
+  };
+
+  for (const [key, value] of Object.entries(parameters)) {
+    const keyRe = escapeRegExp(key);
+    const assignmentValue = formatValue(value);
+    const lineRe = new RegExp(
+      `^(\\s*)(${keyRe})\\s*=\\s*[^;]*;([ \\t]*\\/\\/.*)?$`,
+      'm'
+    );
+
+    if (lineRe.test(updated)) {
+      updated = updated.replace(lineRe, `$1$2 = ${assignmentValue};$3`);
+      replacedKeys.push(key);
+    } else {
+      prependedKeys.push(key);
+    }
+  }
+
+  if (prependedKeys.length > 0) {
+    const prependParams = {};
+    for (const k of prependedKeys) prependParams[k] = parameters[k];
+    updated = parametersToScad(prependParams) + updated;
+  }
+
+  return { scad: updated, replacedKeys, prependedKeys };
+}
+
+/**
  * Render OpenSCAD to STL
  */
 async function render(payload) {
@@ -83,9 +145,9 @@ async function render(payload) {
       payload: { requestId, percent: 10, message: 'Preparing model...' },
     });
 
-    // Prepend parameter overrides to SCAD content
-    const parameterOverrides = parametersToScad(parameters);
-    const fullScadContent = parameterOverrides + scadContent;
+    // Apply parameter overrides (replace-in-file when possible)
+    const applied = applyOverrides(scadContent, parameters);
+    const fullScadContent = applied.scad;
 
     console.log('[Worker] Rendering with parameters:', parameters);
 

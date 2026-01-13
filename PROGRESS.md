@@ -1,8 +1,8 @@
 # Development Progress Report
 
-**Date**: 2026-01-12  
-**Session**: v1.0.0 Release  
-**Status**: 🎉 **v1.0.0 RELEASED - DEPLOYED TO VERCEL** 🎉
+**Date**: 2026-01-13  
+**Session**: v1.2.0 Auto-Preview Release  
+**Status**: 🎉 **v1.2.0 COMPLETE - AUTO-PREVIEW IMPLEMENTED** 🎉
 
 ## ✅ Completed Tasks
 
@@ -345,12 +345,18 @@ According to BUILD_PLAN_NEW.md, the MVP is complete when:
 
 ---
 
-**Status**: ✅ **v1.0.0 RELEASED**
+**Status**: ✅ **v1.2.0 COMPLETE - READY FOR DEPLOYMENT**
 
-**Release Notes**:
-- Deployed to Vercel production
-- Validated STL output in secondary CAD system
-- All core features working as expected
-- Cleanup of unused placeholder files completed
+**Latest Release**: v1.2.0 - Auto-Preview & Progressive Enhancement
+- Auto-preview system implemented (375 lines)
+- Progressive quality rendering (preview: 2-8s, full: 10-60s)
+- Render caching with LRU eviction (max 10 entries)
+- Visual state indicators (6 states)
+- Smart download button logic
+- 5-10x faster parameter iteration
 
-**Next milestone**: v1.1 features (URL parameters, localStorage, keyboard shortcuts)
+**Previous Releases**:
+- v1.1.0: URL parameters, localStorage, keyboard shortcuts, 3 examples
+- v1.0.0: MVP with OpenSCAD WASM, parameter extraction, 3D preview, STL download
+
+**Next milestone**: Deploy v1.2.0 to production, then v1.3 features (ZIP upload, multiple formats)

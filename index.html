@@ -34,7 +34,11 @@
             
             <div class="examples-section">
               <p>Or try an example:</p>
-              <button id="loadExampleBtn" class="btn btn-secondary">Load Universal Cuff Example</button>
+              <div class="example-buttons">
+                <button id="loadUniversalCuffBtn" class="btn btn-secondary" data-example="universal-cuff">Universal Cuff (Complex)</button>
+                <button id="loadSimpleBoxBtn" class="btn btn-secondary" data-example="simple-box">Simple Box (Beginner)</button>
+                <button id="loadCylinderBtn" class="btn btn-secondary" data-example="cylinder">Parametric Cylinder</button>
+              </div>
             </div>
           </div>
         </div>
@@ -68,8 +72,10 @@
             </div>
             
             <div class="actions">
-              <button id="generateBtn" class="btn btn-primary btn-large" aria-label="Generate STL file from current parameters">Generate STL</button>
-              <button id="downloadBtn" class="btn btn-success btn-large" disabled aria-label="Download generated STL file">Download STL</button>
+              <button id="primaryActionBtn" class="btn btn-primary btn-large" aria-label="Generate STL file from current parameters" data-action="generate">Generate STL</button>
+              <a id="downloadFallbackLink" href="#" class="btn btn-sm btn-outline hidden" aria-label="Download previously generated STL file">📥 Download last STL</a>
+              <button id="shareBtn" class="btn btn-secondary" aria-label="Copy shareable link with current parameters">📋 Copy Share Link</button>
+              <button id="exportParamsBtn" class="btn btn-secondary" aria-label="Download parameters as JSON file">💾 Export Params (JSON)</button>
             </div>
             
             <div class="stats" id="stats" role="status" aria-live="polite"></div>
