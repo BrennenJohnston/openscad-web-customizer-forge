@@ -210,6 +210,8 @@ export class RenderController {
    * @param {number} options.timeoutMs - Timeout in milliseconds
    * @param {Function} options.onProgress - Progress callback
    * @param {Object} options.quality - Quality preset (optional, defaults to FULL)
+   * @param {Map<string, string>} options.files - Additional files for multi-file projects
+   * @param {string} options.mainFile - Main file path (for multi-file projects)
    * @returns {Promise<Object>} Render result with STL data and stats
    */
   async render(scadContent, parameters = {}, options = {}) {
@@ -242,6 +244,9 @@ export class RenderController {
           onProgress: options.onProgress,
         };
 
+        // Convert Map to plain object if files are provided
+        const filesObject = options.files ? Object.fromEntries(options.files) : undefined;
+        
         this.worker.postMessage({
           type: 'RENDER',
           payload: {
@@ -250,6 +255,8 @@ export class RenderController {
             parameters: adjustedParams,
             timeoutMs,
             outputFormat: 'binstl',
+            files: filesObject,
+            mainFile: options.mainFile,
           },
         });
       });

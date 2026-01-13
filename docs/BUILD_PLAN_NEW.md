@@ -2191,6 +2191,39 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 
 ## Changelog
 
+### v1.3.0 (2026-01-13) — ZIP Upload & Multi-File Projects
+
+- **MILESTONE**: ZIP upload support for multi-file OpenSCAD projects COMPLETE
+- **Added**: ZIP file upload and extraction (JSZip library)
+  - Automatic main file detection (5 strategies)
+  - Virtual filesystem mounting in OpenSCAD worker
+  - File tree visualization with main file badge
+  - Support for include/use statements with relative paths
+  - Validation (20MB ZIP limit, format checking)
+- **Added**: Multi-file example project (Multi-File Box)
+  - Demonstrates include/use statements
+  - Modular code organization
+  - Helper functions and reusable modules
+- **Modified**: Worker to support virtual filesystem operations
+  - mountFiles() and clearMountedFiles() functions
+  - Directory creation and file mounting
+  - Support for nested directory structures
+- **Modified**: Render controller to pass project files
+  - files and mainFile options added
+  - Automatic file mounting before render
+- **Modified**: Auto-preview controller for multi-file support
+  - setProjectFiles() method
+  - Pass files to render operations
+- **Modified**: Main UI to handle ZIP uploads
+  - ZIP file detection and validation
+  - Async file extraction
+  - File tree display in UI
+  - State management for project files
+- **Technical**: ~500 lines of new code
+- **Dependencies**: Added JSZip for ZIP extraction
+- **Build time**: 2.72 seconds ✅
+- **Bundle size impact**: ~10KB (JSZip tree-shaken)
+
 ### v1.2.0 (2026-01-13) — Auto-Preview & Progressive Enhancement
 
 - **MILESTONE**: Auto-preview system for real-time visual feedback COMPLETE

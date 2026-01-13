@@ -47,8 +47,9 @@ npm run dev
 
 Then open http://localhost:5173 in your browser.
 
-## 📋 Supported File Format
+## 📋 Supported File Formats
 
+### Single .scad Files
 Your `.scad` file should include **OpenSCAD Customizer annotations**:
 
 ```scad
@@ -76,6 +77,36 @@ $fn = 100;
 | `// [yes, no]` | `// [yes, no]` | Toggle switch |
 | `// Comment` | `// Wall thickness` | Help tooltip |
 | `/*[Hidden]*/` | Internal params | Not shown in UI |
+
+### ZIP Files (Multi-File Projects) 🆕 v1.3
+
+Upload `.zip` files containing multiple `.scad` files with `include` and `use` statements:
+
+```
+my-project.zip
+├── main.scad          # Main file with Customizer parameters
+├── utils/
+│   └── helpers.scad   # Helper functions
+└── modules/
+    └── parts.scad     # Reusable modules
+```
+
+**Features:**
+- ✅ Automatic main file detection
+- ✅ Virtual filesystem for include/use resolution
+- ✅ File tree visualization
+- ✅ Up to 20MB ZIP files
+- ✅ Nested directory support
+
+**Example:**
+```scad
+// In main.scad
+include <utils/helpers.scad>
+use <modules/parts.scad>
+
+// Your Customizer parameters here
+width = 50; // [20:100]
+```
 
 ## ✨ Features
 
@@ -112,11 +143,21 @@ $fn = 100;
 | 🎯 Visual state indicators (pending, rendering, current) | ✅ Complete |
 | 🎨 Smart download button logic | ✅ Complete |
 
-### v1.3 (Planned) — Advanced Features
+### v1.3 (Current) — ZIP Upload & Multi-File Projects ✅
 
 | Feature | Status |
 |---------|--------|
-| 📦 ZIP upload for multi-file projects | ⏳ Planned |
+| 📦 ZIP upload for multi-file projects | ✅ Complete |
+| 📂 Virtual filesystem for include/use | ✅ Complete |
+| 🔍 Automatic main file detection | ✅ Complete |
+| 🌳 File tree visualization | ✅ Complete |
+| 📝 Multi-file example project | ✅ Complete |
+
+### v1.4 (Planned) — Advanced Features
+
+| Feature | Status |
+|---------|--------|
+| 📚 Library bundles (MCAD, BOSL2) | ⏳ Planned |
 | 📐 Multiple output formats (OBJ, 3MF) | ⏳ Planned |
 | 💾 Parameter presets (save/load sets) | ⏳ Planned |
 | 📚 More example models | ⏳ Planned |
@@ -228,7 +269,7 @@ npm run preview
 
 ## 📊 Project Status
 
-**Current Version**: v1.2.0
+**Current Version**: v1.3.0
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -245,8 +286,9 @@ npm run preview
 | 3.4 | Deployment | ✅ Complete |
 | **v1.1** | **URL params, localStorage, shortcuts, examples** | ✅ Complete |
 | **v1.2** | **Auto-preview, progressive quality, caching** | ✅ Complete |
+| **v1.3** | **ZIP upload, multi-file projects, virtual FS** | ✅ Complete |
 
-**v1.2: Auto-Preview & Progressive Enhancement — COMPLETE** 🎉
+**v1.3: ZIP Upload & Multi-File Projects — COMPLETE** 🎉
 
 ## ⌨️ Keyboard Shortcuts
 

@@ -671,3 +671,47 @@ select:focus-visible {
     0%, 100% { box-shadow: 0 0 4px rgba(0, 102, 204, 0.3); }
   }
 }
+
+/* File Tree (ZIP Projects) */
+.file-tree {
+  margin-top: var(--space-sm);
+  padding: var(--space-sm);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.file-tree-header {
+  font-weight: 600;
+  margin-bottom: var(--space-xs);
+  padding-bottom: var(--space-xs);
+  border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-family-base);
+}
+
+.file-tree-item {
+  padding: 2px 0;
+  padding-left: var(--space-md);
+  color: var(--color-text-secondary);
+}
+
+.file-tree-item.main {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.file-tree-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  margin-left: var(--space-xs);
+  background: var(--color-accent);
+  color: white;
+  font-size: 0.75rem;
+  border-radius: 3px;
+  font-weight: 600;
+  font-family: var(--font-family-base);
+}

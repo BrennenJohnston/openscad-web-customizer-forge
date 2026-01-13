@@ -112,6 +112,20 @@ export class AutoPreviewController {
   }
 
   /**
+   * Set project files for multi-file OpenSCAD projects
+   * @param {Map<string, string>|null} projectFiles - Map of file paths to content
+   * @param {string|null} mainFilePath - Path to the main .scad file
+   */
+  setProjectFiles(projectFiles, mainFilePath) {
+    this.projectFiles = projectFiles;
+    this.mainFilePath = mainFilePath;
+    
+    if (projectFiles && projectFiles.size > 0) {
+      console.log(`[AutoPreview] Multi-file project: ${projectFiles.size} files, main: ${mainFilePath}`);
+    }
+  }
+
+  /**
    * Set preview quality preset (preview-only; full-quality export unaffected)
    * Clears preview cache because geometry can change at same parameters.
    * @param {Object|null} qualityPreset - Render quality preset (e.g. RENDER_QUALITY.PREVIEW / DRAFT / HIGH)
@@ -233,6 +247,8 @@ export class AutoPreviewController {
         parameters,
         {
           ...(this.previewQuality ? { quality: this.previewQuality } : {}),
+          files: this.projectFiles,
+          mainFile: this.mainFilePath,
           onProgress: (percent, message) => {
             this.onProgress(percent, message, 'preview');
           },
@@ -353,6 +369,8 @@ export class AutoPreviewController {
       this.currentScadContent,
       parameters,
       {
+        files: this.projectFiles,
+        mainFile: this.mainFilePath,
         onProgress: (percent, message) => {
           this.onProgress(percent, message, 'full');
         },

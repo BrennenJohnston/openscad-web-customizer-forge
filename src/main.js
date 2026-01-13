@@ -11,6 +11,7 @@ import { downloadSTL, generateFilename, formatFileSize } from './js/download.js'
 import { RenderController, RENDER_QUALITY } from './js/render-controller.js';
 import { PreviewManager } from './js/preview.js';
 import { AutoPreviewController, PREVIEW_STATE } from './js/auto-preview-controller.js';
+import { extractZipFiles, validateZipFile, createFileTree, getZipStats } from './js/zip-handler.js';
 
 // Feature detection
 function checkBrowserSupport() {
@@ -320,19 +321,70 @@ async function initApp() {
     statusArea.textContent = message;
   }
 
-  // Handle file upload
-  function handleFile(file, content = null) {
+  // Handle file upload (supports both .scad and .zip files)
+  async function handleFile(file, content = null, extractedFiles = null) {
     if (!file && !content) return;
 
     let fileName = file ? file.name : 'example.scad';
     let fileContent = content;
+    let projectFiles = extractedFiles; // Map of additional files for multi-file projects
+    let mainFilePath = null; // Path to main file in multi-file project
 
     if (file) {
-      if (!file.name.endsWith('.scad')) {
-        alert('Please upload a .scad file');
+      const isZip = file.name.toLowerCase().endsWith('.zip');
+      const isScad = file.name.toLowerCase().endsWith('.scad');
+      
+      if (!isZip && !isScad) {
+        alert('Please upload a .scad or .zip file');
         return;
       }
 
+      // Handle ZIP files
+      if (isZip) {
+        const validation = validateZipFile(file);
+        if (!validation.valid) {
+          alert(validation.error);
+          return;
+        }
+        
+        try {
+          updateStatus('Extracting ZIP file...');
+          const { files, mainFile } = await extractZipFiles(file);
+          
+          // Get statistics
+          const stats = getZipStats(files);
+          console.log('[ZIP] Statistics:', stats);
+          
+          // Show file tree
+          const fileTreeHtml = createFileTree(files, mainFile);
+          const infoArea = document.getElementById('fileInfo');
+          if (infoArea) {
+            infoArea.innerHTML = `${file.name} → ${mainFile}<br>${fileTreeHtml}`;
+          }
+          
+          // Get main file content
+          fileContent = files.get(mainFile);
+          fileName = mainFile;
+          mainFilePath = mainFile;
+          
+          // Store all files except the main one (main is passed as scadContent)
+          projectFiles = new Map(files);
+          // Note: We keep the main file in projectFiles for include/use resolution
+          
+          console.log(`[ZIP] Loaded multi-file project: ${mainFile} (${stats.totalFiles} files)`);
+          
+          // Continue with extracted content
+          handleFile(null, fileContent, projectFiles);
+          return;
+        } catch (error) {
+          console.error('[ZIP] Extraction failed:', error);
+          updateStatus('Failed to extract ZIP file');
+          alert(error.message);
+          return;
+        }
+      }
+
+      // Handle single .scad files (existing logic)
       if (file.size > 5 * 1024 * 1024) {
         alert('File size exceeds 5MB limit');
         return;
@@ -342,7 +394,7 @@ async function initApp() {
     if (file && !content) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        handleFile(null, e.target.result);
+        handleFile(null, e.target.result, extractedFiles);
       };
       reader.readAsText(file);
       return;
@@ -359,9 +411,11 @@ async function initApp() {
       const paramCount = Object.keys(extracted.parameters).length;
       console.log(`Found ${paramCount} parameters in ${extracted.groups.length} groups`);
 
-      // Store in state
+      // Store in state (including project files for multi-file support)
       stateManager.setState({
         uploadedFile: { name: fileName, content: fileContent },
+        projectFiles: projectFiles || null, // Map of additional files (null for single-file projects)
+        mainFilePath: mainFilePath || fileName, // Track main file path
         schema: extracted,
         parameters: {},
         defaults: {},
@@ -442,9 +496,10 @@ async function initApp() {
         initAutoPreviewController();
       }
       
-      // Set the SCAD content for auto-preview
+      // Set the SCAD content and project files for auto-preview
       if (autoPreviewController) {
         autoPreviewController.setScadContent(fileContent);
+        autoPreviewController.setProjectFiles(projectFiles, mainFilePath);
         updatePreviewStateUI(PREVIEW_STATE.IDLE);
         
         // Trigger initial preview immediately on first load (and also for URL-param loads).

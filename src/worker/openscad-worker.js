@@ -9,6 +9,7 @@ import { createOpenSCAD } from 'openscad-wasm-prebuilt';
 let openscadInstance = null;
 let initialized = false;
 let currentRenderTimeout = null;
+let mountedFiles = new Map(); // Track files in virtual filesystem
 
 /**
  * Escape a string for use in a RegExp
@@ -50,6 +51,83 @@ async function initWASM() {
       },
     });
   }
+}
+
+/**
+ * Mount files into OpenSCAD virtual filesystem
+ * @param {Map<string, string>} files - Map of file paths to content
+ * @returns {Promise<void>}
+ */
+async function mountFiles(files) {
+  if (!openscadInstance || !openscadInstance.FS) {
+    throw new Error('OpenSCAD filesystem not available');
+  }
+  
+  const FS = openscadInstance.FS;
+  
+  // Create directory structure
+  const directories = new Set();
+  
+  for (const filePath of files.keys()) {
+    // Extract all directory components
+    const parts = filePath.split('/');
+    let currentPath = '';
+    
+    for (let i = 0; i < parts.length - 1; i++) {
+      currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i];
+      directories.add(currentPath);
+    }
+  }
+  
+  // Create directories
+  for (const dir of Array.from(directories).sort()) {
+    try {
+      FS.mkdir(dir);
+      console.log(`[Worker FS] Created directory: ${dir}`);
+    } catch (error) {
+      // Directory may already exist, ignore
+      if (error.code !== 'EEXIST') {
+        console.warn(`[Worker FS] Failed to create directory ${dir}:`, error.message);
+      }
+    }
+  }
+  
+  // Write files
+  for (const [filePath, content] of files.entries()) {
+    try {
+      FS.writeFile(filePath, content);
+      mountedFiles.set(filePath, content);
+      console.log(`[Worker FS] Mounted file: ${filePath} (${content.length} bytes)`);
+    } catch (error) {
+      console.error(`[Worker FS] Failed to mount file ${filePath}:`, error);
+      throw new Error(`Failed to mount file: ${filePath}`);
+    }
+  }
+  
+  console.log(`[Worker FS] Successfully mounted ${files.size} files`);
+}
+
+/**
+ * Clear all mounted files from virtual filesystem
+ */
+function clearMountedFiles() {
+  if (!openscadInstance || !openscadInstance.FS) {
+    mountedFiles.clear();
+    return;
+  }
+  
+  const FS = openscadInstance.FS;
+  
+  for (const filePath of mountedFiles.keys()) {
+    try {
+      FS.unlink(filePath);
+    } catch (error) {
+      // File may already be deleted, ignore
+    }
+  }
+  
+  mountedFiles.clear();
+  console.log('[Worker FS] Cleared all mounted files');
 }
 
 /**
@@ -137,13 +215,31 @@ function applyOverrides(scadContent, parameters) {
  * Render OpenSCAD to STL
  */
 async function render(payload) {
-  const { requestId, scadContent, parameters, timeoutMs } = payload;
+  const { requestId, scadContent, parameters, timeoutMs, files, mainFile } = payload;
 
   try {
     self.postMessage({
       type: 'PROGRESS',
       payload: { requestId, percent: 10, message: 'Preparing model...' },
     });
+
+    // Mount additional files if provided (for multi-file projects)
+    if (files && Object.keys(files).length > 0) {
+      // Convert files object to Map
+      const filesMap = new Map(Object.entries(files));
+      
+      self.postMessage({
+        type: 'PROGRESS',
+        payload: { requestId, percent: 15, message: `Mounting ${filesMap.size} files...` },
+      });
+      
+      await mountFiles(filesMap);
+      
+      self.postMessage({
+        type: 'PROGRESS',
+        payload: { requestId, percent: 20, message: 'Files mounted successfully' },
+      });
+    }
 
     // Apply parameter overrides (replace-in-file when possible)
     const applied = applyOverrides(scadContent, parameters);
@@ -301,6 +397,33 @@ self.onmessage = async (e) => {
 
     case 'CANCEL':
       cancelRender(payload.requestId);
+      break;
+
+    case 'MOUNT_FILES':
+      try {
+        await mountFiles(payload.files);
+        self.postMessage({
+          type: 'FILES_MOUNTED',
+          payload: { success: true, count: payload.files.size },
+        });
+      } catch (error) {
+        self.postMessage({
+          type: 'ERROR',
+          payload: {
+            requestId: 'mount',
+            code: 'MOUNT_FAILED',
+            message: 'Failed to mount files: ' + error.message,
+          },
+        });
+      }
+      break;
+
+    case 'CLEAR_FILES':
+      clearMountedFiles();
+      self.postMessage({
+        type: 'FILES_CLEARED',
+        payload: { success: true },
+      });
       break;
 
     default:
