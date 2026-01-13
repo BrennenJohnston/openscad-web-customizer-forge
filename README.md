@@ -34,7 +34,7 @@
 
 ## 🚀 Try It Now
 
-**[🔗 Live Demo](https://openscad-web-customizer-forge.vercel.app)**
+**[🔗 Live Demo](https://openscad-web-customizer-forge-gutg7h11z.vercel.app)**
 
 Or run locally:
 
@@ -256,15 +256,74 @@ npm run preview
 | `R` | Reset parameters to defaults |
 | `D` | Download STL (when available) |
 
-## 🔄 Auto-Preview (New in v1.2)
+## 🔄 Auto-Preview System (New in v1.2)
 
-v1.2 introduces **automatic preview rendering** for faster parameter iteration:
+v1.2 introduces **automatic preview rendering** for dramatically faster parameter iteration:
 
-- **Automatic Updates**: Preview renders automatically 1.5 seconds after you stop adjusting parameters
-- **Progressive Quality**: Fast preview renders ($fn capped at 24) for quick feedback, full quality only when downloading
-- **Smart Caching**: Previously rendered parameter combinations load instantly from cache
-- **Visual Indicators**: Clear status showing "pending", "rendering", or "current" preview state
-- **5-10x Faster Iteration**: See changes in 2-8 seconds instead of waiting 10-60 seconds
+### How It Works
+
+1. **Adjust Parameters** — Change any slider, dropdown, or input
+2. **Automatic Debounce** — System waits 1.5 seconds for you to finish adjusting
+3. **Fast Preview Render** — Generates preview quality STL (2-8 seconds)
+4. **3D Preview Updates** — See your changes immediately
+5. **Full Quality on Download** — Click download to generate final high-quality STL
+
+### Key Features
+
+| Feature | Benefit |
+|---------|---------|
+| **Progressive Quality** | Preview renders use reduced detail ($fn ≤ 24) for 5-10x faster feedback |
+| **Intelligent Caching** | Previously rendered parameter sets load instantly from cache |
+| **Visual State Indicators** | Clear status showing pending, rendering, current, or stale preview |
+| **Smart Download Button** | Automatically generates full quality STL only when needed |
+| **Zero Extra Clicks** | No need to click "Generate" after every parameter change |
+
+### Visual States
+
+- 🟡 **Pending** — "Changes detected - preview updating..." (1.5s debounce)
+- 🔵 **Rendering** — "Generating preview..." (2-8s for preview quality)
+- 🟢 **Current** — "Preview ready" (preview matches current parameters)
+- 🟠 **Stale** — "Preview outdated" (parameters changed since last render)
+- ⚪ **Cache Hit** — Instant load (< 1s) when returning to previous parameters
+
+### Performance Comparison
+
+| Action | v1.1 (Manual) | v1.2 (Auto-Preview) | Improvement |
+|--------|---------------|---------------------|-------------|
+| **Parameter Change** | Click "Generate" → Wait 30s | Wait 1.5s → Preview in 5s | **5-10x faster** |
+| **Repeated Values** | Re-render every time (30s) | Cache hit (< 1s) | **30x faster** |
+| **Download STL** | Already rendered | Full quality render (30s) | Same quality |
+
+### Example Workflow
+
+```
+1. Load "Simple Box" example
+2. Adjust Width slider from 50 → 60
+   → Status: "Changes detected..." (yellow)
+   → After 1.5s: "Generating preview..." (blue)
+   → After 5s: "Preview ready" (green) ✅
+   
+3. Adjust Height slider from 30 → 40
+   → Status: "Changes detected..." (yellow)
+   → After 1.5s: "Generating preview..." (blue)
+   → After 5s: "Preview ready" (green) ✅
+   
+4. Change Width back to 50
+   → Status: "Preview ready" (green) — instant cache hit! ⚡
+   
+5. Click "Download STL"
+   → Status: "Generating full quality STL..." (blue)
+   → After 15s: "Download ready" ✅
+   → Click again: Downloads immediately (no re-render)
+```
+
+### Configuration
+
+Auto-preview is enabled by default. Settings UI coming in v1.3:
+- Debounce delay (default: 1.5s)
+- Preview quality ($fn cap, default: 24)
+- Cache size (default: 10 parameter sets)
+- Enable/disable toggle
 
 ---
 

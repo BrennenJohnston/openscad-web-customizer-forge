@@ -167,6 +167,45 @@
   color: var(--color-text-secondary);
 }
 
+.preview-settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm);
+  margin: var(--space-sm) 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  background: var(--color-bg-secondary);
+}
+
+.preview-setting {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.preview-setting-label {
+  margin-right: var(--space-xs);
+}
+
+.preview-settings select {
+  min-height: 36px;
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  padding: 0 var(--space-sm);
+}
+
+.preview-settings input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+
 .example-buttons {
   display: flex;
   flex-direction: column;

@@ -63,6 +63,22 @@
             <div class="status-area" id="statusArea" role="status" aria-live="polite" aria-atomic="true">
               Ready
             </div>
+
+            <div class="preview-settings" aria-label="Preview settings">
+              <label class="preview-setting">
+                <input type="checkbox" id="autoPreviewToggle" checked />
+                <span>Auto-preview</span>
+              </label>
+
+              <label class="preview-setting" for="previewQualitySelect">
+                <span class="preview-setting-label">Preview quality</span>
+                <select id="previewQualitySelect" aria-label="Select preview quality">
+                  <option value="fidelity">Fidelity (slower)</option>
+                  <option value="balanced" selected>Balanced</option>
+                  <option value="fast">Fast (lower resolution)</option>
+                </select>
+              </label>
+            </div>
             
             <div class="preview-container" id="previewContainer" role="img" aria-label="3D model preview">
               <!-- 3D preview or placeholder -->

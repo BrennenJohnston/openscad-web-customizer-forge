@@ -7,14 +7,36 @@
  * Render quality presets
  */
 export const RENDER_QUALITY = {
+  DRAFT: {
+    name: 'draft',
+    maxFn: 16,        // Force a lower $fn for faster interactive preview
+    forceFn: true,
+    minFa: 12,        // Increase $fa (min angle) to reduce tessellation
+    minFs: 2,         // Increase $fs (min size) to reduce tessellation
+    timeoutMs: 20000, // Shorter timeout for draft preview
+  },
   PREVIEW: {
     name: 'preview',
     maxFn: 24,        // Cap $fn at 24 for faster preview
+    forceFn: false,   // Don't force $fn unless the model/user already sets it
+    minFa: null,
+    minFs: null,
     timeoutMs: 30000, // 30 second timeout for preview
+  },
+  HIGH: {
+    name: 'high',
+    maxFn: 64,        // Higher cap for smoother preview (can be slower)
+    forceFn: false,
+    minFa: null,
+    minFs: null,
+    timeoutMs: 45000,
   },
   FULL: {
     name: 'full',
     maxFn: null,      // No cap, use model's $fn
+    forceFn: false,
+    minFa: null,
+    minFs: null,
     timeoutMs: 60000, // 60 second timeout for full render
   },
 };
@@ -26,6 +48,15 @@ export class RenderController {
     this.currentRequest = null;
     this.ready = false;
     this.initPromise = null;
+  }
+
+  /**
+   * Whether a render is currently in progress.
+   * (Note: OpenSCAD WASM renderToStl is blocking inside the worker, so we can't truly interrupt it mid-render.)
+   * @returns {boolean}
+   */
+  isBusy() {
+    return !!this.currentRequest;
   }
 
   /**
@@ -145,8 +176,28 @@ export class RenderController {
       adjusted.$fn = Math.min(adjusted.$fn, quality.maxFn);
     }
     
-    // If no $fn is set but we have a maxFn limit, don't add it
-    // (let the model use its defaults)
+    // Optionally force $fn even if the model didn't set it (useful for draft/fast previews)
+    if (quality.maxFn !== null && adjusted.$fn === undefined && quality.forceFn) {
+      adjusted.$fn = quality.maxFn;
+    }
+
+    // $fa: smaller = smoother, larger = faster. For faster preview, enforce a minimum $fa.
+    if (quality.minFa !== null && quality.minFa !== undefined) {
+      if (adjusted.$fa === undefined) {
+        adjusted.$fa = quality.minFa;
+      } else {
+        adjusted.$fa = Math.max(adjusted.$fa, quality.minFa);
+      }
+    }
+
+    // $fs: smaller = smoother, larger = faster. For faster preview, enforce a minimum $fs.
+    if (quality.minFs !== null && quality.minFs !== undefined) {
+      if (adjusted.$fs === undefined) {
+        adjusted.$fs = quality.minFs;
+      } else {
+        adjusted.$fs = Math.max(adjusted.$fs, quality.minFs);
+      }
+    }
     
     return adjusted;
   }
@@ -173,36 +224,35 @@ export class RenderController {
     };
 
     const renderOnce = async () => {
-    
-    if (!this.ready) {
-      throw new Error('Worker not ready. Call init() first.');
-    }
+      if (!this.ready) {
+        throw new Error('Worker not ready. Call init() first.');
+      }
 
-    if (this.currentRequest) {
-      throw new Error('Render already in progress. Cancel first.');
-    }
+      if (this.currentRequest) {
+        throw new Error('Render already in progress. Cancel first.');
+      }
 
-    const requestId = `render-${++this.requestId}`;
+      const requestId = `render-${++this.requestId}`;
 
-    return new Promise((resolve, reject) => {
-      this.currentRequest = {
-        id: requestId,
-        resolve,
-        reject,
-        onProgress: options.onProgress,
-      };
+      return new Promise((resolve, reject) => {
+        this.currentRequest = {
+          id: requestId,
+          resolve,
+          reject,
+          onProgress: options.onProgress,
+        };
 
-      this.worker.postMessage({
-        type: 'RENDER',
-        payload: {
-          requestId,
-          scadContent,
-          parameters: adjustedParams,
-          timeoutMs,
-          outputFormat: 'binstl',
-        },
+        this.worker.postMessage({
+          type: 'RENDER',
+          payload: {
+            requestId,
+            scadContent,
+            parameters: adjustedParams,
+            timeoutMs,
+            outputFormat: 'binstl',
+          },
+        });
       });
-    });
     };
 
     try {
@@ -224,9 +274,10 @@ export class RenderController {
    * @returns {Promise<Object>} Render result with STL data and stats
    */
   async renderPreview(scadContent, parameters = {}, options = {}) {
+    const previewQuality = options.quality || RENDER_QUALITY.PREVIEW;
     return this.render(scadContent, parameters, {
       ...options,
-      quality: RENDER_QUALITY.PREVIEW,
+      quality: previewQuality,
     });
   }
 
@@ -249,10 +300,14 @@ export class RenderController {
    */
   cancel() {
     if (this.currentRequest) {
+      const { id, reject } = this.currentRequest;
       this.worker.postMessage({
         type: 'CANCEL',
-        payload: { requestId: this.currentRequest.id },
+        payload: { requestId: id },
       });
+      // Worker-side OpenSCAD render is blocking; we can't truly interrupt it mid-render.
+      // But we must settle the promise to avoid leaks / hung awaits.
+      reject(new Error('Render cancelled'));
       this.currentRequest = null;
     }
   }

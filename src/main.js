@@ -8,7 +8,7 @@ import { extractParameters } from './js/parser.js';
 import { renderParameterUI } from './js/ui-generator.js';
 import { stateManager, getShareableURL } from './js/state.js';
 import { downloadSTL, generateFilename, formatFileSize } from './js/download.js';
-import { RenderController } from './js/render-controller.js';
+import { RenderController, RENDER_QUALITY } from './js/render-controller.js';
 import { PreviewManager } from './js/preview.js';
 import { AutoPreviewController, PREVIEW_STATE } from './js/auto-preview-controller.js';
 
@@ -87,6 +87,8 @@ async function initApp() {
   const downloadFallbackLink = document.getElementById('downloadFallbackLink');
   const statsArea = document.getElementById('stats');
   const previewContainer = document.getElementById('previewContainer');
+  const autoPreviewToggle = document.getElementById('autoPreviewToggle');
+  const previewQualitySelect = document.getElementById('previewQualitySelect');
   
   // Create preview state indicator element
   const previewStateIndicator = document.createElement('div');
@@ -108,6 +110,46 @@ async function initApp() {
   
   // Auto-preview enabled by default
   let autoPreviewEnabled = true;
+  let previewQuality = RENDER_QUALITY.PREVIEW;
+
+  const getSelectedPreviewQuality = () => {
+    const value = previewQualitySelect?.value || 'balanced';
+    switch (value) {
+      case 'fast':
+        return RENDER_QUALITY.DRAFT;
+      case 'fidelity':
+        // Prefer model defaults (no forced tessellation).
+        return null;
+      case 'balanced':
+      default:
+        return RENDER_QUALITY.PREVIEW;
+    }
+  };
+
+  // Wire preview settings UI
+  if (autoPreviewToggle) {
+    autoPreviewToggle.checked = autoPreviewEnabled;
+    autoPreviewToggle.addEventListener('change', () => {
+      autoPreviewEnabled = autoPreviewToggle.checked;
+      if (autoPreviewController) {
+        autoPreviewController.setEnabled(autoPreviewEnabled);
+      }
+    });
+  }
+
+  if (previewQualitySelect) {
+    previewQuality = getSelectedPreviewQuality();
+    previewQualitySelect.addEventListener('change', () => {
+      previewQuality = getSelectedPreviewQuality();
+      if (autoPreviewController) {
+        autoPreviewController.setPreviewQuality(previewQuality);
+        const state = stateManager.getState();
+        if (state?.uploadedFile) {
+          autoPreviewController.onParameterChange(state.parameters);
+        }
+      }
+    });
+  }
   
   /**
    * Simple hash function for parameter comparison
@@ -169,9 +211,12 @@ async function initApp() {
     }
     
     autoPreviewController = new AutoPreviewController(renderController, previewManager, {
-      debounceMs: 1500,
+      // Lower debounce to reduce perceived "delay" after slider changes.
+      // Scheduling logic in AutoPreviewController avoids overlapping renders.
+      debounceMs: 350,
       maxCacheSize: 10,
       enabled: autoPreviewEnabled,
+      previewQuality,
       onStateChange: (newState, prevState, extra) => {
         console.log(`[AutoPreview] State: ${prevState} -> ${newState}`, extra);
         updatePreviewStateUI(newState, extra);
@@ -401,6 +446,25 @@ async function initApp() {
       if (autoPreviewController) {
         autoPreviewController.setScadContent(fileContent);
         updatePreviewStateUI(PREVIEW_STATE.IDLE);
+        
+        // Trigger initial preview immediately on first load (and also for URL-param loads).
+        // This makes the app feel responsive without requiring a first parameter change.
+        if (autoPreviewEnabled) {
+          // Use .then()/.catch() to handle errors without blocking file load completion
+          autoPreviewController.forcePreview(stateManager.getState().parameters)
+            .then((initiated) => {
+              if (initiated) {
+                console.log('[Init] Initial preview render started');
+              } else {
+                console.warn('[Init] Initial preview render was skipped');
+              }
+            })
+            .catch((error) => {
+              console.error('[Init] Initial preview render failed:', error);
+              updatePreviewStateUI(PREVIEW_STATE.ERROR, { error: error.message });
+              updateStatus(`Initial preview failed: ${error.message}`);
+            });
+        }
       }
     } catch (error) {
       console.error('Failed to extract parameters:', error);
