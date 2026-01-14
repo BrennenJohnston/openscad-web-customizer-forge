@@ -77,8 +77,29 @@
           <div class="param-panel" role="region" aria-label="Model parameters">
             <div class="panel-header">
               <h2 id="parameters-heading">Parameters</h2>
-              <button id="resetBtn" class="btn btn-sm" aria-label="Reset all parameters to default values">Reset</button>
+              <div class="param-header-actions">
+                <button id="resetBtn" class="btn btn-sm" aria-label="Reset all parameters to default values">Reset</button>
+              </div>
             </div>
+            
+            <!-- Preset Controls -->
+            <div class="preset-controls" id="presetControls" role="region" aria-label="Parameter presets">
+              <div class="preset-actions">
+                <button id="savePresetBtn" class="btn btn-sm btn-outline" aria-label="Save current parameters as preset" title="Save current parameters">
+                  💾 Save Preset
+                </button>
+                <button id="managePresetsBtn" class="btn btn-sm btn-outline" aria-label="Manage presets" title="Manage saved presets">
+                  📋 Manage
+                </button>
+              </div>
+              <div class="preset-selector" id="presetSelector">
+                <label for="presetSelect" class="preset-label">Load Preset:</label>
+                <select id="presetSelect" class="preset-select" aria-label="Select a saved preset to load">
+                  <option value="">-- Select Preset --</option>
+                </select>
+              </div>
+            </div>
+            
             <div id="parametersContainer" class="parameters-container" aria-labelledby="parameters-heading">
               <!-- Parameters will be dynamically generated here -->
             </div>

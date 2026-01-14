@@ -13,6 +13,7 @@ import { PreviewManager } from './js/preview.js';
 import { AutoPreviewController, PREVIEW_STATE } from './js/auto-preview-controller.js';
 import { extractZipFiles, validateZipFile, createFileTree, getZipStats } from './js/zip-handler.js';
 import { themeManager, initThemeToggle } from './js/theme-manager.js';
+import { presetManager } from './js/preset-manager.js';
 
 // Feature detection
 function checkBrowserSupport() {
@@ -56,7 +57,7 @@ let autoPreviewController = null;
 
 // Initialize app
 async function initApp() {
-  console.log('OpenSCAD Web Customizer v1.6.0 (Multi-Format)');
+  console.log('OpenSCAD Web Customizer v1.7.0 (Parameter Presets)');
   console.log('Initializing...');
 
   // Initialize theme (before any UI rendering)
@@ -508,6 +509,8 @@ async function initApp() {
         parametersContainer,
         (values) => {
           stateManager.setState({ parameters: values });
+          // Clear preset selection when parameters are manually changed
+          clearPresetSelection();
           // Trigger auto-preview on parameter change
           if (autoPreviewController) {
             autoPreviewController.onParameterChange(values);
@@ -534,6 +537,8 @@ async function initApp() {
           parametersContainer,
           (values) => {
             stateManager.setState({ parameters: values });
+            // Clear preset selection when parameters are manually changed
+            clearPresetSelection();
             // Trigger auto-preview on parameter change
             if (autoPreviewController) {
               autoPreviewController.onParameterChange(values);
@@ -694,6 +699,9 @@ async function initApp() {
     if (state.defaults) {
       stateManager.setState({ parameters: { ...state.defaults } });
       
+      // Clear preset selection when resetting to defaults
+      clearPresetSelection();
+      
       // Re-render UI with defaults
       const parametersContainer = document.getElementById('parametersContainer');
       renderParameterUI(
@@ -701,6 +709,8 @@ async function initApp() {
         parametersContainer,
         (values) => {
           stateManager.setState({ parameters: values });
+          // Clear preset selection when parameters are manually changed
+          clearPresetSelection();
           // Trigger auto-preview on parameter change
           if (autoPreviewController && state.uploadedFile) {
             autoPreviewController.onParameterChange(values);
@@ -958,6 +968,465 @@ async function initApp() {
     URL.revokeObjectURL(url);
     updateStatus(`Parameters exported to JSON`);
   });
+
+  // ========== PRESET SYSTEM ==========
+  
+  // Clear preset selection when parameters are manually changed
+  // Track if we're currently loading a preset (to avoid clearing during load)
+  let isLoadingPreset = false;
+  
+  function clearPresetSelection() {
+    // Don't clear if we're in the middle of loading a preset
+    if (isLoadingPreset) {
+      return;
+    }
+    
+    const state = stateManager.getState();
+    if (state.currentPresetId) {
+      stateManager.setState({ currentPresetId: null, currentPresetName: null });
+      const presetSelect = document.getElementById('presetSelect');
+      if (presetSelect) {
+        presetSelect.value = '';
+      }
+    }
+  }
+  
+  // Update preset dropdown based on current model
+  function updatePresetDropdown() {
+    const state = stateManager.getState();
+    const presetSelect = document.getElementById('presetSelect');
+    
+    if (!state.uploadedFile) {
+      presetSelect.disabled = true;
+      presetSelect.innerHTML = '<option value="">-- No model loaded --</option>';
+      return;
+    }
+    
+    const modelName = state.uploadedFile.name;
+    const presets = presetManager.getPresetsForModel(modelName);
+    
+    // Clear and rebuild dropdown
+    presetSelect.innerHTML = '<option value="">-- Select Preset --</option>';
+    
+    if (presets.length === 0) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = '-- No presets saved --';
+      option.disabled = true;
+      presetSelect.appendChild(option);
+    } else {
+      presets.forEach((preset) => {
+        const option = document.createElement('option');
+        option.value = preset.id;
+        option.textContent = preset.name;
+        presetSelect.appendChild(option);
+      });
+    }
+    
+    presetSelect.disabled = false;
+  }
+  
+  // Show save preset modal
+  function showSavePresetModal() {
+    const state = stateManager.getState();
+    
+    if (!state.uploadedFile) {
+      alert('No model loaded');
+      return;
+    }
+    
+    const modal = document.createElement('div');
+    modal.className = 'preset-modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-labelledby', 'savePresetTitle');
+    modal.setAttribute('aria-modal', 'true');
+    
+    modal.innerHTML = `
+      <div class="preset-modal-content">
+        <div class="preset-modal-header">
+          <h3 id="savePresetTitle" class="preset-modal-title">Save Preset</h3>
+          <button class="preset-modal-close" aria-label="Close dialog" data-action="close">&times;</button>
+        </div>
+        <form class="preset-form" id="savePresetForm">
+          <div class="preset-form-group">
+            <label for="presetName" class="preset-form-label">Preset Name *</label>
+            <input 
+              type="text" 
+              id="presetName" 
+              class="preset-form-input" 
+              placeholder="e.g., Large Handle"
+              required
+              autofocus
+            />
+            <span class="preset-form-hint">Give this preset a descriptive name</span>
+          </div>
+          <div class="preset-form-group">
+            <label for="presetDescription" class="preset-form-label">Description (Optional)</label>
+            <textarea 
+              id="presetDescription" 
+              class="preset-form-textarea" 
+              placeholder="Optional description of this configuration..."
+            ></textarea>
+          </div>
+          <div class="preset-form-actions">
+            <button type="button" class="btn btn-secondary" data-action="close">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Preset</button>
+          </div>
+        </form>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Focus first input
+    setTimeout(() => {
+      modal.querySelector('#presetName').focus();
+    }, 100);
+    
+    // Handle form submission
+    const form = modal.querySelector('#savePresetForm');
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const name = modal.querySelector('#presetName').value.trim();
+      const description = modal.querySelector('#presetDescription').value.trim();
+      
+      if (!name) {
+        alert('Please enter a preset name');
+        return;
+      }
+      
+      try {
+        presetManager.savePreset(
+          state.uploadedFile.name,
+          name,
+          state.parameters,
+          { description }
+        );
+        
+        updateStatus(`Preset "${name}" saved`);
+        updatePresetDropdown();
+        document.body.removeChild(modal);
+      } catch (error) {
+        alert(`Failed to save preset: ${error.message}`);
+      }
+    });
+    
+    // Handle close buttons
+    modal.querySelectorAll('[data-action="close"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.body.removeChild(modal);
+      });
+    });
+    
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        document.body.removeChild(modal);
+      }
+    });
+    
+    // Close on Escape key
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        document.body.removeChild(modal);
+        document.removeEventListener('keydown', handleEscape);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+  }
+  
+  // Show manage presets modal
+  function showManagePresetsModal() {
+    const state = stateManager.getState();
+    
+    if (!state.uploadedFile) {
+      alert('No model loaded');
+      return;
+    }
+    
+    const modelName = state.uploadedFile.name;
+    const presets = presetManager.getPresetsForModel(modelName);
+    
+    const modal = document.createElement('div');
+    modal.className = 'preset-modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-labelledby', 'managePresetsTitle');
+    modal.setAttribute('aria-modal', 'true');
+    
+    const formatDate = (timestamp) => {
+      return new Date(timestamp).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    };
+    
+    const presetsHTML = presets.length === 0
+      ? '<div class="preset-empty">No presets saved for this model</div>'
+      : presets.map((preset) => `
+          <div class="preset-item" data-preset-id="${preset.id}">
+            <div class="preset-item-info">
+              <h4 class="preset-item-name">${preset.name}</h4>
+              <p class="preset-item-meta">
+                ${preset.description || 'No description'} • 
+                Created ${formatDate(preset.created)}
+              </p>
+            </div>
+            <div class="preset-item-actions">
+              <button class="btn btn-sm btn-primary" data-action="load" data-preset-id="${preset.id}" aria-label="Load preset ${preset.name}">
+                Load
+              </button>
+              <button class="btn btn-sm btn-secondary" data-action="export" data-preset-id="${preset.id}" aria-label="Export preset ${preset.name}">
+                Export
+              </button>
+              <button class="btn btn-sm btn-outline" data-action="delete" data-preset-id="${preset.id}" aria-label="Delete preset ${preset.name}">
+                Delete
+              </button>
+            </div>
+          </div>
+        `).join('');
+    
+    modal.innerHTML = `
+      <div class="preset-modal-content">
+        <div class="preset-modal-header">
+          <h3 id="managePresetsTitle" class="preset-modal-title">Manage Presets</h3>
+          <button class="preset-modal-close" aria-label="Close dialog" data-action="close">&times;</button>
+        </div>
+        <div class="preset-list">
+          ${presetsHTML}
+        </div>
+        <div class="preset-modal-footer">
+          <button class="btn btn-secondary" data-action="import">Import Preset</button>
+          <button class="btn btn-secondary" data-action="export-all">Export All</button>
+          <button class="btn btn-outline" data-action="close">Close</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Handle actions
+    modal.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      
+      const action = btn.dataset.action;
+      const presetId = btn.dataset.presetId;
+      
+      if (action === 'close') {
+        document.body.removeChild(modal);
+      } else if (action === 'load') {
+        const preset = presetManager.loadPreset(modelName, presetId);
+        if (preset) {
+          // Set flag to prevent clearPresetSelection during load
+          isLoadingPreset = true;
+          
+          const state = stateManager.getState();
+          stateManager.setState({ parameters: { ...preset.parameters } });
+          
+          // Re-render UI with preset parameters (FIX: UI wasn't updating before)
+          const parametersContainer = document.getElementById('parametersContainer');
+          renderParameterUI(
+            state.schema,
+            parametersContainer,
+            (values) => {
+              stateManager.setState({ parameters: values });
+              // Clear preset selection when parameters are manually changed
+              clearPresetSelection();
+              if (autoPreviewController) {
+                autoPreviewController.onParameterChange(values);
+              }
+              updatePrimaryActionButton();
+            },
+            preset.parameters  // Pass preset values as initial values
+          );
+          
+          // Trigger auto-preview with new parameters
+          if (autoPreviewController) {
+            autoPreviewController.onParameterChange(preset.parameters);
+          }
+          updatePrimaryActionButton();
+          
+          // Track the currently loaded preset and update dropdown to show it
+          stateManager.setState({ currentPresetId: presetId, currentPresetName: preset.name });
+          const presetSelect = document.getElementById('presetSelect');
+          if (presetSelect) {
+            presetSelect.value = presetId;
+          }
+          
+          // Clear the loading flag
+          isLoadingPreset = false;
+          
+          updateStatus(`Loaded preset: ${preset.name}`);
+          document.body.removeChild(modal);
+        }
+      } else if (action === 'delete') {
+        if (confirm('Are you sure you want to delete this preset?')) {
+          presetManager.deletePreset(modelName, presetId);
+          updatePresetDropdown();
+          // Refresh the modal
+          document.body.removeChild(modal);
+          showManagePresetsModal();
+        }
+      } else if (action === 'export') {
+        const json = presetManager.exportPreset(modelName, presetId);
+        if (json) {
+          const preset = presetManager.loadPreset(modelName, presetId);
+          const blob = new Blob([json], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `preset-${preset.name.toLowerCase().replace(/\s+/g, '-')}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+          updateStatus(`Exported preset: ${preset.name}`);
+        }
+      } else if (action === 'export-all') {
+        const json = presetManager.exportAllPresets(modelName);
+        if (json) {
+          const blob = new Blob([json], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${modelName.replace('.scad', '')}-presets.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+          updateStatus('Exported all presets');
+        } else {
+          alert('No presets to export');
+        }
+      } else if (action === 'import') {
+        // Create file input for import
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          
+          try {
+            const text = await file.text();
+            const result = presetManager.importPreset(text);
+            
+            if (result.success) {
+              alert(`Imported ${result.imported} preset(s)${result.skipped > 0 ? ` (${result.skipped} skipped)` : ''}`);
+              updatePresetDropdown();
+              // Refresh the modal
+              document.body.removeChild(modal);
+              showManagePresetsModal();
+            } else {
+              alert(`Import failed: ${result.error}`);
+            }
+          } catch (error) {
+            alert(`Failed to import preset: ${error.message}`);
+          }
+        };
+        input.click();
+      }
+    });
+    
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        document.body.removeChild(modal);
+      }
+    });
+    
+    // Close on Escape key
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        document.body.removeChild(modal);
+        document.removeEventListener('keydown', handleEscape);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+  }
+  
+  // Preset button handlers
+  const savePresetBtn = document.getElementById('savePresetBtn');
+  const managePresetsBtn = document.getElementById('managePresetsBtn');
+  const presetSelect = document.getElementById('presetSelect');
+  
+  savePresetBtn.addEventListener('click', showSavePresetModal);
+  managePresetsBtn.addEventListener('click', showManagePresetsModal);
+  
+  // Handle preset selection
+  presetSelect.addEventListener('change', (e) => {
+    const presetId = e.target.value;
+    if (!presetId) return;
+    
+    const state = stateManager.getState();
+    const preset = presetManager.loadPreset(state.uploadedFile.name, presetId);
+    
+    if (preset) {
+      // Set flag to prevent clearPresetSelection during load
+      isLoadingPreset = true;
+      
+      stateManager.setState({ parameters: { ...preset.parameters } });
+      
+      // Re-render UI with preset parameters (FIX: UI wasn't updating before)
+      const parametersContainer = document.getElementById('parametersContainer');
+      renderParameterUI(
+        state.schema,
+        parametersContainer,
+        (values) => {
+          stateManager.setState({ parameters: values });
+          // Clear preset selection when parameters are manually changed
+          clearPresetSelection();
+          if (autoPreviewController) {
+            autoPreviewController.onParameterChange(values);
+          }
+          updatePrimaryActionButton();
+        },
+        preset.parameters  // Pass preset values as initial values
+      );
+      
+      // Trigger auto-preview with new parameters
+      if (autoPreviewController) {
+        autoPreviewController.onParameterChange(preset.parameters);
+      }
+      updatePrimaryActionButton();
+      
+      // Track the currently loaded preset (for showing name in dropdown)
+      stateManager.setState({ currentPresetId: presetId, currentPresetName: preset.name });
+      // Ensure the dropdown displays the selected preset name (native <select> label)
+      // (If the dropdown was rebuilt elsewhere, re-assert selection here.)
+      const presetSelectEl = document.getElementById('presetSelect');
+      if (presetSelectEl) {
+        presetSelectEl.value = presetId;
+      }
+      
+      // Clear the loading flag
+      isLoadingPreset = false;
+      
+      updateStatus(`Loaded preset: ${preset.name}`);
+      
+      // Keep showing the preset name in dropdown (don't reset)
+      // The dropdown will reset when parameters change (handled in onChange callback)
+    }
+  });
+  
+  // Subscribe to preset changes
+  presetManager.subscribe((action, preset, modelName) => {
+    // Update dropdown only when the preset LIST changes.
+    // IMPORTANT: presetManager emits a 'load' event too; rebuilding the <select> on 'load'
+    // resets selection back to "-- Select Preset --" (confirmed by logs: updatePresetDropdown exit newValue="").
+    if (action === 'load') {
+      return;
+    }
+
+    updatePresetDropdown();
+  });
+  
+  // Initialize preset dropdown after file upload
+  stateManager.subscribe((state, prevState) => {
+    if (state.uploadedFile && !prevState.uploadedFile) {
+      updatePresetDropdown();
+    }
+  });
+
+  // ========== END PRESET SYSTEM ==========
 
   // Global keyboard shortcuts
   document.addEventListener('keydown', (e) => {

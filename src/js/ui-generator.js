@@ -244,9 +244,10 @@ function createTextInput(param, onChange) {
  * @param {Object} extractedParams - Output from extractParameters()
  * @param {HTMLElement} container - Container to render into
  * @param {Function} onChange - Called when parameter changes
+ * @param {Object} [initialValues] - Optional initial values to override defaults
  * @returns {Object} Current parameter values
  */
-export function renderParameterUI(extractedParams, container, onChange) {
+export function renderParameterUI(extractedParams, container, onChange, initialValues = null) {
   container.innerHTML = '';
 
   const { groups, parameters } = extractedParams;
@@ -258,8 +259,14 @@ export function renderParameterUI(extractedParams, container, onChange) {
     if (!paramsByGroup[param.group]) {
       paramsByGroup[param.group] = [];
     }
-    paramsByGroup[param.group].push(param);
-    currentValues[param.name] = param.default;
+    // Use initialValues if provided, otherwise use default
+    const effectiveDefault = initialValues && initialValues[param.name] !== undefined 
+      ? initialValues[param.name] 
+      : param.default;
+    // Create a copy of param with the effective default
+    const paramWithValue = { ...param, default: effectiveDefault };
+    paramsByGroup[param.group].push(paramWithValue);
+    currentValues[param.name] = effectiveDefault;
   });
 
   // Sort groups by order

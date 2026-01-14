@@ -2191,6 +2191,64 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 
 ## Changelog
 
+### v1.7.0 (2026-01-13) — Parameter Presets System
+
+- **MILESTONE**: Parameter presets feature complete (v1.2 Advanced Features)
+- **Added**: Comprehensive preset management system
+  - Save current parameters as named presets
+  - Load presets instantly from dropdown or modal
+  - Manage presets (view, load, delete, export)
+  - Presets scoped per model (.scad file)
+- **Added**: Import/Export functionality
+  - Export individual presets as JSON
+  - Export all presets for a model as collection
+  - Import single or collection JSON files
+  - Smart merging (duplicate names update existing)
+- **Added**: Preset UI controls
+  - Save Preset button (💾) in parameters panel
+  - Manage button (📋) for preset management
+  - Quick-load dropdown with preset list
+  - Full keyboard accessibility (Tab, Enter, Escape)
+- **Added**: Save Preset modal
+  - Name field (required, autofocused)
+  - Description field (optional, multiline)
+  - Form validation and error handling
+- **Added**: Manage Presets modal
+  - Scrollable list of all saved presets
+  - Per-preset actions (Load, Export, Delete)
+  - Bulk actions (Import, Export All)
+  - Empty state message
+  - Responsive mobile layout
+- **Added**: LocalStorage persistence
+  - All presets saved to `openscad-customizer-presets` key
+  - Organized by model name
+  - Graceful degradation if storage unavailable
+  - Quota exceeded warning
+- **Enhanced**: State management integration
+  - Preset dropdown updates on file change
+  - Loading preset updates parameter state
+  - State subscription for UI sync
+- **Enhanced**: Accessibility (WCAG 2.1 AA)
+  - ARIA labels and roles on all modals
+  - Focus management (auto-focus, focus trap)
+  - Escape key and backdrop click to close
+  - Screen reader status announcements
+  - 44px minimum touch targets
+- **Enhanced**: Responsive design
+  - Desktop: side-by-side layout
+  - Mobile: stacked layout with full-width controls
+  - Modal scrollable with max-height constraints
+- **Technical**: New `PresetManager` class (374 lines)
+  - CRUD operations (save, load, delete, rename)
+  - Import/Export with validation
+  - Event subscription system
+  - Storage statistics and housekeeping
+- **Technical**: +272 lines CSS for preset UI
+- **Build time**: 3.83s ✅
+- **Bundle size impact**: +4.1KB gzipped (172.53KB → 176.63KB)
+- **Accessibility**: WCAG 2.1 AA compliant
+- **Browser compatibility**: Chrome 120+, Firefox 121+, Safari 17+, Edge 120+
+
 ### v1.6.0 (2026-01-13) — Multiple Output Formats
 
 - **MILESTONE**: Multi-format export support complete

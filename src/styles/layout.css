@@ -249,6 +249,12 @@ body {
   font-weight: 600;
 }
 
+.param-header-actions {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
 .parameters-container {
   padding: var(--space-md);
 }
