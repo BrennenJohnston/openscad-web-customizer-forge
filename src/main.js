@@ -40,6 +40,7 @@ import { ComparisonController } from './js/comparison-controller.js';
 import { ComparisonView } from './js/comparison-view.js';
 import { libraryManager, LIBRARY_DEFINITIONS } from './js/library-manager.js';
 import { RenderQueue } from './js/render-queue.js';
+import Split from 'split.js';
 
 // Feature detection
 function checkBrowserSupport() {
@@ -867,6 +868,13 @@ async function initApp() {
   // Update status
   function updateStatus(message) {
     statusArea.textContent = message;
+    
+    // Add/remove idle class for auto-hide when status is "Ready"
+    if (message === 'Ready' || message === '') {
+      statusArea.classList.add('idle');
+    } else {
+      statusArea.classList.remove('idle');
+    }
   }
 
   /**
@@ -1039,16 +1047,33 @@ async function initApp() {
 
       // Update file info (preserve file tree for multi-file projects)
       const fileInfo = document.getElementById('fileInfo');
-      if (fileInfo) {
-        if (projectFiles && projectFiles.size > 1) {
+      const fileInfoSummary = document.getElementById('fileInfoSummary');
+      const fileInfoDetails = document.getElementById('fileInfoDetails');
+      const fileInfoTree = document.getElementById('fileInfoTree');
+      
+      if (fileInfo && fileInfoSummary) {
+        // Always show compact summary
+        const summaryText = `${fileName} (${paramCount} parameters, ${fileSizeStr})${includeUseWarning}`;
+        fileInfoSummary.textContent = summaryText;
+        fileInfoSummary.title = summaryText; // Full text in tooltip
+        
+        // Show file tree in disclosure if multi-file project
+        if (projectFiles && projectFiles.size > 1 && fileInfoDetails && fileInfoTree) {
           const treeHtml = createFileTree(
             projectFiles,
             mainFilePath || fileName
           );
-          fileInfo.innerHTML = `${fileName} (${paramCount} parameters, ${fileSizeStr})<br>${treeHtml}`;
-        } else {
-          fileInfo.textContent = `${fileName} (${paramCount} parameters, ${fileSizeStr})${includeUseWarning}`;
+          fileInfoTree.innerHTML = treeHtml;
+          fileInfoDetails.classList.remove('hidden');
+        } else if (fileInfoDetails) {
+          fileInfoDetails.classList.add('hidden');
         }
+      }
+      
+      // Enable compact header after file is loaded
+      const appHeader = document.querySelector('.app-header');
+      if (appHeader) {
+        appHeader.classList.add('compact');
       }
 
       // Show include/use warning in status if detected
@@ -1056,9 +1081,14 @@ async function initApp() {
         updateStatus(`File loaded. ${includeUseWarning.trim()}`);
       }
 
-      // Show clear file button
+      // Show clear file button and focus mode button
       if (clearFileBtn) {
         clearFileBtn.classList.remove('hidden');
+      }
+      
+      const focusModeBtn = document.getElementById('focusModeBtn');
+      if (focusModeBtn) {
+        focusModeBtn.classList.remove('hidden');
       }
 
       // Handle detected libraries
@@ -1264,6 +1294,17 @@ async function initApp() {
 
         // Hide clear button
         clearFileBtn.classList.add('hidden');
+        
+        // Hide focus mode button
+        const focusModeBtn = document.getElementById('focusModeBtn');
+        if (focusModeBtn) {
+          focusModeBtn.classList.add('hidden');
+          // Exit focus mode if active
+          if (mainInterface && mainInterface.classList.contains('focus-mode')) {
+            mainInterface.classList.remove('focus-mode');
+            focusModeBtn.setAttribute('aria-pressed', 'false');
+          }
+        }
 
         // Clear preview
         if (previewManager) {
@@ -1275,9 +1316,19 @@ async function initApp() {
         statsArea.textContent = '';
 
         // Clear file info
-        const fileInfo = document.getElementById('fileInfo');
-        if (fileInfo) {
-          fileInfo.textContent = '';
+        const fileInfoSummary = document.getElementById('fileInfoSummary');
+        const fileInfoDetails = document.getElementById('fileInfoDetails');
+        if (fileInfoSummary) {
+          fileInfoSummary.textContent = '';
+        }
+        if (fileInfoDetails) {
+          fileInfoDetails.classList.add('hidden');
+        }
+        
+        // Remove compact header
+        const appHeader = document.querySelector('.app-header');
+        if (appHeader) {
+          appHeader.classList.remove('compact');
         }
 
         console.log('[App] File cleared, returned to welcome screen');
@@ -1478,6 +1529,396 @@ async function initApp() {
       updatePrimaryActionButton();
     }
   });
+
+  // Collapsible Parameter Panel (Desktop only)
+  const collapseParamPanelBtn = document.getElementById('collapseParamPanelBtn');
+  const paramPanel = document.getElementById('paramPanel');
+  const paramPanelBody = document.getElementById('paramPanelBody');
+  
+  // Declare toggleParamPanel at module scope so it can be referenced by Split.js code
+  let toggleParamPanel = null;
+  
+  if (collapseParamPanelBtn && paramPanel && paramPanelBody) {
+    // Load saved collapsed state (desktop only)
+    const STORAGE_KEY_COLLAPSED = 'openscad-customizer-param-panel-collapsed';
+    let isCollapsed = false;
+    
+    try {
+      const savedState = localStorage.getItem(STORAGE_KEY_COLLAPSED);
+      if (savedState === 'true' && window.innerWidth >= 768) {
+        isCollapsed = true;
+      }
+    } catch (e) {
+      console.warn('Could not access localStorage:', e);
+    }
+    
+    // Apply initial state
+    if (isCollapsed) {
+      paramPanel.classList.add('collapsed');
+      collapseParamPanelBtn.setAttribute('aria-expanded', 'false');
+      collapseParamPanelBtn.setAttribute('aria-label', 'Expand parameters');
+      collapseParamPanelBtn.title = 'Expand parameters';
+    }
+    
+    // Toggle function (assigned to outer scope variable)
+    toggleParamPanel = function() {
+      // Only allow collapse on desktop (>= 768px)
+      if (window.innerWidth < 768) {
+        return;
+      }
+      
+      isCollapsed = !isCollapsed;
+      
+      if (isCollapsed) {
+        // Check if focus is inside the panel body
+        const activeElement = document.activeElement;
+        const isFocusInBody = paramPanelBody.contains(activeElement);
+        
+        // Collapse panel
+        paramPanel.classList.add('collapsed');
+        collapseParamPanelBtn.setAttribute('aria-expanded', 'false');
+        collapseParamPanelBtn.setAttribute('aria-label', 'Expand parameters');
+        collapseParamPanelBtn.title = 'Expand parameters';
+        
+        // If focus was inside body, move it to the toggle button
+        if (isFocusInBody) {
+          collapseParamPanelBtn.focus();
+        }
+      } else {
+        // Expand panel
+        paramPanel.classList.remove('collapsed');
+        collapseParamPanelBtn.setAttribute('aria-expanded', 'true');
+        collapseParamPanelBtn.setAttribute('aria-label', 'Collapse parameters');
+        collapseParamPanelBtn.title = 'Collapse parameters';
+      }
+      
+      // Persist state
+      try {
+        localStorage.setItem(STORAGE_KEY_COLLAPSED, String(isCollapsed));
+      } catch (e) {
+        console.warn('Could not save to localStorage:', e);
+      }
+      
+      // Trigger preview resize after transition
+      setTimeout(() => {
+        if (previewManager) {
+          previewManager.handleResize();
+        }
+      }, 300); // Match CSS transition duration
+    }
+    
+    // Add click listener
+    collapseParamPanelBtn.addEventListener('click', toggleParamPanel);
+    
+    // Handle window resize - reset collapsed state on mobile
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        if (window.innerWidth < 768 && isCollapsed) {
+          // Reset to expanded on mobile
+          isCollapsed = false;
+          paramPanel.classList.remove('collapsed');
+          collapseParamPanelBtn.setAttribute('aria-expanded', 'true');
+          collapseParamPanelBtn.setAttribute('aria-label', 'Collapse parameters');
+          collapseParamPanelBtn.title = 'Collapse parameters';
+        }
+      }, 150);
+    });
+  }
+
+  // Resizable Split Panels (Desktop only)
+  let splitInstance = null;
+  const previewPanel = document.querySelector('.preview-panel');
+  
+  if (paramPanel && previewPanel && window.innerWidth >= 768) {
+    const STORAGE_KEY_SPLIT = 'openscad-customizer-split-sizes';
+    
+    // Load saved split sizes
+    let initialSizes = [40, 60]; // Default: 40% params, 60% preview
+    try {
+      const savedSizes = localStorage.getItem(STORAGE_KEY_SPLIT);
+      if (savedSizes) {
+        const parsed = JSON.parse(savedSizes);
+        if (Array.isArray(parsed) && parsed.length === 2) {
+          initialSizes = parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not load split sizes:', e);
+    }
+    
+    const minSizes = [280, 300];
+
+    // Initialize Split.js (only if not collapsed)
+    const initSplit = function() {
+      if (splitInstance || paramPanel.classList.contains('collapsed')) {
+        return;
+      }
+      
+      splitInstance = Split([paramPanel, previewPanel], {
+        sizes: initialSizes,
+        minSize: minSizes,
+        gutterSize: 8,
+        cursor: 'col-resize',
+        onDrag: () => {
+          // Trigger preview resize during drag (throttled by RAF)
+          if (previewManager) {
+            requestAnimationFrame(() => {
+              previewManager.handleResize();
+            });
+          }
+        },
+        onDragEnd: (sizes) => {
+          // Persist sizes
+          try {
+            localStorage.setItem(STORAGE_KEY_SPLIT, JSON.stringify(sizes));
+          } catch (e) {
+            console.warn('Could not save split sizes:', e);
+          }
+          
+          // Final resize after drag
+          if (previewManager) {
+            previewManager.handleResize();
+          }
+        },
+      });
+      
+      // Add keyboard accessibility to gutter
+      setTimeout(() => {
+        const gutter = document.querySelector('.gutter');
+        if (gutter) {
+          // Make gutter focusable
+          gutter.setAttribute('tabindex', '0');
+          gutter.setAttribute('role', 'separator');
+          gutter.setAttribute('aria-orientation', 'vertical');
+          gutter.setAttribute('aria-label', 'Resize panels');
+          const controlIds = [paramPanel.id, previewPanel.id]
+            .filter(Boolean)
+            .join(' ');
+          if (controlIds) {
+            gutter.setAttribute('aria-controls', controlIds);
+          }
+          
+          // Get current sizes
+          const getCurrentSizes = () => {
+            const paramWidth = paramPanel.offsetWidth;
+            const previewWidth = previewPanel.offsetWidth;
+            const totalWidth = paramWidth + previewWidth;
+            return [
+              (paramWidth / totalWidth) * 100,
+              (previewWidth / totalWidth) * 100,
+            ];
+          };
+
+          const getAriaRange = () => {
+            const totalWidth = paramPanel.offsetWidth + previewPanel.offsetWidth;
+            if (!totalWidth) {
+              return { min: 0, max: 100 };
+            }
+            const minParam = Math.round((minSizes[0] / totalWidth) * 100);
+            const maxParam = Math.round(
+              (1 - minSizes[1] / totalWidth) * 100
+            );
+            return {
+              min: Math.max(0, Math.min(minParam, maxParam)),
+              max: Math.min(100, Math.max(minParam, maxParam)),
+            };
+          };
+          
+          // Set aria-value attributes
+          const updateAriaValues = () => {
+            const sizes = getCurrentSizes();
+            const { min, max } = getAriaRange();
+            gutter.setAttribute('aria-valuenow', Math.round(sizes[0]));
+            gutter.setAttribute('aria-valuemin', String(min));
+            gutter.setAttribute('aria-valuemax', String(max));
+            gutter.setAttribute('aria-valuetext', `Parameters: ${Math.round(sizes[0])}%, Preview: ${Math.round(sizes[1])}%`);
+          };
+          
+          updateAriaValues();
+          
+          // Keyboard navigation
+          gutter.addEventListener('keydown', (e) => {
+            if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+              e.preventDefault();
+              
+              const sizes = getCurrentSizes();
+              let newParamSize = sizes[0];
+              const { min, max } = getAriaRange();
+              
+              // Calculate step size
+              const smallStep = 2; // 2%
+              const largeStep = 5; // 5% with Shift
+              const step = e.shiftKey ? largeStep : smallStep;
+              
+              // Adjust size based on key
+              switch (e.key) {
+                case 'ArrowLeft':
+                  newParamSize = Math.max(min, sizes[0] - step);
+                  break;
+                case 'ArrowRight':
+                  newParamSize = Math.min(max, sizes[0] + step);
+                  break;
+                case 'Home':
+                  newParamSize = min;
+                  break;
+                case 'End':
+                  newParamSize = max;
+                  break;
+              }
+              
+              const newPreviewSize = 100 - newParamSize;
+              
+              // Apply new sizes
+              if (splitInstance) {
+                splitInstance.setSizes([newParamSize, newPreviewSize]);
+                
+                // Save to localStorage
+                try {
+                  localStorage.setItem(STORAGE_KEY_SPLIT, JSON.stringify([newParamSize, newPreviewSize]));
+                } catch (err) {
+                  console.warn('Could not save split sizes:', err);
+                }
+                
+                // Update ARIA values
+                updateAriaValues();
+                
+                // Trigger preview resize
+                if (previewManager) {
+                  previewManager.handleResize();
+                }
+              }
+            }
+          });
+          
+          // Update ARIA values after drag
+          gutter.addEventListener('mouseup', updateAriaValues);
+          gutter.addEventListener('touchend', updateAriaValues);
+        }
+      }, 100);
+    }
+    
+    // Destroy Split.js
+    const destroySplit = function() {
+      if (splitInstance) {
+        splitInstance.destroy();
+        splitInstance = null;
+      }
+    }
+    
+    // Initialize if not collapsed
+    if (!paramPanel.classList.contains('collapsed')) {
+      initSplit();
+    }
+    
+    // Re-initialize/destroy split when collapse state changes
+    const originalToggleParamPanel = toggleParamPanel;
+    if (typeof originalToggleParamPanel === 'function') {
+      toggleParamPanel = function() {
+        const wasCollapsed = paramPanel.classList.contains('collapsed');
+        originalToggleParamPanel.call(this);
+        
+        if (wasCollapsed) {
+          // Just expanded - initialize split
+          setTimeout(initSplit, 350); // Wait for transition
+        } else {
+          // Just collapsed - destroy split
+          destroySplit();
+        }
+      };
+      
+      // Re-bind the event listener
+      collapseParamPanelBtn.removeEventListener('click', originalToggleParamPanel);
+      collapseParamPanelBtn.addEventListener('click', toggleParamPanel);
+    }
+    
+    // Handle window resize - destroy/reinit split on mobile
+    let splitResizeTimeout;
+    window.addEventListener('resize', () => {
+      clearTimeout(splitResizeTimeout);
+      splitResizeTimeout = setTimeout(() => {
+        if (window.innerWidth < 768) {
+          destroySplit();
+        } else if (!splitInstance && !paramPanel.classList.contains('collapsed')) {
+          initSplit();
+        }
+      }, 150);
+    });
+  }
+
+  // Focus Mode - Maximize 3D preview
+  const focusModeBtn = document.getElementById('focusModeBtn');
+  // mainInterface is already declared at line 484
+  // comparisonView container is accessed via DOM query
+  
+  if (focusModeBtn && mainInterface) {
+    let isFocusMode = false;
+    
+    // Toggle focus mode
+    const toggleFocusMode = function() {
+      // Don't allow focus mode when comparison view is active
+      const comparisonViewEl = document.getElementById('comparisonView');
+      if (comparisonViewEl && !comparisonViewEl.classList.contains('hidden')) {
+        return;
+      }
+      
+      isFocusMode = !isFocusMode;
+      
+      if (isFocusMode) {
+        // Enter focus mode
+        mainInterface.classList.add('focus-mode');
+        focusModeBtn.setAttribute('aria-pressed', 'true');
+        focusModeBtn.setAttribute('aria-label', 'Exit focus mode');
+        focusModeBtn.title = 'Exit focus mode (Esc)';
+      } else {
+        // Exit focus mode
+        mainInterface.classList.remove('focus-mode');
+        focusModeBtn.setAttribute('aria-pressed', 'false');
+        focusModeBtn.setAttribute('aria-label', 'Enter focus mode');
+        focusModeBtn.title = 'Focus mode (maximize preview)';
+      }
+      
+      // Trigger preview resize after mode change
+      setTimeout(() => {
+        if (previewManager) {
+          previewManager.handleResize();
+        }
+      }, 100);
+    }
+    
+    // Add click listener
+    focusModeBtn.addEventListener('click', toggleFocusMode);
+    
+    // Add Escape key listener to exit focus mode
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isFocusMode) {
+        // Only exit focus mode if no modals are open
+        const modals = document.querySelectorAll('.modal:not(.hidden)');
+        if (modals.length === 0) {
+          toggleFocusMode();
+        }
+      }
+    });
+    
+    // Auto-exit focus mode when comparison view is shown
+    const comparisonViewEl = document.getElementById('comparisonView');
+    if (comparisonViewEl) {
+      // Watch for comparison view becoming visible
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.attributeName === 'class') {
+            if (!comparisonViewEl.classList.contains('hidden') && isFocusMode) {
+              // Exit focus mode when comparison view opens
+              toggleFocusMode();
+            }
+          }
+        });
+      });
+      
+      observer.observe(comparisonViewEl, { attributes: true });
+    }
+  }
 
   // Primary Action Button (transforms between Generate and Download)
   primaryActionBtn.addEventListener('click', async () => {

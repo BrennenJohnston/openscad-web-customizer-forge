@@ -98,11 +98,27 @@ function toJsonSchema(extracted, filename) {
       case 'boolean':
         // No additional properties needed
         break;
+
+      case 'color':
+        // Color parameters use string type in JSON Schema with x-hint
+        property.type = 'string';
+        property['x-hint'] = 'color';
+        break;
+
+      case 'file':
+        // File parameters use string type (filename) with x-hint
+        property.type = 'string';
+        property['x-hint'] = 'file';
+        if (param.acceptedExtensions && param.acceptedExtensions.length > 0) {
+          property['x-accepted-extensions'] = param.acceptedExtensions;
+        }
+        break;
     }
 
-    // Add custom parameter type hints (color, file, etc.)
-    if (param.hint) {
-      property['x-hint'] = param.hint;
+    // Add UI type hint if available (slider, toggle, select, input)
+    // This helps UI generators create appropriate controls
+    if (param.uiType && !property['x-hint']) {
+      property['x-hint'] = param.uiType;
     }
 
     schema.properties[paramName] = property;

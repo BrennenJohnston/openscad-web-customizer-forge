@@ -97,10 +97,15 @@
         </div>
         
         <div class="main-interface hidden" id="mainInterface">
-          <div class="param-panel" role="region" aria-label="Model parameters">
+          <div class="param-panel" id="paramPanel" role="region" aria-label="Model parameters">
             <div class="panel-header">
               <h2 id="parameters-heading">Parameters</h2>
               <div class="param-header-actions">
+                <button id="collapseParamPanelBtn" class="btn btn-sm btn-icon" aria-expanded="true" aria-controls="paramPanelBody" aria-label="Collapse parameters" title="Collapse parameters">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                  </svg>
+                </button>
                 <button id="undoBtn" class="btn btn-sm btn-outline" aria-label="Undo last parameter change (Ctrl+Z)" title="Undo (Ctrl+Z)" disabled>
                   ↩️ Undo
                 </button>
@@ -111,23 +116,30 @@
               </div>
             </div>
             
-            <!-- Preset Controls -->
-            <div class="preset-controls" id="presetControls" role="region" aria-label="Parameter presets">
-              <div class="preset-actions">
-                <button id="savePresetBtn" class="btn btn-sm btn-outline" aria-label="Save current parameters as preset" title="Save current parameters">
-                  💾 Save Preset
-                </button>
-                <button id="managePresetsBtn" class="btn btn-sm btn-outline" aria-label="Manage presets" title="Manage saved presets">
-                  📋 Manage
-                </button>
+            <div class="param-panel-body" id="paramPanelBody">
+            <!-- Preset Controls (Collapsed by default on desktop) -->
+            <details class="preset-controls" id="presetControls" role="region" aria-label="Parameter presets">
+              <summary class="preset-summary">
+                <span class="preset-icon">💾</span>
+                Presets
+              </summary>
+              <div class="preset-content">
+                <div class="preset-actions">
+                  <button id="savePresetBtn" class="btn btn-sm btn-outline" aria-label="Save current parameters as preset" title="Save current parameters">
+                    💾 Save Preset
+                  </button>
+                  <button id="managePresetsBtn" class="btn btn-sm btn-outline" aria-label="Manage presets" title="Manage saved presets">
+                    📋 Manage
+                  </button>
+                </div>
+                <div class="preset-selector" id="presetSelector">
+                  <label for="presetSelect" class="preset-label">Load Preset:</label>
+                  <select id="presetSelect" class="preset-select" aria-label="Select a saved preset to load">
+                    <option value="">-- Select Preset --</option>
+                  </select>
+                </div>
               </div>
-              <div class="preset-selector" id="presetSelector">
-                <label for="presetSelect" class="preset-label">Load Preset:</label>
-                <select id="presetSelect" class="preset-select" aria-label="Select a saved preset to load">
-                  <option value="">-- Select Preset --</option>
-                </select>
-              </div>
-            </div>
+            </details>
             
             <!-- Library Controls -->
             <div class="library-controls hidden" id="libraryControls" role="region" aria-label="OpenSCAD library bundles">
@@ -151,6 +163,21 @@
             
             <div id="parametersContainer" class="parameters-container" aria-labelledby="parameters-heading">
               <!-- Parameters will be dynamically generated here -->
+            </div>
+            
+            <!-- Output Format Selector -->
+            <div class="output-format-section" aria-label="Output format selection">
+              <label for="outputFormat" class="output-format-label">Output:</label>
+              <select id="outputFormat" class="output-format-select" aria-label="Select output file format">
+                <option value="stl" selected>STL</option>
+                <option value="obj">OBJ</option>
+                <option value="off">OFF</option>
+                <option value="amf">AMF</option>
+                <option value="3mf">3MF</option>
+              </select>
+              <span class="output-format-info" id="formatInfo" aria-live="polite">
+                Most common format for 3D printing
+              </span>
             </div>
             
             <!-- Advanced Menu -->
@@ -207,13 +234,29 @@
                 </div>
               </div>
             </details>
+            </div>
           </div>
           
-          <div class="preview-panel" role="region" aria-label="3D preview and actions">
+          <div class="preview-panel" id="previewPanel" role="region" aria-label="3D preview and actions">
             <div class="panel-header">
-              <h2 id="preview-heading">Preview</h2>
+              <div class="panel-header-left">
+                <h2 id="preview-heading">Preview</h2>
+              </div>
+              <div class="panel-header-right">
+                <button id="focusModeBtn" class="btn btn-sm btn-icon hidden" aria-pressed="false" aria-label="Enter focus mode" title="Focus mode (maximize preview)">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                  </svg>
+                </button>
+              </div>
               <div class="file-info-wrapper">
-                <div class="file-info" id="fileInfo" aria-live="polite"></div>
+                <div class="file-info" id="fileInfo" aria-live="polite">
+                  <span class="file-info-summary" id="fileInfoSummary"></span>
+                  <details class="file-info-details hidden" id="fileInfoDetails">
+                    <summary>Show included files</summary>
+                    <div class="file-info-tree" id="fileInfoTree"></div>
+                  </details>
+                </div>
                 <button id="clearFileBtn" class="btn btn-sm btn-outline hidden" aria-label="Clear file and return to welcome screen" title="Clear file">
                   ✕ Clear
                 </button>
@@ -226,47 +269,39 @@
                 Ready
               </div>
 
-              <div class="preview-settings" aria-label="Preview settings">
-                <label class="preview-setting">
-                  <input type="checkbox" id="autoPreviewToggle" checked />
-                  <span>Auto-preview</span>
-                </label>
-                
-                <label class="preview-setting">
-                  <input type="checkbox" id="measurementsToggle" aria-describedby="measurementsHelp" />
-                  <span>Show measurements</span>
-                </label>
-                <span id="measurementsHelp" class="sr-only">Toggle dimension measurements and bounding box overlay on 3D preview</span>
+              <details class="preview-settings-details">
+                <summary class="preview-settings-summary">
+                  <span class="settings-icon">⚙️</span>
+                  Preview Settings
+                </summary>
+                <div class="preview-settings" aria-label="Preview settings">
+                  <label class="preview-setting">
+                    <input type="checkbox" id="autoPreviewToggle" checked />
+                    <span>Auto-preview</span>
+                  </label>
+                  
+                  <label class="preview-setting">
+                    <input type="checkbox" id="measurementsToggle" aria-describedby="measurementsHelp" />
+                    <span>Show measurements</span>
+                  </label>
+                  <span id="measurementsHelp" class="sr-only">Toggle dimension measurements and bounding box overlay on 3D preview</span>
 
-                <label class="preview-setting" for="previewQualitySelect">
-                  <span class="preview-setting-label">Preview quality</span>
-                  <select id="previewQualitySelect" aria-label="Select preview quality">
-                    <option value="fidelity">Fidelity (slower)</option>
-                    <option value="balanced" selected>Balanced</option>
-                    <option value="fast">Fast (lower resolution)</option>
-                  </select>
-                </label>
-              </div>
+                  <label class="preview-setting" for="previewQualitySelect">
+                    <span class="preview-setting-label">Preview quality</span>
+                    <select id="previewQualitySelect" aria-label="Select preview quality">
+                      <option value="fidelity">Fidelity (slower)</option>
+                      <option value="balanced" selected>Balanced</option>
+                      <option value="fast">Fast (lower resolution)</option>
+                    </select>
+                  </label>
+                </div>
+              </details>
               
               <div class="preview-container" id="previewContainer" role="img" aria-label="3D model preview">
                 <!-- 3D preview or placeholder -->
                 <div class="preview-placeholder">
                   <p>3D preview will appear here after generating STL</p>
                 </div>
-              </div>
-              
-              <div class="format-selector" aria-label="Output format selection">
-                <label for="outputFormat" class="format-label">Output Format:</label>
-                <select id="outputFormat" class="format-select" aria-label="Select output file format">
-                  <option value="stl" selected>STL (Standard)</option>
-                  <option value="obj">OBJ (Wavefront)</option>
-                  <option value="off">OFF (Geometry)</option>
-                  <option value="amf">AMF (Additive Manufacturing)</option>
-                  <option value="3mf">3MF (3D Manufacturing)</option>
-                </select>
-                <span class="format-info" id="formatInfo" aria-live="polite">
-                  Most common format for 3D printing
-                </span>
               </div>
               
               <div class="stats" id="stats" role="status" aria-live="polite"></div>
@@ -299,11 +334,16 @@
               <button id="primaryActionBtn" class="btn btn-primary btn-large" aria-label="Generate STL file from current parameters" data-action="generate">Generate STL</button>
               <button id="cancelRenderBtn" class="btn btn-outline hidden" aria-label="Cancel current render operation">⏹️ Cancel</button>
               <a id="downloadFallbackLink" href="#" class="btn btn-sm btn-outline hidden" aria-label="Download previously generated file">📥 Download last file</a>
-              <button id="addToComparisonBtn" class="btn btn-secondary" aria-label="Add current configuration to comparison">⚖️ Add to Comparison</button>
-              <button id="addToQueueBtn" class="btn btn-secondary" aria-label="Add current configuration to render queue">📋 Add to Queue</button>
-              <button id="viewQueueBtn" class="btn btn-secondary" aria-label="View and manage render queue">🔄 Queue <span class="queue-badge" id="queueBadge">0</span></button>
-              <button id="shareBtn" class="btn btn-secondary" aria-label="Copy shareable link with current parameters">📋 Copy Share Link</button>
-              <button id="exportParamsBtn" class="btn btn-secondary" aria-label="Download parameters as JSON file">💾 Export Params (JSON)</button>
+              <button id="addToComparisonBtn" class="btn btn-secondary" aria-label="Add current configuration to comparison">⚖️ Compare</button>
+              <details class="actions-more">
+                <summary class="btn btn-secondary" aria-label="Show more actions">⋯ More</summary>
+                <div class="actions-more-content">
+                  <button id="addToQueueBtn" class="btn btn-secondary" aria-label="Add current configuration to render queue">📋 Add to Queue</button>
+                  <button id="viewQueueBtn" class="btn btn-secondary" aria-label="View and manage render queue">🔄 Queue <span class="queue-badge" id="queueBadge">0</span></button>
+                  <button id="shareBtn" class="btn btn-secondary" aria-label="Copy shareable link with current parameters">📋 Copy Share Link</button>
+                  <button id="exportParamsBtn" class="btn btn-secondary" aria-label="Download parameters as JSON file">💾 Export Params</button>
+                </div>
+              </details>
             </div>
           </div>
         </div>

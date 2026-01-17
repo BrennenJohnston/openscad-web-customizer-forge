@@ -5,7 +5,7 @@
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
 [![OpenSCAD](https://img.shields.io/badge/OpenSCAD-WASM-orange.svg)](https://openscad.org/)
 [![Accessibility](https://img.shields.io/badge/WCAG-2.1%20AA-green.svg)](https://www.w3.org/WAI/WCAG21/quickref/)
-[![Version](https://img.shields.io/badge/version-2.3.0-brightgreen.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.10.0-brightgreen.svg)](CHANGELOG.md)
 [![PWA](https://img.shields.io/badge/PWA-enabled-blue.svg)](https://web.dev/progressive-web-apps/)
 
 ## 🎯 What This Does
@@ -54,16 +54,35 @@ Then open http://localhost:5173 in your browser.
 
 ## ✨ Features
 
-### Current Release: v2.3.0 — Audit & Polish 🔧
+### Current Release: v2.10.0 — Enhanced Accessibility & Layout ♿
 
-A quality-focused release ensuring production readiness:
+A major accessibility and usability release with advanced layout features:
+
+|| Feature | Description |
+||---------|-------------|
+|| 🎛️ **Collapsible Panels** | Desktop parameter panel collapse/expand with smooth animations |
+|| ↔️ **Resizable Layout** | Drag-to-resize split panels with keyboard support |
+|| 🎯 **Focus Mode** | Maximize preview area with keyboard shortcut (F) |
+|| ♿ **Enhanced A11y** | Comprehensive ARIA attributes and focus management |
+|| 📱 **Responsive Design** | Desktop features auto-disable on mobile viewports |
+|| ⌨️ **Keyboard Navigation** | Full keyboard control with arrow keys and shortcuts |
+
+### Previous Release: v2.9.0 — WASM Progress & Mobile Enhancements 📱
+
+|| Feature | Description |
+||---------|-------------|
+|| ⏳ **WASM Progress UI** | Full-screen progress indicator during WASM initialization |
+|| 📱 **Mobile Testing** | Comprehensive E2E tests for mobile viewports |
+|| 📦 **Bundle Optimization** | Code splitting and lazy loading (67KB main bundle) |
+|| 💾 **Memory Warnings** | Enhanced user notifications for high memory usage |
+
+### Previous Release: v2.3.0 — Audit & Polish 🔧
 
 || Feature | Description |
 ||---------|-------------|
 || 🔍 **Codebase Audit** | Comprehensive review of all core runtime modules |
 || 🧹 **Debug Code Removal** | Removed debug fetch calls from production code |
 || 🔢 **Version Alignment** | Synchronized version strings across all files |
-|| ✅ **Production Ready** | All modules verified clean and correct |
 
 ### Previous Release: v2.2.0 — Additional Templates & Enhanced Tooling 🚀
 
@@ -469,6 +488,11 @@ openscad-forge sync ./box-customizer --apply-safe-fixes
 || `Ctrl/Cmd + Enter` | Generate STL |
 || `R` | Reset parameters to defaults |
 || `D` | Download STL (when available) |
+|| `F` | Toggle focus mode (maximize preview) |
+|| `Left/Right Arrow` | Resize split panels (±5%, when gutter focused) |
+|| `Shift + Left/Right` | Resize split panels (±10%, when gutter focused) |
+|| `Home` | Minimize parameter panel (when gutter focused) |
+|| `End` | Maximize parameter panel (when gutter focused) |
 
 ## 📖 Documentation
 
@@ -542,7 +566,7 @@ See [TEST_REPORT.md](TEST_REPORT.md) for detailed results.
 
 ## 📊 Project Status
 
-**Current Version**: v2.3.0
+**Current Version**: v2.10.0
 
 || Phase | Description | Status |
 ||-------|-------------|--------|
@@ -571,6 +595,8 @@ See [TEST_REPORT.md](TEST_REPORT.md) for detailed results.
 || **v2.1** | **Enhanced CLI (React, themes, CI/CD)** | ✅ Complete |
 || **v2.2** | **Vue, Svelte templates, enhanced tooling** | ✅ Complete |
 || **v2.3** | **Audit & polish release** | ✅ Complete |
+|| **v2.4-v2.9** | **Testing, performance, mobile enhancements** | ✅ Complete |
+|| **v2.10** | **Enhanced accessibility & layout** | ✅ Complete |
 
 ## ⚖️ Licensing
 
@@ -631,46 +657,39 @@ openscad-forge --help
 openscad-forge extract examples/simple-box/simple_box.scad
 ```
 
-## 🎉 What's New in v2.3.0
+## 🎉 What's New in v2.10.0
 
-### Audit & Polish Release
+### Enhanced Accessibility & Layout
 
-v2.3.0 is a quality-focused release ensuring production readiness.
+v2.10.0 brings major improvements to accessibility and user interface flexibility.
 
-**Audit & Fixes:**
-- 🔍 **Codebase Audit** — All core runtime modules reviewed for correctness
-- 🧹 **Debug Code Removal** — Removed debug fetch calls from production code
-- 🔢 **Version Alignment** — Synchronized version strings across all files
-- ✅ **Production Ready** — All modules verified clean and correct
+**Layout Enhancements:**
+- 🎛️ **Collapsible Parameter Panel** — Desktop-only collapse/expand with smooth animations and persistent state
+- ↔️ **Resizable Split Panels** — Drag-to-resize with keyboard support (Arrow keys, Home/End)
+- 🎯 **Focus Mode** — Maximize preview area with `F` key or button click
+- 📐 **Compact Header** — Auto-compact mode after file load to maximize content space
 
-**CLI Tools (v2.0-v2.2):**
-- 🛠️ **CLI Tools** — Command-line interface for developers
-- ⚛️ **React Templates** — Generate React-based apps with `--template react`
-- 🎭 **Vue Templates** — Generate Vue apps with `--template vue`
-- ⚡ **Svelte Templates** — Generate Svelte apps with `--template svelte`
-- 🎨 **Theme Generator** — Create custom color themes (6 presets + custom)
-- 🔧 **CI/CD Helpers** — Pre-configured GitHub Actions, GitLab CI, Docker, and more
+**Accessibility Improvements:**
+- ♿ **Enhanced ARIA** — Comprehensive `aria-expanded`, `aria-pressed`, `aria-controls` attributes
+- ⌨️ **Keyboard Navigation** — Full keyboard control for all new features
+- 🎯 **Focus Management** — Intelligent focus handling when collapsing panels
+- 📱 **Responsive Design** — Desktop features properly disabled on mobile (<768px)
+- 🎨 **Reduced Motion** — Respects `prefers-reduced-motion` preference
 
-**Examples:**
-```bash
-# Generate a React-based customizer
-openscad-forge scaffold --schema schema.json --scad model.scad --template react --out webapp
+**UI Refinements:**
+- 📦 **Collapsible Sections** — Preset controls and preview settings now use `<details>` elements
+- 🎬 **Actions Dropdown** — Secondary actions moved to "More" menu
+- 📊 **Auto-Hide Status** — Status bar hides when idle
+- 📁 **Compact File Info** — File tree in collapsible disclosure
 
-# Create a custom purple theme
-openscad-forge theme --preset purple --out theme.css
+**Technical Details:**
+- New dependency: `split.js` (v1.6.5) for resizable panels
+- Modified files: `main.js` (+459 lines), `layout.css` (+325 lines), `components.css` (+210 lines)
+- Bundle impact: +~10KB gzipped
+- WCAG 2.1 AA compliance maintained
+- Full keyboard support with new shortcuts
 
-# Generate GitHub Actions workflow
-openscad-forge ci --provider github
-
-# Complete workflow
-openscad-forge extract model.scad --out schema.json
-openscad-forge scaffold --schema schema.json --scad model.scad --out webapp
-openscad-forge theme --preset blue --out webapp/src/styles/theme.css
-openscad-forge ci --provider github --out webapp
-openscad-forge validate webapp
-```
-
-See [docs/changelogs/CHANGELOG_v2.3.md](docs/changelogs/CHANGELOG_v2.3.md) for complete details.
+See [docs/changelogs/CHANGELOG_v2.10.md](docs/changelogs/CHANGELOG_v2.10.md) for complete details.
 
 ---
 

@@ -380,16 +380,117 @@ body {
   }
 
   .param-panel {
-    width: 40%;
-    min-width: 320px;
-    max-width: 480px;
+    min-width: 280px;
     max-height: none;
-    border-right: 1px solid var(--color-border);
+    border-right: none; /* Gutter will provide separator */
+    transition: width 0.3s ease, min-width 0.3s ease;
+  }
+
+  /* Respect reduced motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    .param-panel {
+      transition: none;
+    }
+  }
+
+  /* Collapsed state */
+  .param-panel.collapsed {
+    width: 48px !important;
+    min-width: 48px;
+    max-width: 48px;
+    flex: none !important;
+  }
+
+  /* Hide body content when collapsed */
+  .param-panel.collapsed .param-panel-body {
+    display: none;
+  }
+
+  /* Hide other header actions when collapsed */
+  .param-panel.collapsed .param-header-actions > *:not(#collapseParamPanelBtn) {
+    display: none;
+  }
+
+  /* Adjust header layout when collapsed */
+  .param-panel.collapsed .panel-header {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-sm);
+  }
+
+  .param-panel.collapsed .panel-header h2 {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    margin: var(--space-sm) 0;
+    font-size: var(--font-size-sm);
   }
 
   .preview-panel {
     flex: 1;
+    min-width: 300px;
     min-height: 0; /* Ensure flexbox scrolling works */
+  }
+
+  /* Split.js gutter styles */
+  .gutter {
+    background-color: var(--color-border);
+    background-repeat: no-repeat;
+    background-position: 50%;
+    cursor: col-resize;
+    flex-shrink: 0;
+    transition: background-color 0.2s ease;
+  }
+
+  .gutter:hover {
+    background-color: var(--color-accent);
+  }
+
+  .gutter:focus {
+    background-color: var(--color-accent);
+    outline: 3px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  .gutter:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  .gutter:focus-visible {
+    background-color: var(--color-accent);
+    outline: 3px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  .gutter.gutter-horizontal {
+    cursor: col-resize;
+    width: 8px;
+  }
+
+  /* Gutter grip indicator */
+  .gutter.gutter-horizontal::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 3px;
+    height: 40px;
+    background-color: currentColor;
+    border-radius: 2px;
+    opacity: 0.5;
+  }
+
+  .gutter.gutter-horizontal:hover::before,
+  .gutter.gutter-horizontal:focus::before {
+    opacity: 1;
+  }
+
+  /* Disable gutter when collapsed */
+  .param-panel.collapsed ~ .gutter {
+    cursor: not-allowed;
+    opacity: 0.3;
+    pointer-events: none;
   }
 }
 
@@ -400,6 +501,21 @@ body {
   padding: var(--space-md);
   border-bottom: 1px solid var(--color-border);
   background-color: var(--color-bg-secondary);
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.panel-header-left {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.panel-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
 }
 
 .panel-header h2 {
@@ -441,21 +557,164 @@ body {
 }
 
 .status-area {
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-xs) var(--space-md);
   background-color: var(--color-bg-secondary);
   border-bottom: 1px solid var(--color-border);
-  font-size: var(--font-size-sm);
-  min-height: 2rem;
+  font-size: var(--font-size-xs);
+  min-height: auto;
 }
 
 .actions {
-  padding: var(--space-md);
+  padding: var(--space-xs) var(--space-sm);
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-md);
+  gap: var(--space-xs);
   border-top: 1px solid var(--color-border);
   background-color: var(--color-bg-primary);
-  padding-bottom: calc(var(--space-md) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(var(--space-xs) + env(safe-area-inset-bottom, 0px));
+  align-items: center;
+}
+
+/* Compact action buttons */
+.actions .btn {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-size-xs);
+}
+
+.actions .btn-large {
+  padding: var(--space-xs) var(--space-md);
+  font-size: var(--font-size-sm);
+}
+
+/* Actions More Dropdown */
+.actions-more {
+  position: relative;
+  display: inline-block;
+}
+
+.actions-more summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.actions-more summary::-webkit-details-marker {
+  display: none;
+}
+
+.actions-more-content {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: var(--space-xs);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-xs);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 180px;
+  z-index: 100;
+}
+
+.actions-more-content .btn {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+/* Status area auto-hide when idle */
+.status-area.idle {
+  opacity: 0.6;
+  padding: 2px var(--space-md);
+  min-height: auto;
+}
+
+/* Compact header mode */
+.app-header.compact {
+  padding: var(--space-sm) var(--space-lg);
+  transition: padding 0.3s ease;
+}
+
+.app-header.compact h1 {
+  font-size: var(--font-size-lg);
+  transition: font-size 0.3s ease;
+}
+
+.app-header.compact .app-tagline {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-header.compact,
+  .app-header.compact h1 {
+    transition: none;
+  }
+}
+
+/* Focus Mode - Maximize 3D preview */
+.main-interface.focus-mode .param-panel {
+  display: none;
+}
+
+.main-interface.focus-mode .gutter {
+  display: none;
+}
+
+.main-interface.focus-mode .preview-panel {
+  width: 100%;
+  max-width: none;
+}
+
+.main-interface.focus-mode .panel-header h2 {
+  font-size: var(--font-size-sm);
+}
+
+.main-interface.focus-mode .file-info-wrapper {
+  display: none;
+}
+
+.main-interface.focus-mode .status-area {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.main-interface.focus-mode .preview-settings-details {
+  display: none;
+}
+
+.main-interface.focus-mode .output-format-section {
+  display: none;
+}
+
+.main-interface.focus-mode .stats {
+  display: none;
+}
+
+.main-interface.focus-mode .dimensions-display {
+  display: none;
+}
+
+.main-interface.focus-mode .actions > *:not(#primaryActionBtn):not(#cancelRenderBtn):not(#focusModeBtn) {
+  display: none;
+}
+
+/* Focus mode button state */
+#focusModeBtn[aria-pressed="true"] svg {
+  transform: rotate(90deg);
+}
+
+/* Hide focus mode button when comparison view is active */
+.comparison-view:not(.hidden) ~ .main-interface #focusModeBtn {
+  display: none !important;
 }
 
 .stats {
@@ -475,17 +734,17 @@ body {
   }
 
   .preview-panel .actions {
-    padding: var(--space-sm);
-    gap: var(--space-sm);
-    padding-bottom: calc(var(--space-sm) + env(safe-area-inset-bottom, 0px));
+    padding: var(--space-xs);
+    gap: var(--space-xs);
+    padding-bottom: calc(var(--space-xs) + env(safe-area-inset-bottom, 0px));
   }
 
   /* Compact buttons on mobile */
   .preview-panel .actions .btn {
     flex: 1 1 auto;
     min-width: 0;
-    font-size: var(--font-size-sm);
-    padding: var(--space-sm);
+    font-size: var(--font-size-xs);
+    padding: var(--space-xs) var(--space-sm);
   }
 
   .preview-panel .actions .btn-large {
@@ -513,6 +772,42 @@ body {
 .file-info {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
+}
+
+/* Compact preview panel header */
+.preview-panel .panel-header {
+  padding: var(--space-xs) var(--space-md);
+  gap: var(--space-xs);
+  flex-wrap: nowrap;
+  min-height: auto;
+}
+
+.preview-panel .panel-header h2 {
+  font-size: var(--font-size-base);
+  margin: 0;
+}
+
+.preview-panel .panel-header-left {
+  flex: 0 0 auto;
+}
+
+.preview-panel .panel-header-right {
+  flex: 0 0 auto;
+  order: 3;
+}
+
+.preview-panel .file-info-wrapper {
+  flex: 1 1 auto;
+  min-width: 0;
+  order: 2;
+}
+
+/* Compact file info in preview panel */
+.preview-panel .file-info {
+  padding: var(--space-xs);
+  min-height: auto;
+  border-width: 1px;
+  line-height: 1.2;
 }
 
 /* Utility Classes */

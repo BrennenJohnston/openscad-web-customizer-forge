@@ -5,6 +5,62 @@ All notable changes to the OpenSCAD Web Customizer Forge project are documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.0] - 2026-01-17
+
+### Added - Enhanced Accessibility & Layout
+
+- **Collapsible Parameter Panel**: Desktop-only collapse/expand with smooth animations
+  - Persistent state saved to localStorage
+  - Full keyboard accessibility with `aria-expanded` and focus management
+  - Automatic expansion on mobile viewports
+  
+- **Resizable Split Panels**: Drag-to-resize with Split.js integration
+  - 8px gutter with visual grip indicator
+  - Keyboard navigation (Arrow keys, Home/End)
+  - Persistent sizing saved to localStorage
+  - Minimum sizes: 280px (params), 300px (preview)
+  
+- **Focus Mode**: Maximize preview by hiding parameter panel
+  - New focus button in preview header
+  - Keyboard shortcut: `F` key
+  - `aria-pressed` state management
+  
+- **Compact Header**: Auto-compact mode after file load
+  - Reduces vertical space usage
+  - Smooth transition animations
+  
+- **Collapsible UI Sections**: Better space efficiency
+  - Preset controls now use `<details>` element
+  - Preview settings moved to collapsible disclosure
+  - Reduces initial visual complexity
+  
+- **Actions Dropdown Menu**: Secondary actions in "More" menu
+  - Contains: Add to Queue, View Queue, Share Link, Export Params
+  - Native `<details>` element for accessibility
+  
+- **Auto-Hide Status Bar**: Status bar hides when idle ("Ready" state)
+
+### Improved
+
+- **File Info Display**: Collapsible file tree for multi-file projects
+- **Output Format Selector**: Moved to parameter panel for better grouping
+- **Compact Actions Bar**: Reduced padding and spacing for efficiency
+- **Keyboard Navigation**: Enhanced focus management throughout
+- **Screen Reader Support**: Comprehensive ARIA attributes
+- **Responsive Design**: Desktop features properly disabled on mobile
+- **Performance**: RequestAnimationFrame for smooth drag operations
+
+### Technical
+
+- New dependency: split.js (v1.6.5)
+- Modified files: main.js (+459), layout.css (+325), components.css (+210), index.html (+158)
+- Bundle impact: +~10KB gzipped
+- WCAG 2.1 AA compliance maintained
+- Full keyboard support with new shortcuts
+- Respects `prefers-reduced-motion`
+
+---
+
 ## [2.9.0] - 2026-01-16
 
 ### Added - WASM Progress & Mobile Enhancements

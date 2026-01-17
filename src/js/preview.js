@@ -211,6 +211,14 @@ export class PreviewManager {
     };
     window.addEventListener('resize', this.handleResize);
 
+    // Add ResizeObserver for container size changes (e.g., split panel resize)
+    if (typeof ResizeObserver !== 'undefined') {
+      this.resizeObserver = new ResizeObserver(() => {
+        this.handleResize();
+      });
+      this.resizeObserver.observe(this.container);
+    }
+
     // Start animation loop
     this.animate();
 
@@ -775,6 +783,11 @@ export class PreviewManager {
 
     if (this.handleResize) {
       window.removeEventListener('resize', this.handleResize);
+    }
+
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
     }
 
     if (this.mesh) {

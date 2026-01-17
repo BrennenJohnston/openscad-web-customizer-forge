@@ -151,7 +151,14 @@ export function estimateRenderTime(scadContent, parameters = {}) {
 const MEMORY_WARNING_THRESHOLD = 80;
 
 export class RenderController {
-  constructor() {
+  /**
+   * Create a new RenderController
+   * @param {Object} options - Configuration options
+   * @param {number} options.defaultTimeoutMs - Default render timeout in milliseconds (default: 60000)
+   * @param {number} options.previewTimeoutMs - Preview render timeout in milliseconds (default: 30000)
+   * @param {number} options.initTimeoutMs - WASM initialization timeout in milliseconds (default: 60000)
+   */
+  constructor(options = {}) {
     this.worker = null;
     this.requestId = 0;
     this.currentRequest = null;
@@ -160,6 +167,34 @@ export class RenderController {
     this.renderQueue = Promise.resolve();
     this.memoryUsage = null;
     this.onMemoryWarning = null;
+    
+    // Configurable timeout settings
+    this.timeoutConfig = {
+      defaultTimeoutMs: options.defaultTimeoutMs || 60000,
+      previewTimeoutMs: options.previewTimeoutMs || 30000,
+      initTimeoutMs: options.initTimeoutMs || 60000,
+    };
+  }
+
+  /**
+   * Update timeout configuration
+   * @param {Object} config - Timeout configuration
+   * @param {number} config.defaultTimeoutMs - Default render timeout in milliseconds
+   * @param {number} config.previewTimeoutMs - Preview render timeout in milliseconds
+   * @param {number} config.initTimeoutMs - WASM initialization timeout in milliseconds
+   */
+  setTimeoutConfig(config) {
+    if (config.defaultTimeoutMs) this.timeoutConfig.defaultTimeoutMs = config.defaultTimeoutMs;
+    if (config.previewTimeoutMs) this.timeoutConfig.previewTimeoutMs = config.previewTimeoutMs;
+    if (config.initTimeoutMs) this.timeoutConfig.initTimeoutMs = config.initTimeoutMs;
+  }
+
+  /**
+   * Get current timeout configuration
+   * @returns {Object} Current timeout settings
+   */
+  getTimeoutConfig() {
+    return { ...this.timeoutConfig };
   }
 
   /**
@@ -236,7 +271,7 @@ export class RenderController {
         this.readyResolve = resolve;
         this.readyReject = reject;
 
-        // Timeout for initialization
+        // Timeout for initialization (configurable)
         setTimeout(() => {
           if (!this.ready) {
             if (onProgress) {
@@ -247,7 +282,7 @@ export class RenderController {
             }
             reject(new Error('Worker initialization timeout'));
           }
-        }, 60000); // 60 second timeout for init (larger WASM may take longer)
+        }, this.timeoutConfig.initTimeoutMs);
       } catch (error) {
         console.error('[RenderController] Failed to create worker:', error);
         if (onProgress) {
@@ -351,6 +386,22 @@ export class RenderController {
         if (this.memoryResolve) {
           this.memoryResolve(payload);
           this.memoryResolve = null;
+        }
+        break;
+
+      case 'WARNING':
+        // Handle proactive warnings from worker (e.g., high memory before render)
+        console.warn(`[RenderController] Warning: ${payload.message}`);
+        
+        // Trigger memory warning callback if this is a memory warning
+        if (payload.code === 'HIGH_MEMORY' && this.onMemoryWarning) {
+          this.onMemoryWarning(payload.memoryUsage || payload);
+        }
+        
+        // Forward warning to current request's progress callback
+        if (this.currentRequest && this.currentRequest.onProgress) {
+          // Use negative percent to indicate warning state
+          this.currentRequest.onProgress(-2, payload.message);
         }
         break;
 
@@ -470,7 +521,8 @@ export class RenderController {
     const run = async () => {
       const quality = options.quality || RENDER_QUALITY.FULL;
       const adjustedParams = this.applyQualitySettings(parameters, quality);
-      const timeoutMs = options.timeoutMs || quality.timeoutMs;
+      // Use explicit timeout if provided, then quality preset, then controller default
+      const timeoutMs = options.timeoutMs || quality.timeoutMs || this.timeoutConfig.defaultTimeoutMs;
 
       const shouldRetryOnce = (err) => {
         const msg = err?.message || String(err);
