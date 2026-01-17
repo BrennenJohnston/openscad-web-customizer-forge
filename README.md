@@ -437,14 +437,15 @@ openscad-forge ci --list
 ```
 
 **Options:**
-- `--provider <name>` — CI/CD provider: `github`, `gitlab`, `vercel`, `netlify`, `docker`, `validation`
+- `--provider <name>` — CI/CD provider: `cloudflare`, `github`, `gitlab`, `vercel`, `netlify`, `docker`, `validation`
 - `-o, --out <path>` — Output directory (default: current directory)
 - `--list` — List available providers
 
 **Available Providers:**
+- `cloudflare` — Cloudflare Pages deployment (recommended, unlimited bandwidth)
 - `github` — GitHub Actions workflow with testing and deployment
 - `gitlab` — GitLab CI/CD pipeline
-- `vercel` — Vercel deployment configuration
+- `vercel` — Vercel deployment configuration (legacy)
 - `netlify` — Netlify deployment configuration
 - `docker` — Docker containerization (Dockerfile, nginx.conf, docker-compose.yml)
 - `validation` — Golden fixtures and automated testing
@@ -494,9 +495,74 @@ openscad-forge sync ./box-customizer --apply-safe-fixes
 || `Home` | Minimize parameter panel (when gutter focused) |
 || `End` | Maximize parameter panel (when gutter focused) |
 
+## 🚀 Deployment
+
+### Recommended: Cloudflare Pages
+
+Cloudflare Pages is the **primary hosting platform** for OpenSCAD Web Customizer Forge. It provides:
+
+- ✅ **Unlimited bandwidth** (ideal for WASM apps with ~15-30 MB downloads)
+- ✅ **Global CDN** for fast delivery worldwide
+- ✅ **Custom headers support** via `_headers` file (required for WASM)
+- ✅ **Automatic deployments** from Git
+- ✅ **Free tier** with 500 build minutes/month
+
+**Quick Deploy**:
+
+```bash
+# Method 1: Wrangler CLI
+npm install -g wrangler
+wrangler login
+npm run build
+wrangler pages deploy dist --project-name=your-project-name
+
+# Method 2: Git Integration (Recommended)
+# Connect your GitHub repo in Cloudflare Dashboard
+# Automatic deployments on every push
+```
+
+**Configuration**: Pre-configured with COOP/COEP headers in `public/_headers` and SPA routing in `public/_redirects`.
+
+📖 **[Complete Deployment Guide →](docs/guides/CLOUDFLARE_PAGES_DEPLOYMENT.md)**
+
+### Alternative Platforms
+
+| Platform | Bandwidth (Free) | Headers Support | Status |
+|----------|------------------|-----------------|--------|
+| **Cloudflare Pages** | **Unlimited** | ✅ `_headers` file | **Primary** |
+| Vercel | 100 GB/month | ✅ `vercel.json` | Legacy fallback |
+| Netlify | 100 GB/month | ✅ `netlify.toml` | Compatible |
+| GitHub Pages | Unlimited | ❌ No custom headers | Not recommended* |
+
+*GitHub Pages doesn't support custom HTTP headers, which limits future WASM threading capabilities.
+
+**Technical Note**: The current build (`openscad-wasm-prebuilt@1.2.0`) is non-threaded and technically works without COOP/COEP headers. However, headers are configured for future-proofing and best practices. See [WASM Threading Analysis](docs/research/WASM_THREADING_ANALYSIS.md) for details.
+
+### Additional Resources
+
+- 🔍 [WASM Threading Analysis](docs/research/WASM_THREADING_ANALYSIS.md) — Technical analysis of SharedArrayBuffer requirements
+- 🔬 [Comparable Projects Research](docs/research/COMPARABLE_PROJECTS.md) — How similar projects handle hosting
+- ✅ [Cloudflare Configuration Validation](docs/research/CLOUDFLARE_VALIDATION.md) — Verified setup documentation
+- 🔄 [Vercel Legacy Configuration](docs/guides/VERCEL_LEGACY_CONFIG.md) — Rollback option
+
 ## 📖 Documentation
 
+### Deployment & Hosting
+
+- [Cloudflare Pages Deployment](docs/guides/CLOUDFLARE_PAGES_DEPLOYMENT.md) — **Primary hosting guide** (recommended)
+- [Vercel Deployment](docs/guides/DEPLOYMENT_GUIDE.md) — Alternative hosting (legacy)
+- [Vercel Legacy Configuration](docs/guides/VERCEL_LEGACY_CONFIG.md) — Rollback instructions
+
+### Technical Research
+
+- [WASM Threading Analysis](docs/research/WASM_THREADING_ANALYSIS.md) — SharedArrayBuffer requirements analysis
+- [Comparable Projects Research](docs/research/COMPARABLE_PROJECTS.md) — Industry patterns and validation
+- [Cloudflare Configuration Validation](docs/research/CLOUDFLARE_VALIDATION.md) — Production-ready verification
+
+### Development & Architecture
+
 - [Build Plan](docs/BUILD_PLAN_NEW.md) — Development roadmap and architecture
+- [Choosing Forge vs Playground](docs/guides/CHOOSING_FORGE_VS_PLAYGROUND.md) — Which tool to use and why
 - [Troubleshooting](docs/TROUBLESHOOTING.md) — Common issues and solutions
 - [Parameter Schema Spec](docs/specs/PARAMETER_SCHEMA_SPEC.md) — JSON Schema format
 - [Test Report](TEST_REPORT.md) — Comprehensive testing results
@@ -621,6 +687,9 @@ See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 **Reference implementations:**
 - [seasick/openscad-web-gui](https://github.com/seasick/openscad-web-gui) — WASM integration patterns (GPL-3.0)
 - [openscad/openscad-playground](https://github.com/openscad/openscad-playground) — Official web playground
+
+**Choosing a tool:**
+- If you’re deciding between this project and OpenSCAD Playground, see [Choosing Forge vs Playground](docs/guides/CHOOSING_FORGE_VS_PLAYGROUND.md).
 
 ## 🤝 Contributing
 

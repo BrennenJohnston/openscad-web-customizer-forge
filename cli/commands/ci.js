@@ -121,21 +121,13 @@ deploy_production:
   },
   
   vercel: {
-    name: 'Vercel',
-    description: 'Vercel deployment configuration',
+    name: 'Vercel (Legacy)',
+    description: 'Vercel deployment configuration (see Cloudflare Pages as alternative)',
     files: {
       'vercel.json': `{
-  "version": 2,
-  "framework": "vite",
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "installCommand": "npm install",
-  "devCommand": "npm run dev",
-  "cleanUrls": true,
-  "trailingSlash": false,
   "headers": [
     {
-      "source": "/wasm/(.*)",
+      "source": "/(.*)",
       "headers": [
         {
           "key": "Cross-Origin-Opener-Policy",
@@ -144,32 +136,16 @@ deploy_production:
         {
           "key": "Cross-Origin-Embedder-Policy",
           "value": "require-corp"
-        }
-      ]
-    },
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
         },
         {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
+          "key": "Cross-Origin-Resource-Policy",
+          "value": "cross-origin"
         }
       ]
     }
   ],
   "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
 `,
@@ -187,18 +163,15 @@ deploy_production:
 [build.environment]
   NODE_VERSION = "18"
 
-[[headers]]
-  for = "/wasm/*"
-  [headers.values]
-    Cross-Origin-Opener-Policy = "same-origin"
-    Cross-Origin-Embedder-Policy = "require-corp"
-
+# Cross-origin isolation headers (required for WASM SharedArrayBuffer)
 [[headers]]
   for = "/*"
   [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Embedder-Policy = "require-corp"
+    Cross-Origin-Resource-Policy = "cross-origin"
     X-Content-Type-Options = "nosniff"
-    X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
+    X-Frame-Options = "SAMEORIGIN"
     Referrer-Policy = "strict-origin-when-cross-origin"
 
 [[redirects]]
@@ -300,6 +273,86 @@ README.md
 .env
 .env.local
 .DS_Store
+`,
+    },
+  },
+  
+  cloudflare: {
+    name: 'Cloudflare Pages',
+    description: 'Cloudflare Pages deployment configuration (recommended)',
+    files: {
+      'public/_headers': `# Cloudflare Pages Headers Configuration
+# Required for OpenSCAD WASM SharedArrayBuffer support
+
+# Apply cross-origin isolation headers to all routes
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Resource-Policy: cross-origin
+
+# Security headers
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# Cache static assets aggressively
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Cache WASM files
+/*.wasm
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: application/wasm
+
+# Don't cache HTML (always fresh)
+/*.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/
+  Cache-Control: no-cache, no-store, must-revalidate
+`,
+      'public/_redirects': `# Cloudflare Pages Redirects Configuration
+# SPA fallback - all routes serve index.html
+
+/*    /index.html   200
+`,
+      '.github/workflows/cloudflare-pages.yml': `name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build
+        run: npm run build
+      
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: \${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: \${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=openscad-customizer
 `,
     },
   },
@@ -473,11 +526,28 @@ export async function ciCommand(options) {
       console.log(chalk.gray('   - VERCEL_ORG_ID'));
       console.log(chalk.gray('   - VERCEL_PROJECT_ID'));
       console.log(chalk.gray('2. Push to GitHub to trigger workflow'));
+    } else if (options.provider === 'cloudflare') {
+      console.log(chalk.blue('\\n🚀 Next Steps:'));
+      console.log(chalk.gray('1. Create Cloudflare account at https://dash.cloudflare.com'));
+      console.log(chalk.gray('2. Install Wrangler CLI: npm i -g wrangler'));
+      console.log(chalk.gray('3. Login: wrangler login'));
+      console.log(chalk.gray('4. Create project: wrangler pages project create <name>'));
+      console.log(chalk.gray('5. Build: npm run build'));
+      console.log(chalk.gray('6. Deploy: wrangler pages deploy dist --project-name=<name>'));
+      console.log(chalk.gray('\\nFor GitHub Actions:'));
+      console.log(chalk.gray('  Add secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID'));
     } else if (options.provider === 'vercel') {
       console.log(chalk.blue('\\n🚀 Next Steps:'));
       console.log(chalk.gray('1. Install Vercel CLI: npm i -g vercel'));
       console.log(chalk.gray('2. Login: vercel login'));
       console.log(chalk.gray('3. Deploy: vercel --prod'));
+      console.log(chalk.yellow('\\nNote: Consider Cloudflare Pages for unlimited bandwidth'));
+    } else if (options.provider === 'netlify') {
+      console.log(chalk.blue('\\n🚀 Next Steps:'));
+      console.log(chalk.gray('1. Install Netlify CLI: npm i -g netlify-cli'));
+      console.log(chalk.gray('2. Login: netlify login'));
+      console.log(chalk.gray('3. Init: netlify init'));
+      console.log(chalk.gray('4. Deploy: netlify deploy --prod'));
     } else if (options.provider === 'docker') {
       console.log(chalk.blue('\\n🚀 Next Steps:'));
       console.log(chalk.gray('1. Build image: docker build -t openscad-customizer .'));
