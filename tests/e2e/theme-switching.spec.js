@@ -13,12 +13,12 @@ test.describe('Theme Switching', () => {
   })
 
   test('should have theme toggle button visible', async ({ page }) => {
-    const themeButton = page.locator('button[aria-label*="theme"], button[title*="theme"], button:has-text("Theme")')
+    const themeButton = page.locator('#themeToggle')
     await expect(themeButton).toBeVisible()
   })
 
   test('should toggle between light and dark themes', async ({ page }) => {
-    const themeButton = page.locator('button[aria-label*="theme"], button[title*="theme"], button:has-text("Theme")')
+    const themeButton = page.locator('#themeToggle')
     
     if (!(await themeButton.isVisible())) {
       test.skip()
@@ -53,7 +53,7 @@ test.describe('Theme Switching', () => {
   })
 
   test('should apply theme-specific colors', async ({ page }) => {
-    const themeButton = page.locator('button[aria-label*="theme"], button[title*="theme"]')
+    const themeButton = page.locator('#themeToggle')
     
     if (!(await themeButton.isVisible())) {
       test.skip()
@@ -124,7 +124,7 @@ test.describe('Theme Switching', () => {
   })
 
   test('should persist theme choice across page reloads', async ({ page }) => {
-    const themeButton = page.locator('button[aria-label*="theme"], button[title*="theme"]')
+    const themeButton = page.locator('#themeToggle')
     
     if (!(await themeButton.isVisible())) {
       test.skip()
@@ -153,7 +153,7 @@ test.describe('Theme Switching', () => {
   })
 
   test('should update all UI elements when theme changes', async ({ page }) => {
-    const themeButton = page.locator('button[aria-label*="theme"], button[title*="theme"]')
+    const themeButton = page.locator('#themeToggle')
     
     if (!(await themeButton.isVisible())) {
       test.skip()
@@ -181,7 +181,7 @@ test.describe('Theme Switching', () => {
   })
 
   test('should have accessible focus indicators in all themes', async ({ page }) => {
-    const themeButton = page.locator('button[aria-label*="theme"], button[title*="theme"]')
+    const themeButton = page.locator('#themeToggle')
     
     if (!(await themeButton.isVisible())) {
       test.skip()
@@ -263,7 +263,7 @@ test.describe('Theme Switching', () => {
   })
 
   test('should announce theme changes to screen readers', async ({ page }) => {
-    const themeButton = page.locator('button[aria-label*="theme"], button[title*="theme"]')
+    const themeButton = page.locator('#themeToggle')
     
     if (!(await themeButton.isVisible())) {
       test.skip()
@@ -279,7 +279,7 @@ test.describe('Theme Switching', () => {
   })
 
   test('should maintain theme when loading different examples', async ({ page }) => {
-    const themeButton = page.locator('button[aria-label*="theme"], button[title*="theme"]')
+    const themeButton = page.locator('#themeToggle')
     
     if (!(await themeButton.isVisible())) {
       test.skip()
@@ -310,7 +310,7 @@ test.describe('Theme Switching', () => {
   })
 
   test('should cycle through all available themes', async ({ page }) => {
-    const themeButton = page.locator('button[aria-label*="theme"], button[title*="theme"]')
+    const themeButton = page.locator('#themeToggle')
     
     if (!(await themeButton.isVisible())) {
       test.skip()
