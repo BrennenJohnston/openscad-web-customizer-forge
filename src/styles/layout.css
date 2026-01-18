@@ -227,6 +227,17 @@ body {
 .welcome-content {
   max-width: 600px;
   text-align: center;
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-height: 720px) {
+  .welcome-screen {
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding-top: var(--space-lg);
+    padding-bottom: var(--space-lg);
+  }
 }
 
 .welcome-content h2 {
@@ -355,6 +366,88 @@ body {
 :root[data-theme='dark'] .param-panel::-webkit-scrollbar-thumb:hover,
 :root[data-theme='dark'] .preview-content::-webkit-scrollbar-thumb:hover {
   background-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Vertical split layout for preview content */
+.preview-content {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Preview canvas section - contains the 3D preview */
+.preview-canvas-section {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 150px;
+  overflow: hidden;
+}
+
+.preview-canvas-section .preview-container {
+  flex: 1 1 auto;
+  min-height: 150px;
+}
+
+/* Preview info section - contains settings, stats, dimensions */
+.preview-info-section {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 80px;
+  max-height: 50%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Vertical gutter styles */
+.gutter.gutter-vertical {
+  cursor: row-resize;
+  height: 8px;
+  width: 100%;
+  background-color: var(--color-border);
+  flex-shrink: 0;
+  position: relative;
+  transition: background-color 0.2s ease;
+}
+
+.gutter.gutter-vertical:hover {
+  background-color: var(--color-accent);
+}
+
+.gutter.gutter-vertical:focus {
+  background-color: var(--color-accent);
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.gutter.gutter-vertical:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.gutter.gutter-vertical:focus-visible {
+  background-color: var(--color-accent);
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Vertical gutter grip indicator */
+.gutter.gutter-vertical::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 3px;
+  background-color: currentColor;
+  border-radius: 2px;
+  opacity: 0.5;
+}
+
+.gutter.gutter-vertical:hover::before,
+.gutter.gutter-vertical:focus::before {
+  opacity: 1;
 }
 
 /* Preview container within scrollable area - fills available space */
@@ -703,6 +796,20 @@ body {
   display: none;
 }
 
+/* Focus mode: hide vertical gutter and info section */
+.main-interface.focus-mode .gutter.gutter-vertical {
+  display: none;
+}
+
+.main-interface.focus-mode .preview-info-section {
+  display: none;
+}
+
+.main-interface.focus-mode .preview-canvas-section {
+  flex: 1;
+  min-height: 0;
+}
+
 .main-interface.focus-mode .actions > *:not(#primaryActionBtn):not(#cancelRenderBtn):not(#focusModeBtn) {
   display: none;
 }
@@ -731,6 +838,26 @@ body {
 
   .preview-content {
     flex: 1 1 auto;
+  }
+
+  /* Vertical split on mobile - give more space to preview by default */
+  .preview-canvas-section {
+    min-height: 200px;
+  }
+
+  .preview-info-section {
+    min-height: 60px;
+    max-height: 40%;
+  }
+
+  /* Larger touch target for vertical gutter on mobile */
+  .gutter.gutter-vertical {
+    height: 12px;
+  }
+
+  .gutter.gutter-vertical::before {
+    width: 60px;
+    height: 4px;
   }
 
   .preview-panel .actions {

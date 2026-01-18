@@ -22,6 +22,11 @@ import {
   RenderController,
   RENDER_QUALITY,
   estimateRenderTime,
+  analyzeComplexity,
+  getAdaptiveQualityConfig,
+  getQualityPreset,
+  COMPLEXITY_TIER,
+  formatPresetDescription,
 } from './js/render-controller.js';
 import { PreviewManager } from './js/preview.js';
 import {
@@ -41,6 +46,30 @@ import { ComparisonView } from './js/comparison-view.js';
 import { libraryManager, LIBRARY_DEFINITIONS } from './js/library-manager.js';
 import { RenderQueue } from './js/render-queue.js';
 import Split from 'split.js';
+
+// Example definitions (used by welcome screen and Features Guide)
+const EXAMPLE_DEFINITIONS = {
+  'braille-embosser': {
+    path: '/examples/braille-embosser/braille_embosser.scad',
+    name: 'braille_embosser.scad',
+  },
+  'simple-box': {
+    path: '/examples/simple-box/simple_box.scad',
+    name: 'simple_box.scad',
+  },
+  cylinder: {
+    path: '/examples/parametric-cylinder/parametric_cylinder.scad',
+    name: 'parametric_cylinder.scad',
+  },
+  'library-test': {
+    path: '/examples/library-test/library_test.scad',
+    name: 'library_test.scad',
+  },
+  'colored-box': {
+    path: '/examples/colored-box/colored_box.scad',
+    name: 'colored_box.scad',
+  },
+};
 
 // Feature detection
 function checkBrowserSupport() {
@@ -142,10 +171,25 @@ function sanitizeUrlParams(extracted, urlParams) {
   return { sanitized, adjustments };
 }
 
-// Initialize app
-async function initApp() {
+  // Initialize app
+  async function initApp() {
   console.log('OpenSCAD Web Customizer v2.9.0 (WASM Progress & Mobile)');
   console.log('Initializing...');
+
+    let statusArea = null;
+    let autoPreviewEnabled = true;
+    let previewQuality = RENDER_QUALITY.PREVIEW;
+    let previewQualityMode = 'balanced';
+
+    const AUTO_PREVIEW_FORCE_FAST_MS = 2 * 60 * 1000;
+    const AUTO_PREVIEW_SLOW_RENDER_MS = 7000;
+    const AUTO_PREVIEW_TRIANGLE_THRESHOLD = 200000;
+    const autoPreviewHints = {
+      forceFastUntil: 0,
+      lastPreviewDurationMs: null,
+      lastPreviewTriangles: null,
+    };
+    let adaptivePreviewMemo = { key: null, info: null };
 
   // Register Service Worker for PWA support
   // In development, avoid Service Worker caching/stale assets which can break testing.
@@ -316,13 +360,31 @@ async function initApp() {
       `[Memory] High usage: ${memoryInfo.usedMB}MB / ${memoryInfo.limitMB}MB (${memoryInfo.percent}%)`
     );
     showMemoryWarning(memoryInfo);
+    if (previewQualityMode === 'auto') {
+      autoPreviewHints.forceFastUntil = Date.now() + AUTO_PREVIEW_FORCE_FAST_MS;
+      adaptivePreviewMemo = { key: null, info: null };
+      if (autoPreviewController) {
+        autoPreviewController.clearPreviewCache();
+        const state = stateManager.getState();
+        if (state?.uploadedFile) {
+          autoPreviewController.onParameterChange(state.parameters);
+        }
+      }
+    }
   });
 
   // Show WASM loading progress indicator
   const wasmLoadingOverlay = showWasmLoadingIndicator();
 
   try {
+    const assetBaseUrl = new URL(
+      import.meta.env.BASE_URL,
+      window.location.origin
+    )
+      .toString()
+      .replace(/\/$/, '');
     await renderController.init({
+      assetBaseUrl,
       onProgress: (percent, message) => {
         console.log(`[WASM Init] ${percent}% - ${message}`);
         updateWasmLoadingProgress(wasmLoadingOverlay, percent, message);
@@ -333,9 +395,12 @@ async function initApp() {
   } catch (error) {
     console.error('Failed to initialize OpenSCAD WASM:', error);
     hideWasmLoadingIndicator(wasmLoadingOverlay);
+    updateStatus('OpenSCAD engine failed to initialize');
+    const details = error?.details ? ` Details: ${error.details}` : '';
     alert(
       'Failed to initialize OpenSCAD engine. Some features may not work. Error: ' +
-        error.message
+        error.message +
+        details
     );
   }
 
@@ -485,7 +550,7 @@ async function initApp() {
   const uploadZone = document.getElementById('uploadZone');
   const fileInput = document.getElementById('fileInput');
   const clearFileBtn = document.getElementById('clearFileBtn');
-  const statusArea = document.getElementById('statusArea');
+  statusArea = document.getElementById('statusArea');
   const primaryActionBtn = document.getElementById('primaryActionBtn');
   const cancelRenderBtn = document.getElementById('cancelRenderBtn');
   const downloadFallbackLink = document.getElementById('downloadFallbackLink');
@@ -493,7 +558,9 @@ async function initApp() {
   const previewContainer = document.getElementById('previewContainer');
   const autoPreviewToggle = document.getElementById('autoPreviewToggle');
   const previewQualitySelect = document.getElementById('previewQualitySelect');
+  const exportQualitySelect = document.getElementById('exportQualitySelect');
   const measurementsToggle = document.getElementById('measurementsToggle');
+  const gridToggle = document.getElementById('gridToggle');
   const dimensionsDisplay = document.getElementById('dimensionsDisplay');
   // Note: outputFormatSelect and formatInfo already declared above
 
@@ -514,22 +581,157 @@ async function initApp() {
   // Track last generated parameters for comparison
   let lastGeneratedParamsHash = null;
 
-  // Auto-preview enabled by default
-  let autoPreviewEnabled = true;
-  let previewQuality = RENDER_QUALITY.PREVIEW;
+  // Auto-preview enabled by default (values initialized earlier)
+  const getSelectedPreviewQualityMode = () => {
+    return previewQualitySelect?.value || 'balanced';
+  };
 
-  const getSelectedPreviewQuality = () => {
-    const value = previewQualitySelect?.value || 'balanced';
-    switch (value) {
+  const getSelectedExportQualityMode = () => {
+    return exportQualitySelect?.value || 'model';
+  };
+
+  const getManualPreviewQuality = (mode) => {
+    switch (mode) {
       case 'fast':
         return RENDER_QUALITY.DRAFT;
       case 'fidelity':
-        // Prefer model defaults (no forced tessellation).
-        return null;
+        // Use desktop-equivalent quality - matches OpenSCAD F6 render
+        // Respects model's tessellation settings while ensuring OpenSCAD defaults
+        return RENDER_QUALITY.DESKTOP_DEFAULT;
       case 'balanced':
       default:
         return RENDER_QUALITY.PREVIEW;
     }
+  };
+
+  /**
+   * Get export quality preset using adaptive tier system
+   * @param {string} mode - Quality mode (low, medium, high, model)
+   * @returns {Object|null} Quality preset or null for model default
+   */
+  const getExportQualityPreset = (mode) => {
+    if (mode === 'model') {
+      // null = use model's own quality settings (FULL quality with no overrides)
+      return null;
+    }
+    
+    // Get current complexity tier from state
+    const state = stateManager.getState();
+    const tier = state?.complexityTier || COMPLEXITY_TIER.STANDARD;
+    const hardware = state?.adaptiveQualityConfig?.hardware || { level: 'medium' };
+    
+    // Get tier-appropriate preset
+    return getQualityPreset(tier, hardware.level, mode, 'export');
+  };
+
+  /**
+   * Get adaptive preview info using tier system
+   * @param {Object} parameters - Current parameters
+   * @returns {Object} { quality, qualityKey }
+   */
+  const getAdaptivePreviewInfo = (parameters) => {
+    const state = stateManager.getState();
+    const scadContent = state?.uploadedFile?.content || '';
+    const tier = state?.complexityTier || COMPLEXITY_TIER.STANDARD;
+    const hardware = state?.adaptiveQualityConfig?.hardware || { level: 'medium' };
+    
+    const scadSignature = state?.uploadedFile
+      ? `${state.uploadedFile.name}|${scadContent.length}|${tier}`
+      : 'none';
+    const memoKey = `${hashParams(parameters)}|${scadSignature}|${autoPreviewHints.forceFastUntil}|${autoPreviewHints.lastPreviewDurationMs}|${autoPreviewHints.lastPreviewTriangles}`;
+    if (adaptivePreviewMemo.key === memoKey) {
+      return adaptivePreviewMemo.info;
+    }
+
+    const now = Date.now();
+    const forceFast = now < autoPreviewHints.forceFastUntil;
+    const slowRender =
+      autoPreviewHints.lastPreviewDurationMs &&
+      autoPreviewHints.lastPreviewDurationMs >= AUTO_PREVIEW_SLOW_RENDER_MS;
+    const heavyTriangles =
+      autoPreviewHints.lastPreviewTriangles &&
+      autoPreviewHints.lastPreviewTriangles >= AUTO_PREVIEW_TRIANGLE_THRESHOLD;
+
+    let estimatedSlow = false;
+    if (scadContent) {
+      const estimate = estimateRenderTime(scadContent, parameters);
+      estimatedSlow =
+        estimate.warning ||
+        estimate.seconds >= 12 ||
+        estimate.complexity >= 120;
+    }
+
+    // Determine preview quality level based on conditions
+    const useFast = forceFast || slowRender || heavyTriangles || estimatedSlow;
+    const qualityLevel = useFast ? 'low' : 'medium';
+    
+    // Get tier-appropriate preview preset
+    const quality = getQualityPreset(tier, hardware.level, qualityLevel, 'preview');
+    const qualityKey = useFast ? `auto-fast-${tier}` : `auto-balanced-${tier}`;
+    
+    const info = { quality, qualityKey };
+    adaptivePreviewMemo = { key: memoKey, info };
+    return info;
+  };
+
+  const applyAutoPreviewOverrides = (parameters, qualityKey) => {
+    if (!qualityKey?.startsWith('auto-fast')) {
+      return parameters;
+    }
+
+    const adjusted = { ...parameters };
+    if (Object.prototype.hasOwnProperty.call(adjusted, 'render_quality')) {
+      adjusted.render_quality = 'Low';
+    }
+    if (Object.prototype.hasOwnProperty.call(adjusted, 'cone_segments')) {
+      const raw = Number(adjusted.cone_segments);
+      if (Number.isFinite(raw)) {
+        adjusted.cone_segments = Math.max(8, Math.min(12, raw));
+      } else {
+        adjusted.cone_segments = 12;
+      }
+    }
+
+    return adjusted;
+  };
+
+  const resolveAdaptiveQuality = (parameters) =>
+    getAdaptivePreviewInfo(parameters).quality;
+  const resolveAdaptiveCacheKey = (parameters) =>
+    getAdaptivePreviewInfo(parameters).qualityKey;
+  const resolveAdaptiveParameters = (parameters, qualityKey) =>
+    applyAutoPreviewOverrides(parameters, qualityKey);
+
+  const applyPreviewQualityMode = () => {
+    previewQualityMode = getSelectedPreviewQualityMode();
+    adaptivePreviewMemo = { key: null, info: null };
+
+    if (previewQualityMode === 'auto') {
+      previewQuality = null;
+      if (autoPreviewController) {
+        autoPreviewController.setPreviewQualityResolver(resolveAdaptiveQuality);
+        autoPreviewController.setPreviewCacheKeyResolver(resolveAdaptiveCacheKey);
+        autoPreviewController.setPreviewParametersResolver(resolveAdaptiveParameters);
+        autoPreviewController.setPreviewQuality(null);
+      }
+      return;
+    }
+
+    previewQuality = getManualPreviewQuality(previewQualityMode);
+    if (autoPreviewController) {
+      autoPreviewController.setPreviewQualityResolver(null);
+      autoPreviewController.setPreviewCacheKeyResolver(null);
+      autoPreviewController.setPreviewParametersResolver(null);
+      autoPreviewController.setPreviewQuality(previewQuality);
+    }
+  };
+
+  let exportQualityMode = getSelectedExportQualityMode();
+  let exportQualityPreset = getExportQualityPreset(exportQualityMode);
+
+  const applyExportQualityMode = () => {
+    exportQualityMode = getSelectedExportQualityMode();
+    exportQualityPreset = getExportQualityPreset(exportQualityMode);
   };
 
   // Wire preview settings UI
@@ -544,16 +746,22 @@ async function initApp() {
   }
 
   if (previewQualitySelect) {
-    previewQuality = getSelectedPreviewQuality();
+    applyPreviewQualityMode();
     previewQualitySelect.addEventListener('change', () => {
-      previewQuality = getSelectedPreviewQuality();
+      applyPreviewQualityMode();
       if (autoPreviewController) {
-        autoPreviewController.setPreviewQuality(previewQuality);
         const state = stateManager.getState();
         if (state?.uploadedFile) {
           autoPreviewController.onParameterChange(state.parameters);
         }
       }
+    });
+  }
+
+  if (exportQualitySelect) {
+    applyExportQualityMode();
+    exportQualitySelect.addEventListener('change', () => {
+      applyExportQualityMode();
     });
   }
 
@@ -569,6 +777,17 @@ async function initApp() {
         updateDimensionsDisplay();
       }
       console.log(`[App] Measurements ${enabled ? 'enabled' : 'disabled'}`);
+    });
+  }
+
+  // Wire grid toggle
+  if (gridToggle) {
+    gridToggle.addEventListener('change', () => {
+      const enabled = gridToggle.checked;
+      if (previewManager) {
+        previewManager.toggleGrid(enabled);
+      }
+      console.log(`[App] Grid ${enabled ? 'enabled' : 'disabled'}`);
     });
   }
 
@@ -644,9 +863,26 @@ async function initApp() {
 
     // Update stats if provided
     if (extra.stats && state === PREVIEW_STATE.CURRENT) {
+      let previewPercentText = '';
+      if (!extra.fullQuality && autoPreviewController) {
+        const currentParams = stateManager.getState()?.parameters;
+        const fullStats = autoPreviewController.getCurrentFullSTL(currentParams)?.stats;
+        if (
+          typeof fullStats?.triangles === 'number' &&
+          fullStats.triangles > 0 &&
+          typeof extra.stats.triangles === 'number'
+        ) {
+          const ratio = Math.max(
+            0,
+            Math.min(1, extra.stats.triangles / fullStats.triangles)
+          );
+          previewPercentText = ` (${Math.round(ratio * 100)}% of full)`;
+        }
+      }
+
       const qualityLabel = extra.fullQuality
         ? '<span class="stats-quality full">Full Quality</span>'
-        : '<span class="stats-quality preview">Preview Quality</span>';
+        : `<span class="stats-quality preview">Preview Quality${previewPercentText}</span>`;
       statsArea.innerHTML = `${qualityLabel} Size: ${formatFileSize(extra.stats.size)} | Triangles: ${extra.stats.triangles.toLocaleString()}`;
     }
   }
@@ -671,12 +907,28 @@ async function initApp() {
         debounceMs: 350,
         maxCacheSize: 10,
         enabled: autoPreviewEnabled,
-        previewQuality,
+        previewQuality: previewQualityMode === 'auto' ? null : previewQuality,
+        resolvePreviewQuality:
+          previewQualityMode === 'auto' ? resolveAdaptiveQuality : null,
+        resolvePreviewCacheKey:
+          previewQualityMode === 'auto' ? resolveAdaptiveCacheKey : null,
+        resolvePreviewParameters:
+          previewQualityMode === 'auto' ? resolveAdaptiveParameters : null,
         onStateChange: (newState, prevState, extra) => {
           console.log(
             `[AutoPreview] State: ${prevState} -> ${newState}`,
             extra
           );
+          if (newState === PREVIEW_STATE.CURRENT) {
+            if (typeof extra?.renderDurationMs === 'number') {
+              autoPreviewHints.lastPreviewDurationMs = extra.renderDurationMs;
+              adaptivePreviewMemo = { key: null, info: null };
+            }
+            if (typeof extra?.stats?.triangles === 'number') {
+              autoPreviewHints.lastPreviewTriangles = extra.stats.triangles;
+              adaptivePreviewMemo = { key: null, info: null };
+            }
+          }
           updatePreviewStateUI(newState, extra);
         },
         onPreviewReady: (stl, stats, cached) => {
@@ -867,6 +1119,7 @@ async function initApp() {
 
   // Update status
   function updateStatus(message) {
+    if (!statusArea) return;
     statusArea.textContent = message;
     
     // Add/remove idle class for auto-hide when status is "Ready"
@@ -1010,6 +1263,23 @@ async function initApp() {
         .filter((param) => param.uiType === 'color')
         .map((param) => param.name);
 
+      // Analyze file complexity to determine quality tier
+      const complexityAnalysis = analyzeComplexity(fileContent, {});
+      const adaptiveConfig = getAdaptiveQualityConfig(fileContent, {});
+      
+      console.log('[Complexity] Analysis:', {
+        tier: adaptiveConfig.tierName,
+        score: complexityAnalysis.score,
+        curvedFeatures: complexityAnalysis.estimatedCurvedFeatures,
+        hardware: adaptiveConfig.hardware.level,
+        warnings: complexityAnalysis.warnings,
+      });
+      
+      // Show complexity warnings if any
+      if (complexityAnalysis.warnings.length > 0) {
+        complexityAnalysis.warnings.forEach(w => console.warn('[Complexity]', w));
+      }
+
       // Store in state (including project files for multi-file support)
       stateManager.setState({
         uploadedFile: { name: fileName, content: fileContent },
@@ -1018,6 +1288,10 @@ async function initApp() {
         schema: extracted,
         parameters: {},
         defaults: {},
+        // Adaptive quality configuration
+        complexityTier: adaptiveConfig.tier,
+        complexityAnalysis: complexityAnalysis,
+        adaptiveQualityConfig: adaptiveConfig,
       });
 
       // Clear undo/redo history on new file upload
@@ -1053,7 +1327,7 @@ async function initApp() {
       
       if (fileInfo && fileInfoSummary) {
         // Always show compact summary
-        const summaryText = `${fileName} (${paramCount} parameters, ${fileSizeStr})${includeUseWarning}`;
+        const summaryText = `${fileName} (${paramCount} parameters, ${fileSizeStr})`;
         fileInfoSummary.textContent = summaryText;
         fileInfoSummary.title = summaryText; // Full text in tooltip
         
@@ -1075,6 +1349,24 @@ async function initApp() {
       if (appHeader) {
         appHeader.classList.add('compact');
       }
+      
+      // Update complexity tier indicator
+      const complexityTierLabel = document.getElementById('complexityTierLabel');
+      if (complexityTierLabel) {
+        const tierName = adaptiveConfig.tierName;
+        const tierIcon = {
+          'Beginner': '🟢',
+          'Standard': '🔵', 
+          'Complex': '🟡',
+        }[tierName] || '⚪';
+        
+        complexityTierLabel.textContent = `${tierIcon} ${tierName}`;
+        complexityTierLabel.className = `complexity-tier-label tier-${adaptiveConfig.tier}`;
+        complexityTierLabel.title = `${adaptiveConfig.tierDescription}\n` +
+          `Curved features: ~${complexityAnalysis.estimatedCurvedFeatures}\n` +
+          `Hardware: ${adaptiveConfig.hardware.level}\n` +
+          `Preview: ${adaptiveConfig.defaultPreviewLevel}, Export: ${adaptiveConfig.defaultExportLevel}`;
+      }
 
       // Show include/use warning in status if detected
       if (includeUseWarning) {
@@ -1084,6 +1376,11 @@ async function initApp() {
       // Show clear file button and focus mode button
       if (clearFileBtn) {
         clearFileBtn.classList.remove('hidden');
+      }
+      
+      const featuresGuideBtn = document.getElementById('featuresGuideBtn');
+      if (featuresGuideBtn) {
+        featuresGuideBtn.classList.remove('hidden');
       }
       
       const focusModeBtn = document.getElementById('focusModeBtn');
@@ -1098,15 +1395,20 @@ async function initApp() {
         detectedLibraries,
       });
 
-      // Auto-enable detected libraries and show library UI
+      // Auto-enable detected libraries
       if (detectedLibraries.length > 0) {
         const autoEnabled = libraryManager.autoEnable(fileContent);
         if (autoEnabled.length > 0) {
           console.log('Auto-enabled libraries:', autoEnabled);
           updateStatus(`Enabled ${autoEnabled.length} required libraries`);
         }
-        renderLibraryUI(detectedLibraries);
       }
+      
+      // Always show library UI (even when no libraries detected)
+      renderLibraryUI(detectedLibraries);
+      
+      // Render contextual feature hints
+      renderFeatureHints(extracted, fileContent);
 
       // Render parameter UI
       const parametersContainer = document.getElementById(
@@ -1197,6 +1499,11 @@ async function initApp() {
           measurementsToggle.checked = previewManager.measurementsEnabled;
         }
 
+        // Sync grid toggle with saved preference
+        if (gridToggle) {
+          gridToggle.checked = previewManager.gridEnabled;
+        }
+
         // Listen for theme changes and update preview
         themeManager.addListener((theme, activeTheme, highContrast) => {
           if (previewManager) {
@@ -1260,7 +1567,11 @@ async function initApp() {
 
   // File input change
   fileInput.addEventListener('change', (e) => {
-    handleFile(e.target.files[0]);
+    const selectedFile = e.target.files[0];
+    if (!selectedFile) return;
+    handleFile(selectedFile);
+    // Allow re-selecting the same file if needed
+    e.target.value = '';
   });
 
   // Clear file button
@@ -1295,6 +1606,12 @@ async function initApp() {
         // Hide clear button
         clearFileBtn.classList.add('hidden');
         
+        // Hide features guide button
+        const featuresGuideBtn = document.getElementById('featuresGuideBtn');
+        if (featuresGuideBtn) {
+          featuresGuideBtn.classList.add('hidden');
+        }
+        
         // Hide focus mode button
         const focusModeBtn = document.getElementById('focusModeBtn');
         if (focusModeBtn) {
@@ -1304,6 +1621,18 @@ async function initApp() {
             mainInterface.classList.remove('focus-mode');
             focusModeBtn.setAttribute('aria-pressed', 'false');
           }
+        }
+        
+        // Hide feature hints
+        const featureHints = document.getElementById('featureHints');
+        if (featureHints) {
+          featureHints.classList.add('hidden');
+        }
+        
+        // Close Features Guide modal if open
+        const featuresGuideModal = document.getElementById('featuresGuideModal');
+        if (featuresGuideModal && !featuresGuideModal.classList.contains('hidden')) {
+          closeFeaturesGuide();
         }
 
         // Clear preview
@@ -1352,10 +1681,7 @@ async function initApp() {
     handleFile(e.dataTransfer.files[0]);
   });
 
-  // Click to upload
-  uploadZone.addEventListener('click', () => {
-    fileInput.click();
-  });
+  // Click to upload is handled by the label wrapping the input.
 
   // Keyboard support for upload zone
   uploadZone.addEventListener('keydown', (e) => {
@@ -1365,58 +1691,59 @@ async function initApp() {
     }
   });
 
+  // Shared example loader (reusable by welcome buttons and Features Guide)
+  async function loadExampleByKey(exampleKey, { closeModal = false, modalTrigger = null } = {}) {
+    const example = EXAMPLE_DEFINITIONS[exampleKey];
+    if (!example) {
+      console.error('Unknown example type:', exampleKey);
+      return;
+    }
+
+    // Confirm before replacing if file already uploaded
+    const state = stateManager.getState();
+    if (state.uploadedFile) {
+      if (!confirm('Load example? This will replace the current file.')) {
+        return;
+      }
+    }
+
+    try {
+      updateStatus('Loading example...');
+      const response = await fetch(example.path);
+      if (!response.ok) throw new Error('Failed to fetch example');
+
+      const content = await response.text();
+      console.log('Example loaded:', example.name, content.length, 'bytes');
+
+      // Close modal if requested
+      if (closeModal) {
+        const featuresGuideModal = document.getElementById('featuresGuideModal');
+        if (featuresGuideModal) {
+          featuresGuideModal.classList.add('hidden');
+          // Restore focus to trigger
+          if (modalTrigger) {
+            modalTrigger.focus();
+          }
+        }
+      }
+
+      // Treat as uploaded file
+      handleFile({ name: example.name }, content);
+    } catch (error) {
+      console.error('Failed to load example:', error);
+      updateStatus('Error loading example');
+      alert(
+        'Failed to load example file. The file may not be available in the public directory.'
+      );
+    }
+  }
+
   // Load examples - unified handler
   const exampleButtons = document.querySelectorAll('[data-example]');
   exampleButtons.forEach((button) => {
     button.addEventListener('click', async () => {
       const exampleType = button.dataset.example;
-
-      const examples = {
-        'universal-cuff': {
-          path: '/examples/universal-cuff/universal_cuff_utensil_holder.scad',
-          name: 'universal_cuff_utensil_holder.scad',
-        },
-        'simple-box': {
-          path: '/examples/simple-box/simple_box.scad',
-          name: 'simple_box.scad',
-        },
-        cylinder: {
-          path: '/examples/parametric-cylinder/parametric_cylinder.scad',
-          name: 'parametric_cylinder.scad',
-        },
-        'library-test': {
-          path: '/examples/library-test/library_test.scad',
-          name: 'library_test.scad',
-        },
-        'colored-box': {
-          path: '/examples/colored-box/colored_box.scad',
-          name: 'colored_box.scad',
-        },
-      };
-
-      const example = examples[exampleType];
-      if (!example) {
-        console.error('Unknown example type:', exampleType);
-        return;
-      }
-
-      try {
-        updateStatus('Loading example...');
-        const response = await fetch(example.path);
-        if (!response.ok) throw new Error('Failed to fetch example');
-
-        const content = await response.text();
-        console.log('Example loaded:', example.name, content.length, 'bytes');
-
-        // Treat as uploaded file
-        handleFile({ name: example.name }, content);
-      } catch (error) {
-        console.error('Failed to load example:', error);
-        updateStatus('Error loading example');
-        alert(
-          'Failed to load example file. The file may not be available in the public directory.'
-        );
-      }
+      await loadExampleByKey(exampleType);
     });
   });
 
@@ -1627,9 +1954,218 @@ async function initApp() {
     });
   }
 
-  // Resizable Split Panels (Desktop only)
+  // Resizable Split Panels (Desktop only for horizontal, all viewports for vertical)
   let splitInstance = null;
+  let verticalSplitInstance = null;
   const previewPanel = document.querySelector('.preview-panel');
+  const previewCanvasSection = document.getElementById('previewCanvasSection');
+  const previewInfoSection = document.getElementById('previewInfoSection');
+  
+  // Vertical Split (Preview canvas vs info section) - works on all viewports
+  if (previewCanvasSection && previewInfoSection) {
+    const STORAGE_KEY_VERTICAL_SPLIT = 'openscad-customizer-vertical-split-sizes';
+    
+    // Load saved vertical split sizes
+    let initialVerticalSizes = [70, 30]; // Default: 70% preview, 30% info
+    try {
+      const savedSizes = localStorage.getItem(STORAGE_KEY_VERTICAL_SPLIT);
+      if (savedSizes) {
+        const parsed = JSON.parse(savedSizes);
+        if (Array.isArray(parsed) && parsed.length === 2) {
+          initialVerticalSizes = parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not load vertical split sizes:', e);
+    }
+    
+    // Min heights in pixels
+    const verticalMinSizes = [150, 60]; // min preview 150px, min info 60px
+    
+    // Initialize vertical Split.js
+    const initVerticalSplit = function() {
+      if (verticalSplitInstance) {
+        return;
+      }
+      
+      verticalSplitInstance = Split([previewCanvasSection, previewInfoSection], {
+        sizes: initialVerticalSizes,
+        minSize: verticalMinSizes,
+        gutterSize: 8,
+        direction: 'vertical',
+        cursor: 'row-resize',
+        onDrag: () => {
+          // Trigger preview resize during drag
+          if (previewManager) {
+            requestAnimationFrame(() => {
+              previewManager.handleResize();
+            });
+          }
+        },
+        onDragEnd: (sizes) => {
+          // Persist sizes
+          try {
+            localStorage.setItem(STORAGE_KEY_VERTICAL_SPLIT, JSON.stringify(sizes));
+          } catch (e) {
+            console.warn('Could not save vertical split sizes:', e);
+          }
+          
+          // Final resize after drag
+          if (previewManager) {
+            previewManager.handleResize();
+          }
+        },
+      });
+      
+      // Add keyboard accessibility to vertical gutter
+      setTimeout(() => {
+        const verticalGutter = document.querySelector('.gutter.gutter-vertical');
+        if (verticalGutter) {
+          // Make gutter focusable
+          verticalGutter.setAttribute('tabindex', '0');
+          verticalGutter.setAttribute('role', 'separator');
+          verticalGutter.setAttribute('aria-orientation', 'horizontal');
+          verticalGutter.setAttribute('aria-label', 'Resize preview and settings areas');
+          verticalGutter.setAttribute('aria-controls', 'previewCanvasSection previewInfoSection');
+          
+          // Get current sizes
+          const getCurrentVerticalSizes = () => {
+            const canvasHeight = previewCanvasSection.offsetHeight;
+            const infoHeight = previewInfoSection.offsetHeight;
+            const totalHeight = canvasHeight + infoHeight;
+            if (!totalHeight) return [70, 30];
+            return [
+              (canvasHeight / totalHeight) * 100,
+              (infoHeight / totalHeight) * 100,
+            ];
+          };
+          
+          const getVerticalAriaRange = () => {
+            const totalHeight = previewCanvasSection.offsetHeight + previewInfoSection.offsetHeight;
+            if (!totalHeight) {
+              return { min: 20, max: 95 };
+            }
+            const minCanvas = Math.round((verticalMinSizes[0] / totalHeight) * 100);
+            const maxCanvas = Math.round((1 - verticalMinSizes[1] / totalHeight) * 100);
+            return {
+              min: Math.max(20, Math.min(minCanvas, maxCanvas)),
+              max: Math.min(95, Math.max(minCanvas, maxCanvas)),
+            };
+          };
+          
+          // Set aria-value attributes
+          const updateVerticalAriaValues = () => {
+            const sizes = getCurrentVerticalSizes();
+            const { min, max } = getVerticalAriaRange();
+            verticalGutter.setAttribute('aria-valuenow', Math.round(sizes[0]));
+            verticalGutter.setAttribute('aria-valuemin', String(min));
+            verticalGutter.setAttribute('aria-valuemax', String(max));
+            verticalGutter.setAttribute('aria-valuetext', `Preview: ${Math.round(sizes[0])}%, Settings: ${Math.round(sizes[1])}%`);
+          };
+          
+          updateVerticalAriaValues();
+          
+          // Keyboard navigation for vertical gutter
+          verticalGutter.addEventListener('keydown', (e) => {
+            if (['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) {
+              e.preventDefault();
+              
+              const sizes = getCurrentVerticalSizes();
+              let newCanvasSize = sizes[0];
+              const { min, max } = getVerticalAriaRange();
+              
+              // Calculate step size
+              const smallStep = 3; // 3%
+              const largeStep = 10; // 10% with Shift
+              const step = e.shiftKey ? largeStep : smallStep;
+              
+              // Adjust size based on key (Up = more preview, Down = less preview)
+              switch (e.key) {
+                case 'ArrowUp':
+                  newCanvasSize = Math.min(max, sizes[0] + step);
+                  break;
+                case 'ArrowDown':
+                  newCanvasSize = Math.max(min, sizes[0] - step);
+                  break;
+                case 'Home':
+                  newCanvasSize = max; // Maximize preview
+                  break;
+                case 'End':
+                  newCanvasSize = min; // Minimize preview
+                  break;
+              }
+              
+              const newInfoSize = 100 - newCanvasSize;
+              
+              // Apply new sizes
+              if (verticalSplitInstance) {
+                verticalSplitInstance.setSizes([newCanvasSize, newInfoSize]);
+                
+                // Save to localStorage
+                try {
+                  localStorage.setItem(STORAGE_KEY_VERTICAL_SPLIT, JSON.stringify([newCanvasSize, newInfoSize]));
+                } catch (err) {
+                  console.warn('Could not save vertical split sizes:', err);
+                }
+                
+                // Update ARIA values
+                updateVerticalAriaValues();
+                
+                // Trigger preview resize
+                if (previewManager) {
+                  previewManager.handleResize();
+                }
+              }
+            }
+          });
+          
+          // Update ARIA values after drag
+          verticalGutter.addEventListener('mouseup', updateVerticalAriaValues);
+          verticalGutter.addEventListener('touchend', updateVerticalAriaValues);
+        }
+      }, 100);
+    };
+    
+    // Destroy vertical Split.js
+    const destroyVerticalSplit = function() {
+      if (verticalSplitInstance) {
+        verticalSplitInstance.destroy();
+        verticalSplitInstance = null;
+      }
+    };
+    
+    // Initialize vertical split when main interface is visible
+    const isMainInterfaceVisible = () => {
+      return mainInterface && !mainInterface.classList.contains('hidden');
+    };
+    
+    // Initialize if already visible, otherwise wait
+    if (isMainInterfaceVisible()) {
+      initVerticalSplit();
+    }
+    
+    // Handle main interface visibility and focus mode changes
+    const mainInterfaceObserver = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'class') {
+          const isVisible = isMainInterfaceVisible();
+          const isFocusMode = mainInterface && mainInterface.classList.contains('focus-mode');
+          
+          if (!isVisible || isFocusMode) {
+            // Hidden or focus mode - destroy split
+            destroyVerticalSplit();
+          } else {
+            // Visible and not focus mode - initialize split
+            setTimeout(initVerticalSplit, 100);
+          }
+        }
+      });
+    });
+    
+    if (mainInterface) {
+      mainInterfaceObserver.observe(mainInterface, { attributes: true });
+    }
+  }
   
   if (paramPanel && previewPanel && window.innerWidth >= 768) {
     const STORAGE_KEY_SPLIT = 'openscad-customizer-split-sizes';
@@ -2014,7 +2550,9 @@ async function initApp() {
 
       // Use auto-preview controller for full render if available (STL only for now)
       if (autoPreviewController && outputFormat === 'stl') {
-        result = await autoPreviewController.renderFull(state.parameters);
+        result = await autoPreviewController.renderFull(state.parameters, {
+          ...(exportQualityPreset ? { quality: exportQualityPreset } : {}),
+        });
 
         if (result.cached) {
           console.log('[Download] Using cached full quality render');
@@ -2031,6 +2569,7 @@ async function initApp() {
             files: state.projectFiles,
             mainFile: state.mainFilePath,
             libraries: libsForRender,
+            ...(exportQualityPreset ? { quality: exportQualityPreset } : {}),
             onProgress: (percent, message) => {
               if (percent < 0) {
                 updateStatus(message);
@@ -3136,6 +3675,22 @@ async function initApp() {
   savePresetBtn.addEventListener('click', showSavePresetModal);
   managePresetsBtn.addEventListener('click', showManagePresetsModal);
 
+  // Library help button handler (bind once, not in renderLibraryUI)
+  const libraryHelpBtn = document.getElementById('libraryHelpBtn');
+  if (libraryHelpBtn) {
+    libraryHelpBtn.addEventListener('click', () => {
+      openFeaturesGuide({ tab: 'libraries' });
+    });
+  }
+
+  // Welcome screen "Learn more" button
+  const learnMoreFeaturesBtn = document.getElementById('learnMoreFeaturesBtn');
+  if (learnMoreFeaturesBtn) {
+    learnMoreFeaturesBtn.addEventListener('click', () => {
+      openFeaturesGuide();
+    });
+  }
+
   // Handle preset selection
   presetSelect.addEventListener('change', (e) => {
     const presetId = e.target.value;
@@ -3456,16 +4011,154 @@ async function initApp() {
   // Close modals on Escape key
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      const featuresGuideModal = document.getElementById('featuresGuideModal');
       if (!sourceViewerModal.classList.contains('hidden')) {
         sourceViewerModal.classList.add('hidden');
       }
       if (!paramsJsonModal.classList.contains('hidden')) {
         paramsJsonModal.classList.add('hidden');
       }
+      if (featuresGuideModal && !featuresGuideModal.classList.contains('hidden')) {
+        closeFeaturesGuide();
+      }
     }
   });
 
   // ========== END ADVANCED MENU ==========
+
+  // ========== FEATURES GUIDE MODAL ==========
+  
+  let featuresGuideModalTrigger = null; // Store trigger for focus restoration
+  
+  // Open Features Guide modal with optional tab selection
+  function openFeaturesGuide({ tab = 'libraries' } = {}) {
+    const featuresGuideModal = document.getElementById('featuresGuideModal');
+    if (!featuresGuideModal) return;
+    
+    // Store current focus for restoration
+    featuresGuideModalTrigger = document.activeElement;
+    
+    // Show modal
+    featuresGuideModal.classList.remove('hidden');
+    
+    // Switch to requested tab
+    const tabId = `tab-${tab}`;
+    const tabButton = document.getElementById(tabId);
+    if (tabButton) {
+      switchFeaturesTab(tabId);
+      // Focus the active tab
+      setTimeout(() => tabButton.focus(), 100);
+    }
+  }
+  
+  // Close Features Guide modal
+  function closeFeaturesGuide() {
+    const featuresGuideModal = document.getElementById('featuresGuideModal');
+    if (!featuresGuideModal) return;
+    
+    featuresGuideModal.classList.add('hidden');
+    
+    // Restore focus to trigger
+    if (featuresGuideModalTrigger && featuresGuideModalTrigger.focus) {
+      featuresGuideModalTrigger.focus();
+    }
+    featuresGuideModalTrigger = null;
+  }
+  
+  // Switch between tabs
+  function switchFeaturesTab(tabId) {
+    const allTabs = document.querySelectorAll('.features-tab');
+    const allPanels = document.querySelectorAll('.features-panel');
+    
+    allTabs.forEach(tab => {
+      const isActive = tab.id === tabId;
+      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      tab.setAttribute('tabindex', isActive ? '0' : '-1');
+    });
+    
+    allPanels.forEach(panel => {
+      const panelId = panel.id;
+      const associatedTab = document.querySelector(`[aria-controls="${panelId}"]`);
+      if (associatedTab && associatedTab.id === tabId) {
+        panel.hidden = false;
+      } else {
+        panel.hidden = true;
+      }
+    });
+  }
+  
+  // Features Guide close button
+  const featuresGuideClose = document.getElementById('featuresGuideClose');
+  featuresGuideClose?.addEventListener('click', closeFeaturesGuide);
+  
+  // Features Guide overlay click
+  const featuresGuideOverlay = document.getElementById('featuresGuideOverlay');
+  featuresGuideOverlay?.addEventListener('click', closeFeaturesGuide);
+  
+  // Features Guide main button handler
+  const featuresGuideBtn = document.getElementById('featuresGuideBtn');
+  if (featuresGuideBtn) {
+    featuresGuideBtn.addEventListener('click', () => {
+      openFeaturesGuide();
+    });
+  }
+  
+  // Tab keyboard navigation
+  const featuresTabs = document.querySelectorAll('.features-tab');
+  featuresTabs.forEach((tab, index) => {
+    // Click to activate tab
+    tab.addEventListener('click', () => {
+      switchFeaturesTab(tab.id);
+    });
+    
+    // Keyboard navigation
+    tab.addEventListener('keydown', (e) => {
+      const tabs = Array.from(featuresTabs);
+      const currentIndex = tabs.indexOf(tab);
+      let nextIndex = currentIndex;
+      
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          nextIndex = currentIndex > 0 ? currentIndex - 1 : tabs.length - 1;
+          tabs[nextIndex].focus();
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          nextIndex = currentIndex < tabs.length - 1 ? currentIndex + 1 : 0;
+          tabs[nextIndex].focus();
+          break;
+        case 'Home':
+          e.preventDefault();
+          tabs[0].focus();
+          break;
+        case 'End':
+          e.preventDefault();
+          tabs[tabs.length - 1].focus();
+          break;
+        case 'Enter':
+        case ' ':
+          e.preventDefault();
+          switchFeaturesTab(tab.id);
+          break;
+      }
+    });
+  });
+  
+  // Example buttons within Features Guide
+  document.addEventListener('click', (e) => {
+    const exampleBtn = e.target.closest('[data-feature-example]');
+    if (exampleBtn && exampleBtn.dataset.example) {
+      e.preventDefault();
+      const exampleKey = exampleBtn.dataset.example;
+      loadExampleByKey(exampleKey, { 
+        closeModal: true, 
+        modalTrigger: featuresGuideModalTrigger 
+      });
+    }
+  });
+  
+  // ========== END FEATURES GUIDE MODAL ==========
 
   // Global keyboard shortcuts
   document.addEventListener('keydown', (e) => {
@@ -3659,17 +4352,37 @@ function renderLibraryUI(detectedLibraries) {
   const libraryControls = document.getElementById('libraryControls');
   const libraryList = document.getElementById('libraryList');
   const libraryBadge = document.getElementById('libraryBadge');
+  const libraryDetails = libraryControls?.querySelector('.library-details');
+  const libraryHelp = libraryControls?.querySelector('.library-help');
 
   if (!libraryControls || !libraryList || !libraryBadge) {
     console.warn('Library UI elements not found');
     return;
   }
 
-  // Show library controls
+  // Always show library controls
   libraryControls.classList.remove('hidden');
 
   // Update badge count
   libraryBadge.textContent = libraryManager.getEnabled().length;
+
+  // Update help text based on whether libraries were detected
+  if (libraryHelp) {
+    if (detectedLibraries.length === 0) {
+      libraryHelp.textContent = 'No libraries detected in this model. You can still enable library bundles to use external functions and modules.';
+    } else {
+      libraryHelp.textContent = 'Enable libraries used by this model:';
+    }
+  }
+
+  // Auto-expand only when libraries are detected
+  if (libraryDetails) {
+    if (detectedLibraries.length > 0) {
+      libraryDetails.open = true;
+    } else {
+      libraryDetails.open = false;
+    }
+  }
 
   // Clear existing list
   libraryList.innerHTML = '';
@@ -3741,24 +4454,97 @@ function renderLibraryUI(detectedLibraries) {
       }
     });
   });
+}
 
-  // Add library help button handler
-  const libraryHelpBtn = document.getElementById('libraryHelpBtn');
-  if (libraryHelpBtn) {
-    libraryHelpBtn.addEventListener('click', () => {
-      alert(
-        'OpenSCAD Libraries\n\n' +
-          'Libraries provide reusable components and functions for your models.\n\n' +
-          'Common libraries:\n' +
-          '• MCAD: Mechanical components (gears, screws, bearings)\n' +
-          '• BOSL2: Advanced geometry and attachments\n' +
-          '• NopSCADlib: 3D printer parts library\n' +
-          '• dotSCAD: Artistic patterns and designs\n\n' +
-          'Enable libraries that your model uses with include/use statements.\n' +
-          'Required libraries are auto-detected and marked.'
-      );
+// Feature Hints Rendering
+function renderFeatureHints(schema, fileContent) {
+  const hints = [];
+  const parameters = schema?.parameters || {};
+  
+  // Check for color param opportunity
+  const hasColorParams = Object.values(parameters)
+    .some(p => p.uiType === 'color');
+  if (!hasColorParams) {
+    hints.push({
+      icon: '🎨',
+      title: 'Color Parameters',
+      text: 'Add // [color] annotation to variables for color picker UI',
+      action: { type: 'openFeaturesGuide', tab: 'colors' }
     });
   }
+  
+  // Check for library usage
+  const detectedLibraries = schema?.libraries || [];
+  if (detectedLibraries.length === 0) {
+    hints.push({
+      icon: '📚',
+      title: 'Library Support',
+      text: 'Enable MCAD, BOSL2, or other libraries for extended functions',
+      action: { type: 'openFeaturesGuide', tab: 'libraries' }
+    });
+  }
+  
+  // Render hints if any
+  renderHintsUI(hints);
+}
+
+function renderHintsUI(hints) {
+  const featureHints = document.getElementById('featureHints');
+  const hintsList = document.getElementById('hintsList');
+  
+  if (!featureHints || !hintsList) return;
+  
+  // Clear existing hints
+  hintsList.innerHTML = '';
+  
+  if (hints.length === 0) {
+    featureHints.classList.add('hidden');
+    return;
+  }
+  
+  // Show hints container
+  featureHints.classList.remove('hidden');
+  
+  // Render each hint
+  hints.forEach(hint => {
+    const li = document.createElement('li');
+    li.className = 'hint-item';
+    
+    const icon = document.createElement('span');
+    icon.className = 'hint-icon';
+    icon.textContent = hint.icon;
+    icon.setAttribute('aria-hidden', 'true');
+    
+    const content = document.createElement('div');
+    content.className = 'hint-content';
+    
+    const title = document.createElement('strong');
+    title.className = 'hint-title';
+    title.textContent = hint.title;
+    
+    const text = document.createElement('p');
+    text.className = 'hint-text';
+    text.textContent = hint.text;
+    
+    content.appendChild(title);
+    content.appendChild(text);
+    
+    // Add action button
+    if (hint.action && hint.action.type === 'openFeaturesGuide') {
+      const button = document.createElement('button');
+      button.className = 'btn btn-sm btn-link hint-action';
+      button.textContent = 'Learn more';
+      button.setAttribute('aria-label', `Learn more about ${hint.title}`);
+      button.addEventListener('click', () => {
+        openFeaturesGuide({ tab: hint.action.tab });
+      });
+      content.appendChild(button);
+    }
+    
+    li.appendChild(icon);
+    li.appendChild(content);
+    hintsList.appendChild(li);
+  });
 }
 
 // Update auto-preview to include libraries

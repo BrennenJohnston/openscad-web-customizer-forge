@@ -74,7 +74,7 @@
             <h2>Get Started</h2>
             <p>Upload an OpenSCAD (.scad) file to customize its parameters and generate STL files</p>
             
-            <label class="upload-zone" id="uploadZone" for="fileInput">
+            <label class="upload-zone" id="uploadZone" for="fileInput" tabindex="0">
               <svg class="upload-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="17 8 12 3 7 8"></polyline>
@@ -87,12 +87,41 @@
             <div class="examples-section">
               <p>Or try an example:</p>
               <div class="example-buttons">
-                <button id="loadUniversalCuffBtn" class="btn btn-secondary" data-example="universal-cuff">Universal Cuff (Complex)</button>
+                <button id="loadBrailleEmbosserBtn" class="btn btn-secondary" data-example="braille-embosser">Braille Embosser (Complex)</button>
                 <button id="loadSimpleBoxBtn" class="btn btn-secondary" data-example="simple-box">Simple Box (Beginner)</button>
                 <button id="loadCylinderBtn" class="btn btn-secondary" data-example="cylinder">Parametric Cylinder</button>
                 <button id="loadLibraryTestBtn" class="btn btn-secondary" data-example="library-test">📚 Library Test (MCAD)</button>
                 <button id="loadColoredBoxBtn" class="btn btn-secondary" data-example="colored-box">🎨 Colored Box (Color Params)</button>
               </div>
+            </div>
+            
+            <div class="features-overview" role="region" aria-labelledby="features-heading">
+              <h3 id="features-heading">What You Can Do</h3>
+              <div class="feature-cards">
+                <div class="feature-card">
+                  <span class="feature-card-icon" aria-hidden="true">🎛️</span>
+                  <h4>Customize Parameters</h4>
+                  <p>Adjust sliders, dropdowns, and toggles to modify your model</p>
+                </div>
+                <div class="feature-card">
+                  <span class="feature-card-icon" aria-hidden="true">🎨</span>
+                  <h4>Color Support</h4>
+                  <p>Use color pickers for models with color parameters</p>
+                </div>
+                <div class="feature-card">
+                  <span class="feature-card-icon" aria-hidden="true">📚</span>
+                  <h4>Library Bundles</h4>
+                  <p>Access MCAD, BOSL2, and more for extended functions</p>
+                </div>
+                <div class="feature-card">
+                  <span class="feature-card-icon" aria-hidden="true">💾</span>
+                  <h4>Save Presets</h4>
+                  <p>Save and load your favorite configurations</p>
+                </div>
+              </div>
+              <button id="learnMoreFeaturesBtn" class="btn btn-link">
+                📖 Learn more about features
+              </button>
             </div>
           </div>
         </div>
@@ -158,6 +187,21 @@
                       ℹ️ What are libraries?
                     </button>
                   </div>
+                </div>
+              </details>
+            </div>
+            
+            <!-- Feature Hints -->
+            <div class="feature-hints hidden" id="featureHints" role="region" aria-label="Feature tips">
+              <details class="hints-details">
+                <summary class="hints-summary">
+                  <span class="hints-icon" aria-hidden="true">💡</span>
+                  Tips: Enhance your model
+                </summary>
+                <div class="hints-content">
+                  <ul class="hints-list" role="list" id="hintsList">
+                    <!-- Hints dynamically populated -->
+                  </ul>
                 </div>
               </details>
             </div>
@@ -258,75 +302,106 @@
                     <div class="file-info-tree" id="fileInfoTree"></div>
                   </details>
                 </div>
+                <button id="featuresGuideBtn" class="btn btn-sm btn-outline hidden" aria-label="Open features guide and examples" title="Help & Examples">
+                  📖 Help
+                </button>
                 <button id="clearFileBtn" class="btn btn-sm btn-outline hidden" aria-label="Clear file and return to welcome screen" title="Clear file">
                   ✕ Clear
                 </button>
               </div>
             </div>
             
-            <!-- Scrollable content wrapper -->
-            <div class="preview-content">
-              <div class="status-area" id="statusArea" role="status" aria-live="polite" aria-atomic="true">
-                Ready
-              </div>
-
-              <details class="preview-settings-details">
-                <summary class="preview-settings-summary">
-                  <span class="settings-icon">⚙️</span>
-                  Preview Settings
-                </summary>
-                <div class="preview-settings" aria-label="Preview settings">
-                  <label class="preview-setting">
-                    <input type="checkbox" id="autoPreviewToggle" checked />
-                    <span>Auto-preview</span>
-                  </label>
-                  
-                  <label class="preview-setting">
-                    <input type="checkbox" id="measurementsToggle" aria-describedby="measurementsHelp" />
-                    <span>Show measurements</span>
-                  </label>
-                  <span id="measurementsHelp" class="sr-only">Toggle dimension measurements and bounding box overlay on 3D preview</span>
-
-                  <label class="preview-setting" for="previewQualitySelect">
-                    <span class="preview-setting-label">Preview quality</span>
-                    <select id="previewQualitySelect" aria-label="Select preview quality">
-                      <option value="fidelity">Fidelity (slower)</option>
-                      <option value="balanced" selected>Balanced</option>
-                      <option value="fast">Fast (lower resolution)</option>
-                    </select>
-                  </label>
-                </div>
-              </details>
-              
-              <div class="preview-container" id="previewContainer" role="img" aria-label="3D model preview">
-                <!-- 3D preview or placeholder -->
-                <div class="preview-placeholder">
-                  <p>3D preview will appear here after generating STL</p>
+            <!-- Scrollable content wrapper with vertical split -->
+            <div class="preview-content" id="previewContent">
+              <!-- Top section: 3D preview canvas -->
+              <div class="preview-canvas-section" id="previewCanvasSection">
+                <div class="preview-container" id="previewContainer" role="img" aria-label="3D model preview">
+                  <!-- 3D preview or placeholder -->
+                  <div class="preview-placeholder">
+                    <p>3D preview will appear here after generating STL</p>
+                  </div>
                 </div>
               </div>
               
-              <div class="stats" id="stats" role="status" aria-live="polite"></div>
-              
-              <div class="dimensions-display hidden" id="dimensionsDisplay" role="region" aria-label="Model dimensions">
-                <h3 class="dimensions-heading">Dimensions</h3>
-                <dl class="dimensions-list">
-                  <div class="dimension-item">
-                    <dt>Width (X):</dt>
-                    <dd id="dimX">--</dd>
+              <!-- Bottom section: status, settings, stats, dimensions -->
+              <div class="preview-info-section" id="previewInfoSection">
+                <div class="status-area" id="statusArea" role="status" aria-live="polite" aria-atomic="true">
+                  Ready
+                </div>
+
+                <details class="preview-settings-details">
+                  <summary class="preview-settings-summary">
+                    <span class="settings-icon">⚙️</span>
+                    Preview Settings
+                  </summary>
+                  <div class="preview-settings" aria-label="Preview settings">
+                    <label class="preview-setting">
+                      <input type="checkbox" id="autoPreviewToggle" checked />
+                      <span>Auto-preview</span>
+                    </label>
+                    
+                    <label class="preview-setting">
+                      <input type="checkbox" id="measurementsToggle" aria-describedby="measurementsHelp" />
+                      <span>Show measurements</span>
+                    </label>
+                    <span id="measurementsHelp" class="sr-only">Toggle dimension measurements and bounding box overlay on 3D preview</span>
+
+                    <label class="preview-setting">
+                      <input type="checkbox" id="gridToggle" checked aria-describedby="gridHelp" />
+                      <span>Show grid</span>
+                    </label>
+                    <span id="gridHelp" class="sr-only">Toggle grid plane visibility in 3D preview</span>
+
+                    <label class="preview-setting" for="previewQualitySelect">
+                      <span class="preview-setting-label">Preview quality</span>
+                      <select id="previewQualitySelect" aria-label="Select preview quality">
+                        <option value="auto" selected>Auto (adaptive)</option>
+                        <option value="fidelity">Fidelity (slower)</option>
+                        <option value="balanced">Balanced</option>
+                        <option value="fast">Fast (lower resolution)</option>
+                      </select>
+                    </label>
+
+                    <label class="preview-setting" for="exportQualitySelect">
+                      <span class="preview-setting-label">Export quality</span>
+                      <select id="exportQualitySelect" aria-label="Select export quality">
+                        <option value="model" selected>Model default</option>
+                        <option value="low">Low (fast)</option>
+                        <option value="medium">Medium (balanced)</option>
+                        <option value="high">High (smooth)</option>
+                      </select>
+                    </label>
+                    
+                    <div class="preview-setting complexity-indicator" id="complexityIndicator" title="Detected model complexity tier">
+                      <span class="preview-setting-label">Complexity:</span>
+                      <span id="complexityTierLabel" class="complexity-tier-label">Analyzing...</span>
+                    </div>
                   </div>
-                  <div class="dimension-item">
-                    <dt>Depth (Y):</dt>
-                    <dd id="dimY">--</dd>
-                  </div>
-                  <div class="dimension-item">
-                    <dt>Height (Z):</dt>
-                    <dd id="dimZ">--</dd>
-                  </div>
-                  <div class="dimension-item">
-                    <dt>Volume:</dt>
-                    <dd id="dimVolume">--</dd>
-                  </div>
-                </dl>
+                </details>
+                
+                <div class="stats" id="stats" role="status" aria-live="polite"></div>
+                
+                <div class="dimensions-display hidden" id="dimensionsDisplay" role="region" aria-label="Model dimensions">
+                  <h3 class="dimensions-heading">Dimensions</h3>
+                  <dl class="dimensions-list">
+                    <div class="dimension-item">
+                      <dt>Width (X):</dt>
+                      <dd id="dimX">--</dd>
+                    </div>
+                    <div class="dimension-item">
+                      <dt>Depth (Y):</dt>
+                      <dd id="dimY">--</dd>
+                    </div>
+                    <div class="dimension-item">
+                      <dt>Height (Z):</dt>
+                      <dd id="dimZ">--</dd>
+                    </div>
+                    <div class="dimension-item">
+                      <dt>Volume:</dt>
+                      <dd id="dimVolume">--</dd>
+                    </div>
+                  </dl>
+                </div>
               </div>
             </div>
             
@@ -465,6 +540,164 @@
         </div>
         <div class="modal-body">
           <textarea id="paramsJsonContent" class="params-json-textarea" readonly aria-label="Parameters JSON" spellcheck="false"></textarea>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Features Guide Modal -->
+    <div class="modal hidden" id="featuresGuideModal" role="dialog" aria-labelledby="featuresGuideTitle" aria-modal="true">
+      <div class="modal-overlay" id="featuresGuideOverlay"></div>
+      <div class="modal-content modal-large">
+        <div class="modal-header">
+          <h2 id="featuresGuideTitle">Features Guide</h2>
+          <button class="modal-close" id="featuresGuideClose" aria-label="Close features guide">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body features-guide-body">
+          <!-- Tab navigation for feature sections -->
+          <div class="features-tabs" role="tablist" aria-label="Feature sections">
+            <button class="features-tab" role="tab" aria-selected="true" aria-controls="featuresPanelLibraries" id="tab-libraries" tabindex="0">Libraries</button>
+            <button class="features-tab" role="tab" aria-selected="false" aria-controls="featuresPanelColors" id="tab-colors" tabindex="-1">Color Parameters</button>
+            <button class="features-tab" role="tab" aria-selected="false" aria-controls="featuresPanelPresets" id="tab-presets" tabindex="-1">Presets</button>
+            <button class="features-tab" role="tab" aria-selected="false" aria-controls="featuresPanelAdvanced" id="tab-advanced" tabindex="-1">Advanced</button>
+          </div>
+          
+          <!-- Libraries Panel -->
+          <div class="features-panel" id="featuresPanelLibraries" role="tabpanel" tabindex="0" aria-labelledby="tab-libraries">
+            <h3>OpenSCAD Library Bundles</h3>
+            <p>This customizer includes popular OpenSCAD library bundles that provide reusable components and advanced functions for your models.</p>
+            
+            <h4>Available Libraries</h4>
+            <ul class="features-list">
+              <li><strong>MCAD</strong> – Mechanical components like gears, screws, bearings, and fasteners</li>
+              <li><strong>BOSL2</strong> – Advanced geometry primitives, attachable parts, and complex shapes</li>
+              <li><strong>NopSCADlib</strong> – Parts library for 3D printers and electronics projects</li>
+              <li><strong>dotSCAD</strong> – Artistic patterns, designs, and creative geometry</li>
+            </ul>
+            
+            <h4>How to Use Libraries</h4>
+            <p>Include library modules in your OpenSCAD code:</p>
+            <pre><code>use &lt;MCAD/boxes.scad&gt;;
+use &lt;BOSL2/std.scad&gt;;</code></pre>
+            
+            <p>The customizer automatically detects which libraries your model uses and marks them as "required". You can also manually enable any library from the 📚 Libraries panel.</p>
+            
+            <div class="features-action">
+              <button class="btn btn-primary" data-example="library-test" data-feature-example="true">
+                📚 Load Library Test Example
+              </button>
+              <p class="features-note">This example demonstrates MCAD library usage with mechanical components.</p>
+            </div>
+          </div>
+          
+          <!-- Colors Panel -->
+          <div class="features-panel" id="featuresPanelColors" role="tabpanel" tabindex="0" aria-labelledby="tab-colors" hidden>
+            <h3>Color Parameters</h3>
+            <p>Add interactive color pickers to your models by using the <code>[color]</code> annotation in your OpenSCAD parameters.</p>
+            
+            <h4>Syntax</h4>
+            <pre><code>// Hex color with annotation
+box_color = "FF6B35"; // [color]
+
+// RGB hex format (with or without #)
+primary_color = "#3498DB"; // [color]
+secondary_color = "E74C3C"; // [color]</code></pre>
+            
+            <h4>How It Works</h4>
+            <p>When you add the <code>// [color]</code> annotation to a string parameter, the customizer:</p>
+            <ul class="features-list">
+              <li>Displays a visual color picker instead of a text input</li>
+              <li>Shows a color preview swatch next to the parameter</li>
+              <li>Validates hex color values automatically</li>
+              <li>Updates the preview in real-time as you change colors</li>
+            </ul>
+            
+            <h4>Using Colors in Your Model</h4>
+            <p>Convert hex strings to RGB values in OpenSCAD:</p>
+            <pre><code>function hex2rgb(hex) = [
+  (search(substr(hex,0,2), "0123456789ABCDEF") / 16) / 255,
+  (search(substr(hex,2,2), "0123456789ABCDEF") / 16) / 255,
+  (search(substr(hex,4,2), "0123456789ABCDEF") / 16) / 255
+];
+
+color(hex2rgb(box_color))
+  cube([10, 10, 10]);</code></pre>
+            
+            <div class="features-action">
+              <button class="btn btn-primary" data-example="colored-box" data-feature-example="true">
+                🎨 Load Colored Box Example
+              </button>
+              <p class="features-note">This example shows how to use color parameters with a complete hex2rgb implementation.</p>
+            </div>
+          </div>
+          
+          <!-- Presets Panel -->
+          <div class="features-panel" id="featuresPanelPresets" role="tabpanel" tabindex="0" aria-labelledby="tab-presets" hidden>
+            <h3>Parameter Presets</h3>
+            <p>Save and load your favorite parameter configurations to quickly switch between different variations of your model.</p>
+            
+            <h4>Saving Presets</h4>
+            <ol class="features-list">
+              <li>Adjust your parameters to the desired values</li>
+              <li>Click the <strong>💾 Save Preset</strong> button above the parameters</li>
+              <li>Enter a descriptive name for your preset</li>
+              <li>Your preset is saved locally in your browser</li>
+            </ol>
+            
+            <h4>Loading Presets</h4>
+            <p>Use the preset dropdown menu to quickly switch between saved configurations. The parameters will update automatically.</p>
+            
+            <h4>Managing Presets</h4>
+            <ul class="features-list">
+              <li><strong>Rename</strong> – Update preset names for clarity</li>
+              <li><strong>Delete</strong> – Remove presets you no longer need</li>
+              <li><strong>Export/Import</strong> – Share presets with others or back them up</li>
+            </ul>
+            
+            <p>Presets are stored per-file, so each model has its own set of saved configurations.</p>
+          </div>
+          
+          <!-- Advanced Panel -->
+          <div class="features-panel" id="featuresPanelAdvanced" role="tabpanel" tabindex="0" aria-labelledby="tab-advanced" hidden>
+            <h3>Advanced Features</h3>
+            
+            <h4>Output Formats</h4>
+            <p>Export your customized models in multiple formats:</p>
+            <ul class="features-list">
+              <li><strong>STL</strong> – Standard format for 3D printing (binary or ASCII)</li>
+              <li><strong>OBJ</strong> – Common 3D model format with material support</li>
+              <li><strong>OFF</strong> – Object File Format for geometry</li>
+              <li><strong>AMF</strong> – Additive Manufacturing File Format</li>
+              <li><strong>3MF</strong> – Modern 3D printing format with color support</li>
+            </ul>
+            
+            <h4>Multi-File Projects</h4>
+            <p>Upload ZIP files containing multiple OpenSCAD files. The customizer will:</p>
+            <ul class="features-list">
+              <li>Automatically detect the main file</li>
+              <li>Extract and mount all included files</li>
+              <li>Display a file tree showing the project structure</li>
+              <li>Support relative paths in <code>include</code> and <code>use</code> statements</li>
+            </ul>
+            
+            <h4>Parameter Limits Override</h4>
+            <p>By default, sliders and number inputs respect the limits defined in your OpenSCAD file. You can unlock parameter limits from the Advanced menu to enter custom values.</p>
+            
+            <h4>Source Code Viewer</h4>
+            <p>View the complete OpenSCAD source code, including all included files, from the Advanced menu. This helps verify that multi-file projects are loaded correctly.</p>
+            
+            <h4>Render Quality</h4>
+            <p>Choose different quality levels for preview rendering:</p>
+            <ul class="features-list">
+              <li><strong>Draft</strong> – Fast rendering for quick iterations</li>
+              <li><strong>Normal</strong> – Balanced quality and speed (default)</li>
+              <li><strong>High</strong> – Higher detail for final previews</li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>

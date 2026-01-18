@@ -45,6 +45,23 @@ Version 2.10.0 focuses on improving accessibility and user experience through en
   - `aria-controls` references both panels
   - Visual focus indicator with accent color
 
+### Vertical Resizable Preview Split (All Viewports)
+
+- **Preview Area Resize**: Drag-to-resize between 3D preview and settings area
+  - Works on both desktop and mobile viewports
+  - 8px gutter (12px on mobile for larger touch target)
+  - Minimum sizes: 150px preview, 60px info section
+  - Default split: 70% preview, 30% info
+  - Persistent sizing saved to localStorage
+  - Especially useful on mobile to maximize preview area
+
+- **Keyboard Accessibility**:
+  - Arrow key navigation (Up/Down: ±3%, Shift+Arrow: ±10%)
+  - Home key: Maximize preview, End key: Minimize preview
+  - `role="separator"` with `aria-orientation="horizontal"`
+  - Full ARIA value attributes for screen reader feedback
+  - Auto-destroys in focus mode, reinitializes on exit
+
 ### Focus Mode
 
 - **Maximize Preview Button**: New button to enter focus mode
@@ -204,17 +221,20 @@ Version 2.10.0 focuses on improving accessibility and user experience through en
 ### LocalStorage Keys
 
 - `openscad-customizer-param-panel-collapsed`: Panel collapsed state
-- `openscad-customizer-split-sizes`: Split panel sizes array
+- `openscad-customizer-split-sizes`: Split panel sizes array (horizontal)
+- `openscad-customizer-vertical-split-sizes`: Vertical split sizes array (preview vs info)
 
 ### Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
 | `F` | Toggle focus mode |
-| `Left/Right Arrow` | Resize split panels (±5%) |
-| `Shift + Left/Right` | Resize split panels (±10%) |
-| `Home` | Minimize parameter panel |
-| `End` | Maximize parameter panel |
+| `Left/Right Arrow` | Resize horizontal split panels (±2%) |
+| `Shift + Left/Right` | Resize horizontal split panels (±5%) |
+| `Up/Down Arrow` | Resize vertical preview split (±3%) |
+| `Shift + Up/Down` | Resize vertical preview split (±10%) |
+| `Home` | Minimize panel (horizontal) / Maximize preview (vertical) |
+| `End` | Maximize panel (horizontal) / Minimize preview (vertical) |
 | `Enter/Space` | Toggle disclosure widgets |
 
 ---

@@ -70,6 +70,34 @@ Successfully implemented a comprehensive panel layout optimization to maximize t
 
 ---
 
+### ✅ Phase 2b: Vertical Resizable Preview Split
+
+**Status:** Complete (Added January 18, 2026)
+
+**Changes:**
+- Added vertical split within preview panel (canvas vs info/settings)
+- Works on all viewports (especially useful on mobile)
+- Restructured preview-content into two sections:
+  - `preview-canvas-section`: 3D preview canvas (top)
+  - `preview-info-section`: Status, settings, stats, dimensions (bottom)
+- Full keyboard accessibility with Up/Down arrow keys
+- Larger touch target (12px) on mobile vs 8px on desktop
+- Auto-destroys in focus mode, reinitializes on exit
+
+**Accessibility:**
+- `role="separator"` with `aria-orientation="horizontal"`
+- Arrow keys: Up/Down (3% step), Shift+Arrow (10% step)
+- Home key: Maximize preview, End key: Minimize preview
+- `aria-valuenow/min/max/valuetext` for screen reader feedback
+- Focus ring matches horizontal gutter styling
+
+**Files Modified:**
+- `index.html` - Restructured preview-content with canvas/info sections
+- `src/styles/layout.css` - Added vertical gutter styles and mobile adjustments
+- `src/main.js` - Added second Split.js instance with keyboard handler
+
+---
+
 ### ✅ Phase 3: Compact Headers + Preview Controls
 
 **Status:** Complete
@@ -244,6 +272,7 @@ Successfully implemented a comprehensive panel layout optimization to maximize t
 - [ ] Add smooth scroll-to-canvas in focus mode
 - [ ] Consider adding preset panel auto-expand on preset load
 - [ ] Add visual cue for keyboard-resizable gutter (e.g., icon)
+- [x] ~~Vertical split for preview area~~ (Completed January 18, 2026)
 
 ---
 
