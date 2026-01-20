@@ -1,12 +1,13 @@
 /* Component Styles */
 
 /* Skip Link (Accessibility) */
+/* Uses high-contrast blue instead of accent yellow for WCAG AA compliance */
 .skip-link {
   position: absolute;
   top: -40px;
   left: 0;
-  background: var(--color-accent);
-  color: var(--color-accent-text);
+  background: #0052cc; /* Brand-neutral blue with 4.5:1 on white */
+  color: #ffffff;
   padding: var(--space-sm) var(--space-md);
   text-decoration: none;
   font-weight: 600;
@@ -18,6 +19,19 @@
   top: 0;
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
+}
+
+/* Dark mode skip link */
+:root[data-theme='dark'] .skip-link {
+  background: #66b3ff; /* Light blue for dark mode - 4.5:1 on dark bg */
+  color: #000000;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .skip-link {
+    background: #66b3ff; /* Light blue for dark mode - 4.5:1 on dark bg */
+    color: #000000;
+  }
 }
 
 /* Global focus ring for interactive elements that are not `.btn` */
