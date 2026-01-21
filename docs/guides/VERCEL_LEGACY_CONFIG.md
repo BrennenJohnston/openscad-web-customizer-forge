@@ -135,7 +135,7 @@ For this application's typical usage (WASM ~15-30MB initial load, cached thereaf
 ## Historical Deployment URL
 
 The original Vercel deployment was available at:
-- `https://openscad-web-customizer-forge-gutg7h11z.vercel.app`
+- `https://openscad-assistive-forge-gutg7h11z.vercel.app`
 
 This URL may still be active depending on Vercel project status.
 

@@ -1,6 +1,6 @@
 {
-  "name": "OpenSCAD Web Customizer Forge",
-  "short_name": "OpenSCAD Forge",
+  "name": "OpenSCAD Assistive Forge",
+  "short_name": "Assistive Forge",
   "description": "Customize parametric 3D models directly in your browser with client-side OpenSCAD rendering",
   "start_url": "/",
   "display": "standalone",

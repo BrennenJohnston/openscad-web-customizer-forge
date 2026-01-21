@@ -1,10 +1,10 @@
 # Mobile Browser Limitations
 
-This document describes known limitations when using the OpenSCAD Web Customizer on mobile devices.
+This document describes known limitations when using the OpenSCAD Assistive Forge on mobile devices.
 
 ## Overview
 
-The OpenSCAD Web Customizer works on mobile browsers (iOS Safari, Android Chrome) but with some limitations due to mobile hardware constraints and browser capabilities. This document helps users understand what to expect and how to work around common issues.
+The OpenSCAD Assistive Forge works on mobile browsers (iOS Safari, Android Chrome) but with some limitations due to mobile hardware constraints and browser capabilities. This document helps users understand what to expect and how to work around common issues.
 
 ## Memory Constraints
 
@@ -305,7 +305,7 @@ All accessibility features work on mobile:
 
 ## Summary
 
-The OpenSCAD Web Customizer works on mobile devices with reasonable limitations. For best experience:
+The OpenSCAD Assistive Forge works on mobile devices with reasonable limitations. For best experience:
 
 - **Simple models**: Excellent experience on all devices
 - **Medium models**: Good experience with patience
@@ -317,4 +317,4 @@ The PWA installation and offline support make mobile usage practical for field d
 
 **Document Version**: 1.0  
 **Last Updated**: 2026-01-15  
-**Applies to**: OpenSCAD Web Customizer v2.4+
+**Applies to**: OpenSCAD Assistive Forge v2.4+

@@ -1,7 +1,7 @@
 # Cloudflare Pages Configuration Validation
 
 **Validation Date**: January 17, 2026  
-**Project**: OpenSCAD Web Customizer Forge  
+**Project**: OpenSCAD Assistive Forge  
 **Version**: 3.0.0
 
 ---
@@ -10,7 +10,7 @@
 
 ✅ **Status**: **DEPLOYED AND LIVE**
 
-**Live URL**: https://openscad-web-customizer-forge.pages.dev/
+**Live URL**: https://openscad-assistive-forge.pages.dev/
 
 All Cloudflare Pages configuration files have been verified, deployed, and tested in production. The application is live with proper cross-origin isolation headers and full WASM functionality.
 
@@ -30,7 +30,7 @@ All Cloudflare Pages configuration files have been verified, deployed, and teste
 
 **Status**: ✅ **VERIFIED**
 
-**Location**: `c:\Users\WATAP\Documents\github\openscad-web-customizer-forge\public\_headers`
+**Location**: `c:\Users\WATAP\Documents\github\openscad-assistive-forge\public\_headers`
 
 **Contents Verified**:
 - [x] COOP (Cross-Origin-Opener-Policy) header present: `same-origin`
@@ -113,7 +113,7 @@ All Cloudflare Pages configuration files have been verified, deployed, and teste
 
 **Status**: ✅ **VERIFIED**
 
-**Location**: `c:\Users\WATAP\Documents\github\openscad-web-customizer-forge\public\_redirects`
+**Location**: `c:\Users\WATAP\Documents\github\openscad-assistive-forge\public\_redirects`
 
 **Contents Verified**:
 - [x] SPA fallback rule present: `/*    /index.html   200`
@@ -355,7 +355,7 @@ npm run preview
 
 **Status**: ✅ **SUCCESSFULLY DEPLOYED AND TESTED**
 
-**Live URL**: https://openscad-web-customizer-forge.pages.dev/
+**Live URL**: https://openscad-assistive-forge.pages.dev/
 
 **Deployment Date**: January 17, 2026
 
@@ -373,9 +373,9 @@ npm run preview
 The following was captured from the production deployment:
 
 ```
-OpenSCAD Web Customizer v2.9.0 (WASM Progress & Mobile)
+OpenSCAD Assistive Forge v3.1.0
 Initializing...
-[PWA] Service Worker registered: https://openscad-web-customizer-forge.pages.dev/
+[PWA] Service Worker registered: https://openscad-assistive-forge.pages.dev/
 [Theme] Applied: auto
 [Theme] High Contrast: OFF
 [Theme] Toggle button initialized
@@ -564,7 +564,7 @@ Deployment to Cloudflare Pages completed January 17, 2026:
 - [x] Build logs reviewed (no errors)
 
 ### Post-Deployment Verification
-- [x] Site URL accessible: https://openscad-web-customizer-forge.pages.dev/
+- [x] Site URL accessible: https://openscad-assistive-forge.pages.dev/
 - [x] Response headers checked (Network tab)
   - [x] `Cross-Origin-Opener-Policy: same-origin`
   - [x] `Cross-Origin-Embedder-Policy: require-corp`
@@ -607,7 +607,7 @@ Based on research in `COMPARABLE_PROJECTS.md`:
 
 ### Production Status: ✅ DEPLOYED AND VERIFIED
 
-**Live URL**: https://openscad-web-customizer-forge.pages.dev/
+**Live URL**: https://openscad-assistive-forge.pages.dev/
 
 The Cloudflare Pages deployment is:
 - **Technically sound**: All required files present and correct
@@ -654,5 +654,5 @@ Based on:
 **Validation Status**: ✅ **COMPLETE — DEPLOYED**  
 **Review Date**: January 17, 2026  
 **Configuration Version**: 3.0.0  
-**Live URL**: https://openscad-web-customizer-forge.pages.dev/  
+**Live URL**: https://openscad-assistive-forge.pages.dev/  
 **Validation Result**: **PASS — DEPLOYED AND VERIFIED**

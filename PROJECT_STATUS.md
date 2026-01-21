@@ -1,6 +1,6 @@
 # Project Status Report
 
-**Project**: OpenSCAD Web Customizer Forge  
+**Project**: OpenSCAD Assistive Forge  
 **Current Version**: 3.1.0  
 **Last Updated**: 2026-01-20  
 **Status**: ✅ **Production Ready** (Cloudflare Stable Release)
@@ -9,7 +9,7 @@
 
 ## 📊 Executive Summary
 
-The OpenSCAD Web Customizer Forge is a **fully functional, production-ready web application** that enables users to customize parametric 3D models directly in their browser. The project has successfully delivered **all planned v1 features** and is deployed to production.
+The OpenSCAD Assistive Forge is a **fully functional, production-ready web application** that enables users to customize parametric 3D models directly in their browser. The project has successfully delivered **all planned v1 features** and is deployed to production.
 
 ### Key Achievements
 
@@ -196,7 +196,7 @@ The OpenSCAD Web Customizer Forge is a **fully functional, production-ready web 
 ### Code Organization
 
 ```
-openscad-web-customizer-forge/
+openscad-assistive-forge/
 ├── src/
 │   ├── main.js                     # Application entry point
 │   ├── js/
@@ -373,8 +373,8 @@ openscad-web-customizer-forge/
 
 || Environment | URL | Status |
 ||-------------|-----|--------|
-|| **Production** | https://openscad-web-customizer-forge.pages.dev | ✅ Live (Cloudflare) |
-|| **GitHub** | https://github.com/BrennenJohnston/openscad-web-customizer-forge | ✅ Published |
+|| **Production** | https://openscad-assistive-forge.pages.dev | ✅ Live (Cloudflare) |
+|| **GitHub** | https://github.com/BrennenJohnston/openscad-assistive-forge | ✅ Published |
 
 ### Deployment Configuration
 
@@ -536,13 +536,13 @@ docs/
 
 ### For Users
 
-- **Live Demo**: https://openscad-web-customizer-forge.pages.dev
+- **Live Demo**: https://openscad-assistive-forge.pages.dev
 - **Documentation**: See `docs/` directory
 - **Examples**: See `public/examples/` directory
 
 ### For Developers
 
-- **GitHub**: https://github.com/BrennenJohnston/openscad-web-customizer-forge
+- **GitHub**: https://github.com/BrennenJohnston/openscad-assistive-forge
 - **Issues**: Report bugs via GitHub Issues
 - **Contributing**: See CONTRIBUTING.md
 - **Build Plan**: See `docs/BUILD_PLAN_NEW.md`
@@ -577,7 +577,7 @@ docs/
 
 ## 🎉 Conclusion
 
-The OpenSCAD Web Customizer Forge has achieved **production-ready status** with **v3.1.0** on Cloudflare Pages. All planned v1 and v2 features have been successfully implemented, tested, and deployed. The project demonstrates:
+The OpenSCAD Assistive Forge has achieved **production-ready status** with **v3.1.0** on Cloudflare Pages. All planned v1 and v2 features have been successfully implemented, tested, and deployed. The project demonstrates:
 
 - **Technical Excellence**: Clean architecture, performant, maintainable
 - **User Focus**: Accessible, intuitive, feature-rich

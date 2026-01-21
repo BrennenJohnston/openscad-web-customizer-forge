@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-This document lists the third-party software used by OpenSCAD Web Customizer Forge and the web applications it generates.
+This document lists the third-party software used by OpenSCAD Assistive Forge and the web applications it generates.
 
 ## OpenSCAD (GPL-2.0-or-later)
 

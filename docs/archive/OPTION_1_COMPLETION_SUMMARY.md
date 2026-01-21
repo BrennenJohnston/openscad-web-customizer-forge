@@ -72,7 +72,7 @@ A comprehensive 500+ line checklist covering:
 **Changes Made:**
 
 #### Updated Production URL
-- Changed from generic URL to actual deployment: `https://openscad-web-customizer-forge-gutg7h11z.vercel.app`
+- Changed from generic URL to actual deployment: `https://openscad-assistive-forge-gutg7h11z.vercel.app`
 
 #### Expanded v1.2 Auto-Preview Documentation
 Added comprehensive section with:
@@ -352,8 +352,8 @@ These documents serve as:
 ## 📞 Resources
 
 ### Production Environment
-- **URL**: https://openscad-web-customizer-forge-gutg7h11z.vercel.app
-- **Vercel Dashboard**: https://vercel.com/brennenjohnstons-projects/openscad-web-customizer-forge
+- **URL**: https://openscad-assistive-forge-gutg7h11z.vercel.app
+- **Vercel Dashboard**: https://vercel.com/brennenjohnstons-projects/openscad-assistive-forge
 
 ### Documentation
 - **Build Plan**: `docs/BUILD_PLAN_NEW.md`

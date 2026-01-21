@@ -8,7 +8,7 @@
 
 ## Overview
 
-This checklist ensures a complete and verified production deployment of OpenSCAD Web Customizer Forge to Cloudflare Pages (or alternative hosting platform).
+This checklist ensures a complete and verified production deployment of OpenSCAD Assistive Forge to Cloudflare Pages (or alternative hosting platform).
 
 **Use this checklist**:
 - ✅ Before first deployment
@@ -629,5 +629,5 @@ If Cloudflare has issues, fall back to Vercel:
 
 **Document Version**: 1.0.0  
 **Last Updated**: January 17, 2026  
-**Maintained By**: OpenSCAD Web Customizer Forge Team  
+**Maintained By**: OpenSCAD Assistive Forge Team  
 **Status**: ✅ Production Ready

@@ -1,6 +1,6 @@
 # Accessibility Guide
 
-**OpenSCAD Web Customizer Forge** is designed to be accessible to all users, including those using assistive technologies, with limited vision, or preferring keyboard-only navigation. This guide provides role-specific information to help you get the most out of the customizer.
+**OpenSCAD Assistive Forge** is designed to be accessible to all users, including those using assistive technologies, with limited vision, or preferring keyboard-only navigation. This guide provides role-specific information to help you get the most out of the customizer.
 
 ## Quick Navigation
 
@@ -14,7 +14,7 @@
 
 ## For Blind and Low Vision Users
 
-The OpenSCAD Web Customizer Forge is designed with screen reader users in mind and provides multiple ways to access 3D model customization without needing to see the visual preview.
+The OpenSCAD Assistive Forge is designed with screen reader users in mind and provides multiple ways to access 3D model customization without needing to see the visual preview.
 
 ### Keyboard Navigation
 
@@ -264,7 +264,7 @@ For numeric parameters:
 
 ### Accessible Color Palette
 
-The OpenSCAD Web Customizer uses an accessible color system built on [Radix Colors](https://www.radix-ui.com/colors), designed to meet **WCAG 2.2 AA** standards for normal themes and **WCAG AAA (7:1)** standards for high contrast mode.
+The OpenSCAD Assistive Forge uses an accessible color system built on [Radix Colors](https://www.radix-ui.com/colors), designed to meet **WCAG 2.2 AA** standards for normal themes and **WCAG AAA (7:1)** standards for high contrast mode.
 
 #### Color Palette
 
@@ -426,7 +426,7 @@ If you encounter an accessibility barrier:
 
 1. Check this guide for workarounds
 2. Try an alternative browser/AT combination
-3. Report the issue on our [GitHub Issues page](https://github.com/BrennenJohnston/openscad-web-customizer-forge/issues)
+3. Report the issue on our [GitHub Issues page](https://github.com/BrennenJohnston/openscad-assistive-forge/issues)
 4. Include:
    - Your OS and browser
    - Assistive technology (if applicable)

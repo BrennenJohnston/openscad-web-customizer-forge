@@ -1,6 +1,6 @@
 # Documentation Index
 
-**OpenSCAD Web Customizer Forge** — Complete documentation directory
+**OpenSCAD Assistive Forge** — Complete documentation directory
 
 ---
 

@@ -2,7 +2,7 @@
   <img src="OpenSCAD Assistive Web Forge Logo.png" alt="OpenSCAD Assistive Web Forge Logo" width="200">
 </p>
 
-# OpenSCAD Web Customizer Forge
+# OpenSCAD Assistive Forge
 
 > **Customize parametric 3D models directly in your browser.** Upload a Customizer-enabled `.scad`, adjust parameters through an accessibility-first UI, preview the result, and download printable outputs — no installation, no account, no server.
 
@@ -11,7 +11,7 @@
 [![Accessibility](https://img.shields.io/badge/WCAG-2.2%20AA-green.svg)](https://www.w3.org/WAI/WCAG22/quickref/)
 [![Version](https://img.shields.io/badge/version-3.1.0-brightgreen.svg)](CHANGELOG.md)
 [![PWA](https://img.shields.io/badge/PWA-enabled-blue.svg)](https://web.dev/progressive-web-apps/)
-[![Deploy](https://img.shields.io/badge/Deploy-Cloudflare%20Pages-F38020.svg)](https://openscad-web-customizer-forge.pages.dev/)
+[![Deploy](https://img.shields.io/badge/Deploy-Cloudflare%20Pages-F38020.svg)](https://openscad-assistive-forge.pages.dev/)
 
 ## Mission: one of the most accessible SCAD interfaces
 
@@ -32,13 +32,13 @@ If you find an accessibility barrier, please report it. Accessibility issues are
 
 ## Try it
 
-- **Live demo (Cloudflare Pages)**: `https://openscad-web-customizer-forge.pages.dev/`
+- **Live demo (Cloudflare Pages)**: `https://openscad-assistive-forge.pages.dev/`
 - **Install as app**: Use your browser's built-in install option (Chrome address bar ⊕ icon, iOS Share menu, etc.)
 - **Run locally**:
 
 ```bash
-git clone https://github.com/BrennenJohnston/openscad-web-customizer-forge.git
-cd openscad-web-customizer-forge
+git clone https://github.com/BrennenJohnston/openscad-assistive-forge.git
+cd openscad-assistive-forge
 npm install
 npm run dev
 ```
@@ -120,7 +120,7 @@ This repo includes `openscad-forge`, a CLI for extracting parameters and scaffol
 
 ```bash
 # install globally from GitHub
-npm install -g git+https://github.com/BrennenJohnston/openscad-web-customizer-forge.git
+npm install -g git+https://github.com/BrennenJohnston/openscad-assistive-forge.git
 
 # or from a local clone
 npm install -g .
@@ -218,8 +218,8 @@ Please report security issues responsibly:
 
 ## Support
 
-- Issue tracker: https://github.com/BrennenJohnston/openscad-web-customizer-forge/issues
-- Discussions: https://github.com/BrennenJohnston/openscad-web-customizer-forge/discussions (if enabled)
+- Issue tracker: https://github.com/BrennenJohnston/openscad-assistive-forge/issues
+- Discussions: https://github.com/BrennenJohnston/openscad-assistive-forge/discussions (if enabled)
 
 ## Changelog
 

@@ -1,5 +1,5 @@
 {
-  "name": "openscad-web-customizer-forge",
+  "name": "openscad-assistive-forge",
   "version": "3.1.0",
   "description": "Web-based OpenSCAD customizer with client-side WASM rendering and developer toolchain",
   "type": "module",

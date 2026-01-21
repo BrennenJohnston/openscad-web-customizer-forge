@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the OpenSCAD Web Customizer Forge project are documented here.
+All notable changes to the OpenSCAD Assistive Forge project are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -58,7 +58,7 @@ This is the first **major stable release** for production deployment on Cloudfla
 - Complete feature set across 25+ releases now stable
 
 **Infrastructure:**
-- Primary hosting: Cloudflare Pages (https://openscad-web-customizer-forge.pages.dev/)
+- Primary hosting: Cloudflare Pages (https://openscad-assistive-forge.pages.dev/)
 - COOP/COEP headers pre-configured for WASM threading compatibility
 - Global CDN for fast worldwide delivery
 - Automatic deployments from Git
@@ -722,8 +722,8 @@ We follow [Semantic Versioning](https://semver.org/):
 
 ## Links
 
-- **Repository**: [GitHub](https://github.com/BrennenJohnston/openscad-web-customizer-forge)
-- **Live Demo**: [Cloudflare Pages](https://openscad-web-customizer-forge.pages.dev/)
+- **Repository**: [GitHub](https://github.com/BrennenJohnston/openscad-assistive-forge)
+- **Live Demo**: [Cloudflare Pages](https://openscad-assistive-forge.pages.dev/)
 - **Documentation**: [docs/](docs/)
 - **Version Changelogs**: [docs/changelogs/](docs/changelogs/)
 - **License**: GPL-3.0-or-later

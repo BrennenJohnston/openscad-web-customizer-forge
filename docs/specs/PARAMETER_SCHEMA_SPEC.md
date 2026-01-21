@@ -7,7 +7,7 @@
 
 ## Overview
 
-This document defines the **Parameter Schema** format used by OpenSCAD Web Customizer Forge. The schema serves as the intermediate representation between OpenSCAD Customizer annotations and generated web application UIs.
+This document defines the **Parameter Schema** format used by the OpenSCAD Assistive Forge. The schema serves as the intermediate representation between OpenSCAD Customizer annotations and generated web application UIs.
 
 **Usage in v1 (Web App)**: Parameters are extracted at runtime in the browser and converted to this schema format internally for UI generation.
 

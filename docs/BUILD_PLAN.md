@@ -1,5 +1,5 @@
 ---
-name: OpenSCAD Web Customizer Forge — Build Plan
+name: OpenSCAD Assistive Forge — Build Plan
 version: 0.2.0
 date: 2026-01-12
 last_validated: 2026-01-12
@@ -8,7 +8,7 @@ status: rescoped_draft
 license: GPL-3.0-or-later
 ---
 
-# OpenSCAD Web Customizer Forge — Build Plan
+# OpenSCAD Assistive Forge — Build Plan
 
 ## Document Navigation
 
@@ -16,7 +16,7 @@ license: GPL-3.0-or-later
 |---------|-------------|
 | [Executive Summary](#executive-summary) | What we're building and why |
 | [Scope Change Summary](#scope-change-summary) | What changed from original plan |
-| [v1: Web Application](#v1-openscad-web-customizer-web-application) | User-facing web app (primary focus) |
+| [v1: Web Application](#v1-openscad-assistive-forge-web-application) | User-facing web app (primary focus) |
 | [v2: Developer Toolchain](#v2-developer-toolchain-original-scope) | CLI tools (deferred) |
 | [Technical Architecture](#technical-architecture) | How it works |
 | [Implementation Plan](#implementation-plan) | Phased build approach |
@@ -133,7 +133,7 @@ This is still valuable but is now **v2 scope** because:
 
 ---
 
-## v1: OpenSCAD Web Customizer (Web Application)
+## v1: OpenSCAD Assistive Forge (Web Application)
 
 ### User Journey
 
@@ -531,7 +531,7 @@ npm install ajv three
 After bootstrap + Phase 1, the repo layout should look like:
 
 ```
-openscad-web-customizer-forge/
+openscad-assistive-forge/
 ├── index.html
 ├── src/
 │   ├── main.js                 # Entry point; mounts UI
@@ -869,8 +869,8 @@ webapp/
 
 ```bash
 # Clone repository
-git clone https://github.com/YOUR_ORG/openscad-web-customizer-forge.git
-cd openscad-web-customizer-forge
+git clone https://github.com/YOUR_ORG/openscad-assistive-forge.git
+cd openscad-assistive-forge
 
 # Install dependencies
 npm install

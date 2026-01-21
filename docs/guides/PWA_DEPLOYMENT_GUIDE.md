@@ -275,7 +275,7 @@ lighthouse https://your-app.vercel.app --view
 
 1. **Open** production URL
 2. **Click** install icon (⊕) in address bar
-3. **OR**: Menu (⋮) > "Install OpenSCAD Web Customizer Forge"
+3. **OR**: Menu (⋮) > "Install OpenSCAD Assistive Forge"
 4. **Click "Install"**
 5. **App opens** in standalone window
 6. **Find app** in Start Menu/Applications

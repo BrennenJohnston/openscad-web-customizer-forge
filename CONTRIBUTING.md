@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in contributing to **OpenSCAD Web Customizer Forge**.
+Thanks for your interest in contributing to **OpenSCAD Assistive Forge**.
 
 This project’s core goal is to make **one of the most accessible SCAD interfaces available**. Contributions that improve accessibility, clarity, and reliability are especially welcome.
 

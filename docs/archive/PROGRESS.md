@@ -109,7 +109,7 @@ The application can now:
 ## 📁 File Structure Created
 
 ```
-openscad-web-customizer-forge/
+openscad-assistive-forge/
 ├── index.html                      # Main HTML shell
 ├── package.json                    # Dependencies and scripts
 ├── vite.config.js                  # Build configuration

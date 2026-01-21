@@ -30,7 +30,7 @@ const createZipFixture = async () => {
 
 const uploadZipProject = async (page) => {
   await page.goto('/')
-  await expect(page.locator('h1')).toContainText('OpenSCAD Web Customizer')
+  await expect(page.locator('h1')).toContainText('OpenSCAD Assistive Forge')
 
   const zipPath = await createZipFixture()
   const fileInput = page.locator('#fileInput')

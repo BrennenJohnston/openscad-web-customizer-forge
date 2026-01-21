@@ -75,7 +75,7 @@ Lines Removed: ~10
 ---
 
 **Full Changelog**: v2.2.0...v2.3.0  
-**Repository**: [GitHub](https://github.com/YOUR_ORG/openscad-web-customizer-forge)
+**Repository**: [GitHub](https://github.com/YOUR_ORG/openscad-assistive-forge)
 
 ---
 

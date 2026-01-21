@@ -39,7 +39,7 @@ This Code of Conduct applies within all community spaces, and also applies when 
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the project maintainers responsible for enforcement:
 
-- **Primary Contact**: Open an issue at https://github.com/BrennenJohnston/openscad-web-customizer-forge/issues
+- **Primary Contact**: Open an issue at https://github.com/BrennenJohnston/openscad-assistive-forge/issues
 - **Private/Sensitive Reports**: Use GitHub's private vulnerability reporting feature or contact the repository maintainer directly
 
 All complaints will be reviewed and investigated promptly and fairly. All project maintainers are obligated to respect the privacy and security of the reporter of any incident.

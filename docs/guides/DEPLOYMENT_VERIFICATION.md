@@ -2,7 +2,7 @@
 
 **Deployment Date**: 2026-01-12  
 **Version**: v1.1.0  
-**Production URL**: https://openscad-web-customizer-forge-p6hdkza8m.vercel.app  
+**Production URL**: https://openscad-assistive-forge-p6hdkza8m.vercel.app  
 **Status**: ✅ Deployed to Vercel Production
 
 ---
@@ -59,7 +59,7 @@ Test URL parameter persistence:
 
 **Expected URL format**:
 ```
-https://openscad-web-customizer-forge-p6hdkza8m.vercel.app/#v=1&params=%7B%22width%22%3A70%7D
+https://openscad-assistive-forge-p6hdkza8m.vercel.app/#v=1&params=%7B%22width%22%3A70%7D
 ```
 
 ### 4. v1.1 Features — Copy Share Link ✅
@@ -237,9 +237,9 @@ After completing all verification steps:
 
 ## 📞 Quick Links
 
-- **Production URL**: https://openscad-web-customizer-forge-p6hdkza8m.vercel.app
-- **Vercel Dashboard**: https://vercel.com/brennenjohnstons-projects/openscad-web-customizer-forge
-- **Deployment Logs**: `vercel inspect openscad-web-customizer-forge-p6hdkza8m.vercel.app --logs`
+- **Production URL**: https://openscad-assistive-forge-p6hdkza8m.vercel.app
+- **Vercel Dashboard**: https://vercel.com/brennenjohnstons-projects/openscad-assistive-forge
+- **Deployment Logs**: `vercel inspect openscad-assistive-forge-p6hdkza8m.vercel.app --logs`
 - **GitHub Repository**: [Link to your repo]
 
 ---

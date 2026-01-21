@@ -1,4 +1,4 @@
-# Vercel Deployment Guide - OpenSCAD Web Customizer
+# Vercel Deployment Guide - OpenSCAD Assistive Forge
 
 **Version**: 1.0.0  
 **Date**: 2026-01-12  
@@ -177,7 +177,7 @@ This deploys to your production domain:
 #### Step 1: Push to GitHub (if not already)
 ```bash
 # Create GitHub repository first, then:
-git remote add origin https://github.com/YOUR_USERNAME/openscad-web-customizer-forge.git
+git remote add origin https://github.com/YOUR_USERNAME/openscad-assistive-forge.git
 git push -u origin main
 ```
 
@@ -538,7 +538,7 @@ Visit your production URL and verify:
 1. **Page Load**
    - [ ] Page loads without errors
    - [ ] No 404s in Network tab
-   - [ ] Console shows "OpenSCAD Web Customizer v1.0.0"
+   - [ ] Console shows "OpenSCAD Assistive Forge v3.1.0"
    - [ ] Console shows "[Worker] OpenSCAD WASM initialized successfully"
 
 2. **File Upload**

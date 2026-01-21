@@ -1,5 +1,5 @@
 /**
- * OpenSCAD Web Customizer Forge - Service Worker
+ * OpenSCAD Assistive Forge - Service Worker
  * Provides offline functionality and caching for PWA
  * Version: 3.1.0
  */

@@ -136,7 +136,7 @@ A consolidated 300-line changelog covering:
 
 ## 🚀 Push to GitHub
 
-**Repository**: https://github.com/BrennenJohnston/openscad-web-customizer-forge  
+**Repository**: https://github.com/BrennenJohnston/openscad-assistive-forge  
 **Branch**: main  
 **Commit**: addb670
 
@@ -216,15 +216,15 @@ Status: ✅ Successfully pushed
 - **Version History**: docs/changelogs/
 
 ### Links
-- **Repository**: https://github.com/BrennenJohnston/openscad-web-customizer-forge
-- **Live Demo**: https://openscad-web-customizer-forge.pages.dev
-- **Commit**: https://github.com/BrennenJohnston/openscad-web-customizer-forge/commit/addb670
+- **Repository**: https://github.com/BrennenJohnston/openscad-assistive-forge
+- **Live Demo**: https://openscad-assistive-forge.pages.dev
+- **Commit**: https://github.com/BrennenJohnston/openscad-assistive-forge/commit/addb670
 
 ---
 
 ## 🎉 Summary
 
-This commit represents a **major milestone** in the OpenSCAD Web Customizer Forge project:
+This commit represents a **major milestone** in the OpenSCAD Assistive Forge project:
 
 1. **Feature Complete**: v1.7.0 Parameter Presets System fully implemented
 2. **Documentation Excellence**: 30 files reorganized into logical structure
@@ -240,7 +240,7 @@ The project now has:
 - Clean, maintainable codebase
 - Successful deployment to production
 
-**Result**: The OpenSCAD Web Customizer Forge is a **production-ready, feature-rich, well-documented open-source project** ready for community use and contribution.
+**Result**: The OpenSCAD Assistive Forge is a **production-ready, feature-rich, well-documented open-source project** ready for community use and contribution.
 
 ---
 

@@ -8,7 +8,7 @@
 
 ## Overview
 
-Cloudflare Pages is the recommended hosting platform for OpenSCAD Web Customizer Forge. It provides:
+Cloudflare Pages is the recommended hosting platform for OpenSCAD Assistive Forge. It provides:
 
 - **Unlimited bandwidth** on the free tier
 - **Global CDN** for fast asset delivery worldwide
@@ -75,7 +75,7 @@ This method automatically deploys when you push to your repository.
 2. Click **Create** → **Pages** → **Connect to Git**
 3. Select your Git provider (GitHub, GitLab, or Bitbucket)
 4. Authorize Cloudflare to access your repository
-5. Select the `openscad-web-customizer-forge` repository
+5. Select the `openscad-assistive-forge` repository
 
 #### Step 2: Configure Build Settings
 

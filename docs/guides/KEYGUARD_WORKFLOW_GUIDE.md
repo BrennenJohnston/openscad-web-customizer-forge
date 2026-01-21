@@ -1,6 +1,6 @@
 # AAC Keyguard Customization Workflow Guide
 
-This guide provides step-by-step instructions for clinicians, occupational therapists, speech-language pathologists, and caregivers who are customizing AAC (Augmentative and Alternative Communication) keyguards using the OpenSCAD Web Customizer Forge.
+This guide provides step-by-step instructions for clinicians, occupational therapists, speech-language pathologists, and caregivers who are customizing AAC (Augmentative and Alternative Communication) keyguards using OpenSCAD Assistive Forge.
 
 ## Table of Contents
 
@@ -78,7 +78,7 @@ Traditional keyguard creation methods require:
 
 ### Step 1: Load a Keyguard Model
 
-1. Visit the OpenSCAD Web Customizer Forge
+1. Visit the OpenSCAD Assistive Forge
 2. Click **"Load Example"** (if available) or **"Upload .scad file"**
 3. Popular keyguard models:
    - **Volksswitch Keyguard** (flexible, grid-based, well-documented)
@@ -448,4 +448,4 @@ If you encounter issues:
 
 **Last Updated**: 2026-01-18  
 **Version**: 2.4.0+  
-**Maintained by**: OpenSCAD Web Customizer Forge community
+**Maintained by**: OpenSCAD Assistive Forge community

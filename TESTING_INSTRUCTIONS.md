@@ -63,7 +63,7 @@ Open browser DevTools (F12) and check Console tab for:
 
 ```
 ✅ Expected messages:
-OpenSCAD Web Customizer v1.10.0
+OpenSCAD Assistive Forge v3.1.0
 Detected libraries: ['MCAD']
 Auto-enabled libraries: ['MCAD']
 [Library] enable: MCAD

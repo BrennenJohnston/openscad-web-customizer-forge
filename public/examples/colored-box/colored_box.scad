@@ -1,5 +1,5 @@
 // Colored Box Example
-// Demonstrates color parameter support in OpenSCAD Web Customizer
+// Demonstrates color parameter support in OpenSCAD Assistive Forge
 
 /* [Dimensions] */
 width = 50; // [10:100] Box width (mm)
@@ -17,7 +17,7 @@ add_lid = "yes"; // [yes, no] Add a lid
 add_feet = "yes"; // [yes, no] Add feet to bottom
 
 // Module: Colored Box
-// This demonstrates how color parameters work in OpenSCAD Web Customizer
+// This demonstrates how color parameters work in OpenSCAD Assistive Forge
 // Colors are passed as RGB arrays [r, g, b] with values 0-255
 
 module colored_box() {

@@ -1,6 +1,6 @@
 # Testing Guide
 
-This document describes the testing infrastructure for the OpenSCAD Web Customizer Forge project.
+This document describes the testing infrastructure for the OpenSCAD Assistive Forge project.
 
 ## Overview
 
@@ -208,7 +208,7 @@ The project uses GitHub Actions for automated testing:
 
 ### CI Status
 
-Check CI status at: `https://github.com/your-org/openscad-web-customizer-forge/actions`
+Check CI status at: `https://github.com/your-org/openscad-assistive-forge/actions`
 
 ## Test Fixtures
 

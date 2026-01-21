@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Generate placeholder PWA icons for OpenSCAD Web Customizer Forge
+ * Generate placeholder PWA icons for OpenSCAD Assistive Forge
  *
  * This script creates simple colored square PNG icons for PWA support.
  * For production, replace these with properly designed icons.

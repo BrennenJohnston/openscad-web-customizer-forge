@@ -1,5 +1,5 @@
 /**
- * OpenSCAD Web Customizer - Main Entry Point
+ * OpenSCAD Assistive Forge - Main Entry Point
  * @license GPL-3.0-or-later
  */
 
@@ -269,7 +269,7 @@ function sanitizeUrlParams(extracted, urlParams) {
 
 // Initialize app
 async function initApp() {
-  console.log('OpenSCAD Web Customizer v2.9.0 (WASM Progress & Mobile)');
+  console.log('OpenSCAD Assistive Forge v3.1.0');
   console.log('Initializing...');
 
   let statusArea = null;

@@ -1,5 +1,5 @@
 ---
-name: OpenSCAD Web Customizer Forge — Build Plan
+name: OpenSCAD Assistive Forge — Build Plan
 version: 3.1.0
 date: 2026-01-12
 last_validated: 2026-01-20
@@ -9,7 +9,7 @@ next_milestone: v3.2 (Q2 2026)
 license: GPL-3.0-or-later
 ---
 
-# OpenSCAD Web Customizer Forge — Build Plan
+# OpenSCAD Assistive Forge — Build Plan
 
 ## Document Navigation
 
@@ -17,7 +17,7 @@ license: GPL-3.0-or-later
 |---------|-------------|
 | [Executive Summary](#executive-summary) | What we're building and why |
 | [Scope Change Summary](#scope-change-summary) | What changed from original plan |
-| [v1: Web Application](#v1-openscad-web-customizer-web-application) | User-facing web app (primary focus) |
+| [v1: Web Application](#v1-openscad-assistive-forge-web-application) | User-facing web app (primary focus) |
 | [v2: Developer Toolchain](#v2-developer-toolchain-original-scope) | CLI tools (deferred) |
 | [Technical Architecture](#technical-architecture) | How it works |
 | [Implementation Plan](#implementation-plan) | Phased build approach |
@@ -143,7 +143,7 @@ This is still valuable but is now **v2 scope** because:
 
 ---
 
-## v1: OpenSCAD Web Customizer (Web Application)
+## v1: OpenSCAD Assistive Forge (Web Application)
 
 ### User Journey
 
@@ -1412,7 +1412,7 @@ EOF
 After bootstrap + Phase 1, the repo layout should look like:
 
 ```
-openscad-web-customizer-forge/
+openscad-assistive-forge/
 ├── index.html
 ├── src/
 │   ├── main.js                 # Entry point; mounts UI
@@ -2259,8 +2259,8 @@ webapp/
 
 ```bash
 # Clone repository
-git clone https://github.com/YOUR_ORG/openscad-web-customizer-forge.git
-cd openscad-web-customizer-forge
+git clone https://github.com/YOUR_ORG/openscad-assistive-forge.git
+cd openscad-assistive-forge
 
 # Install dependencies
 npm install
@@ -4746,10 +4746,10 @@ Protection rules:
 Add status badges to `README.md`:
 
 ```markdown
-[![CI](https://github.com/YOUR_ORG/openscad-web-customizer-forge/workflows/CI/badge.svg)](https://github.com/YOUR_ORG/openscad-web-customizer-forge/actions)
-[![Deploy](https://github.com/YOUR_ORG/openscad-web-customizer-forge/workflows/Deploy%20to%20Vercel/badge.svg)](https://github.com/YOUR_ORG/openscad-web-customizer-forge/actions)
-[![codecov](https://codecov.io/gh/YOUR_ORG/openscad-web-customizer-forge/branch/main/graph/badge.svg)](https://codecov.io/gh/YOUR_ORG/openscad-web-customizer-forge)
-[![Lighthouse Score](https://img.shields.io/badge/lighthouse-90%2B-brightgreen)](https://github.com/YOUR_ORG/openscad-web-customizer-forge/actions)
+[![CI](https://github.com/YOUR_ORG/openscad-assistive-forge/workflows/CI/badge.svg)](https://github.com/YOUR_ORG/openscad-assistive-forge/actions)
+[![Deploy](https://github.com/YOUR_ORG/openscad-assistive-forge/workflows/Deploy%20to%20Vercel/badge.svg)](https://github.com/YOUR_ORG/openscad-assistive-forge/actions)
+[![codecov](https://codecov.io/gh/YOUR_ORG/openscad-assistive-forge/branch/main/graph/badge.svg)](https://codecov.io/gh/YOUR_ORG/openscad-assistive-forge)
+[![Lighthouse Score](https://img.shields.io/badge/lighthouse-90%2B-brightgreen)](https://github.com/YOUR_ORG/openscad-assistive-forge/actions)
 ```
 
 ---
@@ -6769,7 +6769,7 @@ test.describe('Upload → Customize → Download Flow', () => {
     await page.goto('/')
     
     // 2. Verify welcome screen
-    await expect(page.locator('h1')).toContainText('OpenSCAD Web Customizer')
+    await expect(page.locator('h1')).toContainText('OpenSCAD Assistive Forge')
     
     // 3. Upload file
     const fileInput = page.locator('input[type="file"]')
@@ -7465,7 +7465,7 @@ If `text()` produces errors:
 ```markdown
 # Mobile Browser Limitations
 
-This document describes known limitations when using the OpenSCAD Web Customizer on mobile devices.
+This document describes known limitations when using the OpenSCAD Assistive Forge on mobile devices.
 
 ## Memory Constraints
 

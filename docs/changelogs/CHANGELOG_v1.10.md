@@ -415,8 +415,8 @@ Setup libraries locally:
 
 ```bash
 # Clone repository
-git clone https://github.com/YOUR_ORG/openscad-web-customizer-forge.git
-cd openscad-web-customizer-forge
+git clone https://github.com/YOUR_ORG/openscad-assistive-forge.git
+cd openscad-assistive-forge
 
 # Install dependencies
 npm install

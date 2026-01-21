@@ -1,6 +1,6 @@
 # Performance Guide
 
-This document provides guidance on optimizing the OpenSCAD Web Customizer Forge for performance.
+This document provides guidance on optimizing the OpenSCAD Assistive Forge for performance.
 
 ## Overview
 

@@ -1,6 +1,6 @@
 # Troubleshooting Guide
 
-This document covers common issues and their solutions when developing or testing the OpenSCAD Web Customizer Forge.
+This document covers common issues and their solutions when developing or testing the OpenSCAD Assistive Forge.
 
 ## Table of Contents
 

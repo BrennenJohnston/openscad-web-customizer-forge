@@ -1,7 +1,7 @@
 # Production Verification Checklist — v1.2.0
 
 **Version**: v3.0.0  
-**Production URL**: https://openscad-web-customizer-forge.pages.dev  
+**Production URL**: https://openscad-assistive-forge.pages.dev  
 **Verification Date**: 2026-01-18  
 **Status**: 🔄 **PENDING VERIFICATION**
 
@@ -23,7 +23,7 @@ This checklist ensures v1.2.0 Auto-Preview features work correctly in production
   - Three.js: 460.78 KB (117.20 KB gzipped) ✅
   - WASM: 10.98 MB (lazy loaded) ✅
 - [x] **Deployment successful** - Cloudflare Pages deployment completed
-- [x] **Production URL generated** - https://openscad-web-customizer-forge.pages.dev
+- [x] **Production URL generated** - https://openscad-assistive-forge.pages.dev
 
 ---
 
@@ -539,7 +539,7 @@ This checklist ensures v1.2.0 Auto-Preview features work correctly in production
 
 ## 📚 Resources
 
-- **Production URL**: https://openscad-web-customizer-forge.pages.dev
+- **Production URL**: https://openscad-assistive-forge.pages.dev
 - **Cloudflare Dashboard**: https://dash.cloudflare.com
 - **GitHub Repository**: (add your repo URL)
 - **Build Plan**: docs/BUILD_PLAN_NEW.md

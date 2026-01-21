@@ -2,7 +2,7 @@
 
 ## Overview
 
-The OpenSCAD Web Customizer uses an accessible color system built on [Radix Colors](https://www.radix-ui.com/colors), designed to meet **WCAG 2.2 AA** standards for normal themes and **WCAG AAA (7:1)** standards for high contrast mode.
+The OpenSCAD Assistive Forge uses an accessible color system built on [Radix Colors](https://www.radix-ui.com/colors), designed to meet **WCAG 2.2 AA** standards for normal themes and **WCAG AAA (7:1)** standards for high contrast mode.
 
 ## Core Principles
 
@@ -336,6 +336,6 @@ For questions or issues with the color system:
 
 ## License
 
-The color system implementation is part of the OpenSCAD Web Customizer project.
+The color system implementation is part of the OpenSCAD Assistive Forge project.
 
 Radix Colors is licensed under MIT. See [Radix UI License](https://github.com/radix-ui/colors/blob/main/LICENSE).
