@@ -21,6 +21,7 @@ playwright-report/
 
 # Lighthouse reports
 localhost_*.report.html
+.lighthouseci/
 
 # Editor workspace files
 *.code-workspace
