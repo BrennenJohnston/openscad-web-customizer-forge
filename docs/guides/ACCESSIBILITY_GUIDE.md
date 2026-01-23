@@ -309,6 +309,15 @@ Features:
 
 Available in both light and dark variants.
 
+#### Optional Monochrome Render Mode
+
+An optional monochrome rendering mode is available for users who prefer a
+terminal-style view or need additional visual clarity. To keep the interface
+lightweight, this mode is not part of the default settings panel.
+
+If you need this mode for accessibility, please contact the maintainers or
+open an issue and we will provide guidance.
+
 ### Focus Indicators
 
 Focus indicators use **brand-neutral blue** (#0052cc in light mode, #66b3ff in dark mode) for:

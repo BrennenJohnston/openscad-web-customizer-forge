@@ -291,7 +291,7 @@ docs/README.md (Index)
 └─→ All technical specs
 
 docs/guides/CLOUDFLARE_PAGES_DEPLOYMENT.md
-├─→ docs/guides/VERCEL_LEGACY_CONFIG.md
+├─→ docs/archive/VERCEL_LEGACY_CONFIG.md
 ├─→ docs/TROUBLESHOOTING.md
 └─→ Referenced by README.md
 

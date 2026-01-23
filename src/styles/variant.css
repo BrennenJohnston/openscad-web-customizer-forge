@@ -1,7 +1,7 @@
-/* Variant UI Theme Overrides (Hidden Feature)
+/* Variant UI Theme Overrides
  * 
  * Applied when data-ui-variant="mono" is set on :root
- * Neutral naming to avoid revealing the feature
+ * Neutral naming to avoid documenting activation details
  * 
  * Color variants:
  * - Dark theme (default): Green phosphor (classic terminal)
@@ -132,6 +132,33 @@
 
 :root[data-ui-variant='mono'] .btn-icon-svg {
   shape-rendering: geometricPrecision;
+}
+
+/* Alt View Toggle Button - ensure icon contrast in mono variant */
+:root[data-ui-variant='mono'] .alt-view-toggle {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
+  border-radius: 0;
+}
+
+:root[data-ui-variant='mono'] .alt-view-toggle svg {
+  stroke: var(--color-accent);
+}
+
+:root[data-ui-variant='mono'] .alt-view-toggle:hover {
+  background: var(--color-hover-bg);
+  border-color: var(--color-accent);
+}
+
+:root[data-ui-variant='mono'] .alt-view-toggle[aria-pressed='true'] {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  border-color: var(--color-accent);
+}
+
+:root[data-ui-variant='mono'] .alt-view-toggle[aria-pressed='true'] svg {
+  stroke: var(--color-accent-text);
 }
 
 /* Cursor theming (mono variant only) */
@@ -425,12 +452,98 @@
   box-shadow: none;
 }
 
+/* Mobile camera drawer (mono variant): remove translucency/blur, keep flat style */
+@media (max-width: 767px) {
+  :root[data-ui-variant='mono'] .camera-drawer {
+    background: var(--color-bg-primary) !important;
+    border-color: var(--color-border) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  :root[data-ui-variant='mono'] .camera-drawer-toggle-btn {
+    background: var(--color-bg-secondary) !important;
+    border-bottom: 1px solid var(--color-border) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  :root[data-ui-variant='mono'] .camera-drawer-body {
+    background: var(--color-bg-primary) !important;
+    border-top: 1px solid var(--color-border) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  :root[data-ui-variant='mono'] .camera-drawer-btn {
+    background: var(--color-bg-tertiary) !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: 0 !important;
+  }
+
+  :root[data-ui-variant='mono'] .camera-drawer-dpad-label {
+    background: var(--color-bg-secondary) !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: 0 !important;
+  }
+
+  /* Alt Pan Toggle in mobile drawer - ensure icon contrast */
+  :root[data-ui-variant='mono'] .alt-pan-toggle {
+    background: var(--color-bg-tertiary) !important;
+    border: 1px solid var(--color-accent) !important;
+    color: var(--color-accent) !important;
+    border-radius: 0 !important;
+  }
+
+  :root[data-ui-variant='mono'] .alt-pan-toggle svg {
+    stroke: var(--color-accent) !important;
+  }
+
+  :root[data-ui-variant='mono'] .alt-pan-toggle[aria-pressed='true'],
+  :root[data-ui-variant='mono'] .alt-pan-toggle.active {
+    background: var(--color-accent) !important;
+    color: var(--color-accent-text) !important;
+    border-color: var(--color-accent) !important;
+  }
+
+  :root[data-ui-variant='mono'] .alt-pan-toggle[aria-pressed='true'] svg,
+  :root[data-ui-variant='mono'] .alt-pan-toggle.active svg {
+    stroke: var(--color-accent-text) !important;
+  }
+}
+
 /* Preview status bar */
 :root[data-ui-variant='mono'] .preview-status-bar {
   background: var(--color-bg-secondary);
   border-color: var(--color-border);
   border-radius: 0;
   backdrop-filter: none;
+}
+
+/* Alt adjust info line - visible only in mono variant */
+:root[data-ui-variant='mono'] .preview-status-bar.has-alt-adjust .preview-status-alt-adjust {
+  /* Force new line using flex basis */
+  flex-basis: 100%;
+  display: block;
+  margin-top: var(--space-2xs);
+  padding-top: var(--space-2xs);
+  border-top: 1px solid var(--color-border);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+/* Highlight active adjustment mode */
+:root[data-ui-variant='mono'] .preview-status-alt-adjust .alt-adjust-active {
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+/* Dim inactive values */
+:root[data-ui-variant='mono'] .preview-status-alt-adjust .alt-adjust-label {
+  color: var(--color-text-tertiary);
 }
 
 /* Preview-only model color doesn't apply in mono variant */
@@ -548,6 +661,41 @@
 
 :root[data-ui-variant='mono'] .alt-rotate-toggle:focus,
 :root[data-ui-variant='mono'] .alt-rotate-toggle:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Alt Pan adjust toggle button in Pan D-pad center (desktop) */
+:root[data-ui-variant='mono'] .alt-pan-toggle {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
+  border-radius: 0;
+}
+
+:root[data-ui-variant='mono'] .alt-pan-toggle svg {
+  stroke: var(--color-accent);
+}
+
+:root[data-ui-variant='mono'] .alt-pan-toggle:hover {
+  background: var(--color-hover-bg);
+  border-color: var(--color-accent);
+}
+
+:root[data-ui-variant='mono'] .alt-pan-toggle.active,
+:root[data-ui-variant='mono'] .alt-pan-toggle[aria-pressed='true'] {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  border-color: var(--color-accent);
+}
+
+:root[data-ui-variant='mono'] .alt-pan-toggle.active svg,
+:root[data-ui-variant='mono'] .alt-pan-toggle[aria-pressed='true'] svg {
+  stroke: var(--color-accent-text);
+}
+
+:root[data-ui-variant='mono'] .alt-pan-toggle:focus,
+:root[data-ui-variant='mono'] .alt-pan-toggle:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }

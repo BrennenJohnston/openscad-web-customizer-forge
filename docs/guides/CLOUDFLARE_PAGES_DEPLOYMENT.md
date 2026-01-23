@@ -366,7 +366,7 @@ Required secrets:
 
 ### To Vercel (Alternative Platform)
 
-See [Vercel Legacy Configuration](./VERCEL_LEGACY_CONFIG.md) for rollback instructions.
+See [Vercel Legacy Configuration](../archive/VERCEL_LEGACY_CONFIG.md) for rollback instructions (archived).
 
 ---
 
@@ -396,6 +396,6 @@ wrangler pages deployment list --project-name=[project-name]
 
 ## Related Documentation
 
-- [Vercel Legacy Configuration](./VERCEL_LEGACY_CONFIG.md) — Rollback option
+- [Vercel Legacy Configuration](../archive/VERCEL_LEGACY_CONFIG.md) — Rollback option (archived)
 - [Troubleshooting](../TROUBLESHOOTING.md) — Common issues
 - [Cloudflare Pages Docs](https://developers.cloudflare.com/pages/) — Official documentation

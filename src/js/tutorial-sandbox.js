@@ -609,10 +609,25 @@ function handleDrawerStateChange(isNowOpen) {
 
     // Don't interfere while a step is being set up - prevents race conditions
     // that can cause the drawer to open/close in a loop
-    if (isSettingUpStep) return;
+    if (isSettingUpStep) {
+      return;
+    }
 
     const step = activeTutorial.steps[currentStepIndex];
     if (!step.highlightSelector && !step.targetKey) return;
+
+    // CRITICAL FIX: For informational steps (no completion requirement), don't track drawer state changes.
+    // These steps just want to show the user where controls are, not create an interactive ping-pong
+    // between open/close buttons. User should just read the info and click Next.
+    // Only track drawer changes for steps that REQUIRE specific drawer states for completion.
+    if (!step.completion) {
+      return;
+    }
+
+    // For steps with completion requirements, block updates after completion to prevent loops
+    if (stepCompleted) {
+      return;
+    }
 
     // Wait for drawer animation to complete
     const paramPanel = document.getElementById('paramPanel');
@@ -2733,28 +2748,33 @@ function applyZoomAdjustments(panel) {
  * @returns {{top: number, right: number, bottom: number, left: number}}
  */
 function measureSafeAreaInsets() {
-  // Create a test element to measure CSS env() values
-  const testEl = document.createElement('div');
-  testEl.style.cssText = `
-    position: fixed;
-    top: env(safe-area-inset-top, 0px);
-    right: env(safe-area-inset-right, 0px);
-    bottom: env(safe-area-inset-bottom, 0px);
-    left: env(safe-area-inset-left, 0px);
-    pointer-events: none;
-    visibility: hidden;
-    width: 1px;
-    height: 1px;
-  `;
-  document.body.appendChild(testEl);
-  const rect = testEl.getBoundingClientRect();
-  document.body.removeChild(testEl);
+  // Measure each inset separately to avoid CSS conflicts
+  const measure = (prop, anchor) => {
+    const testEl = document.createElement('div');
+    testEl.style.cssText = `
+      position: fixed;
+      ${anchor}: env(safe-area-inset-${prop}, 0px);
+      pointer-events: none;
+      visibility: hidden;
+      width: 1px;
+      height: 1px;
+    `;
+    document.body.appendChild(testEl);
+    const rect = testEl.getBoundingClientRect();
+    document.body.removeChild(testEl);
+    
+    if (prop === 'top') return rect.top;
+    if (prop === 'left') return rect.left;
+    if (prop === 'right') return window.innerWidth - rect.right;
+    if (prop === 'bottom') return window.innerHeight - rect.bottom;
+    return 0;
+  };
 
   return {
-    top: rect.top,
-    right: window.innerWidth - rect.right,
-    bottom: window.innerHeight - rect.bottom,
-    left: rect.left,
+    top: measure('top', 'top'),
+    right: measure('right', 'right'),
+    bottom: measure('bottom', 'bottom'),
+    left: measure('left', 'left'),
   };
 }
 

@@ -676,6 +676,85 @@ describe('PreviewManager', () => {
     })
   })
 
+  describe('Resize Behavior', () => {
+    it('initializes with resize tracking state', () => {
+      const manager = new PreviewManager(container)
+      
+      expect(manager._lastAspect).toBeNull()
+      expect(manager._lastContainerWidth).toBe(0)
+      expect(manager._lastContainerHeight).toBe(0)
+      expect(manager._resizeDebounceId).toBeNull()
+    })
+
+    it('has default resize configuration', () => {
+      const manager = new PreviewManager(container)
+      
+      expect(manager._resizeConfig).toBeDefined()
+      expect(manager._resizeConfig.aspectChangeThreshold).toBe(0.15)
+      expect(manager._resizeConfig.adjustCameraOnResize).toBe(true)
+      expect(manager._resizeConfig.debounceDelay).toBe(100)
+    })
+
+    it('allows setting resize configuration', () => {
+      const manager = new PreviewManager(container)
+      
+      manager.setResizeConfig({
+        aspectChangeThreshold: 0.25,
+        adjustCameraOnResize: false
+      })
+      
+      expect(manager._resizeConfig.aspectChangeThreshold).toBe(0.25)
+      expect(manager._resizeConfig.adjustCameraOnResize).toBe(false)
+    })
+
+    it('clamps aspectChangeThreshold within valid range', () => {
+      const manager = new PreviewManager(container)
+      
+      manager.setResizeConfig({ aspectChangeThreshold: -0.5 })
+      expect(manager._resizeConfig.aspectChangeThreshold).toBe(0.01)
+      
+      manager.setResizeConfig({ aspectChangeThreshold: 1.0 })
+      expect(manager._resizeConfig.aspectChangeThreshold).toBe(0.5)
+    })
+
+    it('ignores invalid config values', () => {
+      const manager = new PreviewManager(container)
+      const originalThreshold = manager._resizeConfig.aspectChangeThreshold
+      const originalAdjust = manager._resizeConfig.adjustCameraOnResize
+      
+      manager.setResizeConfig({
+        aspectChangeThreshold: 'invalid',
+        adjustCameraOnResize: 'not-boolean'
+      })
+      
+      // Values should remain unchanged for invalid inputs
+      expect(manager._resizeConfig.aspectChangeThreshold).toBe(originalThreshold)
+      expect(manager._resizeConfig.adjustCameraOnResize).toBe(originalAdjust)
+    })
+
+    it('clears resize state on dispose', () => {
+      const manager = new PreviewManager(container)
+      
+      // Set some state
+      manager._lastAspect = 1.5
+      manager._lastContainerWidth = 800
+      manager._lastContainerHeight = 600
+      manager._resizeDebounceId = 123
+      
+      // Mock cancelAnimationFrame
+      const originalCAF = window.cancelAnimationFrame
+      window.cancelAnimationFrame = vi.fn()
+      
+      manager.dispose()
+      
+      expect(manager._lastAspect).toBeNull()
+      expect(manager._lastContainerWidth).toBe(0)
+      expect(manager._lastContainerHeight).toBe(0)
+      
+      window.cancelAnimationFrame = originalCAF
+    })
+  })
+
   describe('Show Measurements', () => {
     it('does nothing when no mesh exists', () => {
       const manager = new PreviewManager(container)

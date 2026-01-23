@@ -50,8 +50,10 @@ function _clamp01(x) {
 
 function _setContrastScale(scale) {
   const next = Number.isFinite(scale) ? scale : 1;
-  // Safety clamp to avoid extreme exponents.
-  _contrastScale = Math.max(0.5, Math.min(2.5, next));
+  // Clamp to useful range based on Harri research:
+  // - Min 0.5 → exponent ~0.9 (essentially off, no enhancement)
+  // - Max 4.0 → exponent ~7.2 (very sharp edges, before artifact threshold)
+  _contrastScale = Math.max(0.5, Math.min(4.0, next));
   _contrastExp = _DEFAULT_CONTRAST_EXP * _contrastScale;
   _dirContrastExp = _DEFAULT_DIR_CONTRAST_EXP * _contrastScale;
   return _contrastScale;
@@ -63,8 +65,10 @@ function _getContrastScale() {
 
 function _setFontScale(scale) {
   const next = Number.isFinite(scale) ? scale : 1;
-  // Clamp for stability; UI may be tighter.
-  _fontScale = Math.max(0.6, Math.min(2.0, next));
+  // Clamp to extended range:
+  // - Min 0.5 → smaller chars, higher resolution (may be hard to read)
+  // - Max 2.5 → larger chars, lower resolution (more legible)
+  _fontScale = Math.max(0.5, Math.min(2.5, next));
   return _fontScale;
 }
 
@@ -135,22 +139,33 @@ function _getExternalSamplePoints(cellW, cellH) {
   ];
 }
 
-// Mapping from each internal sampling point (0-5) to the external samples that affect it
-// This enables the "widening" effect described in Harri's article
-// Internal layout:  0  1      External affects:
-//                   2  3      - 0 (top-left): ext 0,1,6
-//                   4  5      - 1 (top-right): ext 3,4,7
-//                              - 2 (mid-left): ext 0,1,2
-//                              - 3 (mid-right): ext 3,4,5
-//                              - 4 (bot-left): ext 1,2,8
-//                              - 5 (bot-right): ext 4,5,9
+// Mapping from each internal sampling point (0-5) to the external samples that affect it.
+//
+// This is a "widened" directional-contrast neighborhood (inspired by Harri's
+// widened external sampling idea): a bright region adjacent to the cell should
+// influence not just the nearest internal component, but also nearby components
+// (helps reduce staircasing / abrupt transitions).
+//
+// External sample ordering in this file:
+// - 0..2: left side (top/mid/bottom)
+// - 3..5: right side (top/mid/bottom)
+// - 6..7: top edge (left/right)
+// - 8..9: bottom edge (left/right)
+//
+// Internal layout indices:
+//   0  1
+//   2  3
+//   4  5
 const _EXT_AFFECTING = [
-  [0, 1, 6], // internal 0 affected by ext top-left, mid-left, top-L
-  [3, 4, 7], // internal 1 affected by ext top-right, mid-right, top-R
-  [0, 1, 2], // internal 2 affected by ext left column
-  [3, 4, 5], // internal 3 affected by ext right column
-  [1, 2, 8], // internal 4 affected by ext mid-left, bot-left, bot-L
-  [4, 5, 9], // internal 5 affected by ext mid-right, bot-right, bot-R
+  // Top row: influenced by top edge + whole corresponding side
+  [0, 1, 2, 6], // internal 0 (top-left)
+  [3, 4, 5, 7], // internal 1 (top-right)
+  // Middle row: influenced by side + both top and bottom on that column
+  [0, 1, 2, 6, 8], // internal 2 (mid-left)
+  [3, 4, 5, 7, 9], // internal 3 (mid-right)
+  // Bottom row: influenced by bottom edge + whole corresponding side
+  [0, 1, 2, 8], // internal 4 (bot-left)
+  [3, 4, 5, 9], // internal 5 (bot-right)
 ];
 
 function _applyDirectionalContrast(v, extSamples) {
@@ -300,8 +315,7 @@ function _quantKey6(v0, v1, v2, v3, v4, v5) {
 
 function _nearestChar(v, model) {
   const key = _quantKey6(v[0], v[1], v[2], v[3], v[4], v[5]);
-  const cached = _lookupCache.get(key);
-  if (cached) return cached;
+  if (_lookupCache.has(key)) return _lookupCache.get(key);
 
   let best = ' ';
   let bestD = Infinity;
@@ -473,15 +487,10 @@ function _renderToText({
         let sum = 0;
         let count = 0;
         for (let s = 0; s < jit.length; s++) {
-          const sx = Math.min(
-            sampleW - 1,
-            Math.max(0, Math.round(px + jit[s][0] * jr))
-          );
-          const sy = Math.min(
-            sampleH - 1,
-            Math.max(0, Math.round(py + jit[s][1] * jr))
-          );
-          // Skip if out of bounds (boundary sample)
+          // IMPORTANT: do NOT clamp before bounds-checking.
+          // Directional contrast relies on truly sampling outside the cell.
+          const sx = Math.round(px + jit[s][0] * jr);
+          const sy = Math.round(py + jit[s][1] * jr);
           if (sx >= 0 && sx < sampleW && sy >= 0 && sy < sampleH) {
             const idx = (sy * sampleW + sx) * 4;
             const lum = _relLum01(img[idx], img[idx + 1], img[idx + 2]);

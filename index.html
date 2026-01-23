@@ -741,6 +741,8 @@
                   <span class="preview-status-text" id="previewStatusText">Ready</span>
                   <span class="preview-status-divider" aria-hidden="true"></span>
                   <span class="preview-status-stats" id="previewStatusStats"></span>
+                  <!-- Alt adjust info (visible only in mono variant when alt view is enabled) -->
+                  <span class="preview-status-alt-adjust" id="previewStatusAltAdjust"></span>
                 </div>
               </div>
             </div>
@@ -1121,7 +1123,7 @@
     <!-- Render Queue Modal -->
     <div class="modal hidden" id="renderQueueModal" role="dialog" aria-labelledby="queueModalTitle" aria-modal="true">
       <div class="modal-overlay" id="queueModalOverlay"></div>
-      <div class="modal-content modal-large" data-tutorial-target="features-guide-modal">
+      <div class="modal-content modal-large">
         <div class="modal-header">
           <h2 id="queueModalTitle">Render Queue</h2>
           <button class="modal-close" id="queueModalClose" aria-label="Close render queue">
@@ -1232,7 +1234,7 @@
     <!-- Features Guide Modal -->
     <div class="modal hidden" id="featuresGuideModal" role="dialog" aria-labelledby="featuresGuideTitle" aria-modal="true">
       <div class="modal-overlay" id="featuresGuideOverlay"></div>
-      <div class="modal-content modal-large">
+      <div class="modal-content modal-large" data-tutorial-target="features-guide-modal">
         <div class="modal-header">
           <h2 id="featuresGuideTitle">Features Guide</h2>
           <button class="modal-close" id="featuresGuideClose" aria-label="Close features guide">

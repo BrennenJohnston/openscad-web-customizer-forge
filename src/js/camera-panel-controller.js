@@ -116,6 +116,28 @@ export function initCameraPanelController(options = {}) {
     // Helper to get the current preview manager
     const getPM = () => options.previewManager;
 
+    /**
+     * Optional hook: allow callers to override pan D-pad behavior.
+     * Return value meanings:
+     * - false/undefined: not handled -> proceed with normal pan
+     * - true: handled -> skip normal pan (no announcement)
+     * - string: handled -> skip normal pan and announce this message
+     */
+    const maybeHandlePanOverride = (direction, source) => {
+      if (typeof options.onPanControl !== 'function') return false;
+      try {
+        const result = options.onPanControl({ direction, source });
+        if (typeof result === 'string') {
+          announceAction(result);
+          return true;
+        }
+        return result === true;
+      } catch (e) {
+        console.warn('[CameraPanel] onPanControl hook error:', e);
+        return false;
+      }
+    };
+
     // Desktop rotation buttons
     document
       .getElementById('cameraRotateLeft')
@@ -157,6 +179,7 @@ export function initCameraPanelController(options = {}) {
 
     // Desktop pan buttons
     document.getElementById('cameraPanLeft')?.addEventListener('click', () => {
+      if (maybeHandlePanOverride('left', 'desktop')) return;
       const pm = getPM();
       if (pm?.panCamera) {
         pm.panCamera(-panSpeed, 0);
@@ -165,6 +188,7 @@ export function initCameraPanelController(options = {}) {
     });
 
     document.getElementById('cameraPanRight')?.addEventListener('click', () => {
+      if (maybeHandlePanOverride('right', 'desktop')) return;
       const pm = getPM();
       if (pm?.panCamera) {
         pm.panCamera(panSpeed, 0);
@@ -173,6 +197,7 @@ export function initCameraPanelController(options = {}) {
     });
 
     document.getElementById('cameraPanUp')?.addEventListener('click', () => {
+      if (maybeHandlePanOverride('up', 'desktop')) return;
       const pm = getPM();
       if (pm?.panCamera) {
         pm.panCamera(0, panSpeed);
@@ -181,6 +206,7 @@ export function initCameraPanelController(options = {}) {
     });
 
     document.getElementById('cameraPanDown')?.addEventListener('click', () => {
+      if (maybeHandlePanOverride('down', 'desktop')) return;
       const pm = getPM();
       if (pm?.panCamera) {
         pm.panCamera(0, -panSpeed);
@@ -261,6 +287,7 @@ export function initCameraPanelController(options = {}) {
     document
       .getElementById('mobileCameraPanLeft')
       ?.addEventListener('click', () => {
+        if (maybeHandlePanOverride('left', 'mobile')) return;
         const pm = getPM();
         if (pm?.panCamera) {
           pm.panCamera(-panSpeed, 0);
@@ -271,6 +298,7 @@ export function initCameraPanelController(options = {}) {
     document
       .getElementById('mobileCameraPanRight')
       ?.addEventListener('click', () => {
+        if (maybeHandlePanOverride('right', 'mobile')) return;
         const pm = getPM();
         if (pm?.panCamera) {
           pm.panCamera(panSpeed, 0);
@@ -281,6 +309,7 @@ export function initCameraPanelController(options = {}) {
     document
       .getElementById('mobileCameraPanUp')
       ?.addEventListener('click', () => {
+        if (maybeHandlePanOverride('up', 'mobile')) return;
         const pm = getPM();
         if (pm?.panCamera) {
           pm.panCamera(0, panSpeed);
@@ -291,6 +320,7 @@ export function initCameraPanelController(options = {}) {
     document
       .getElementById('mobileCameraPanDown')
       ?.addEventListener('click', () => {
+        if (maybeHandlePanOverride('down', 'mobile')) return;
         const pm = getPM();
         if (pm?.panCamera) {
           pm.panCamera(0, -panSpeed);
@@ -445,6 +475,18 @@ function initMobileCameraDrawer() {
    */
   function expandDrawer() {
     if (!isMobileCollapsed) return;
+    
+    // Mobile portrait: close actions drawer first (mutual exclusion)
+    const actionsDrawer = document.getElementById('actionsDrawer');
+    const actionsToggle = document.getElementById('actionsDrawerToggle');
+    if (actionsDrawer && !actionsDrawer.classList.contains('collapsed')) {
+      actionsDrawer.classList.add('collapsed');
+      if (actionsToggle) {
+        actionsToggle.setAttribute('aria-expanded', 'false');
+        actionsToggle.setAttribute('aria-label', 'Expand actions menu');
+      }
+    }
+    
     isMobileCollapsed = false;
     drawer.classList.remove('collapsed');
     updateAria(false);

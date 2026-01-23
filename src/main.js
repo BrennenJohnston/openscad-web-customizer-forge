@@ -135,16 +135,111 @@ let _hfmAltView = null;
 let _hfmInitPromise = null;
 let _hfmEnabled = false;
 let _hfmPendingEnable = false;
-const _HFM_CONTRAST_RANGE = { min: 0.6, max: 2.5, step: 0.05, default: 1 };
+// Edge sharpness range: controls contrast exponent (Harri technique)
+// Base exponents: Global=1.8, Directional=2.5
+// Effective range: scale 0.5→exp ~0.9 (off), scale 4.0→exp ~7.2 (very sharp)
+// Research shows useful range is exponent 1-8 before artifacts appear
+const _HFM_CONTRAST_RANGE = { min: 0.5, max: 4.0, step: 0.05, default: 1 };
 let _hfmContrastScale = _HFM_CONTRAST_RANGE.default;
 let _hfmContrastControls = null;
-const _HFM_FONT_SCALE_RANGE = { min: 0.7, max: 2.0, step: 0.05, default: 1 };
+// Font size range: controls character size and effective ASCII resolution
+// Smaller = more characters = higher resolution (harder to read)
+// Larger = fewer characters = lower resolution (more legible)
+const _HFM_FONT_SCALE_RANGE = { min: 0.5, max: 2.5, step: 0.05, default: 1 };
 let _hfmFontScale = _HFM_FONT_SCALE_RANGE.default;
 let _hfmFontScaleControls = null;
 const _HFM_ZOOM_EPSILON = 0.02;
 let _hfmZoomBaseline = null;
 let _hfmZoomListening = false;
 let _hfmZoomHandling = false;
+let _hfmPanAdjustEnabled = false;
+let _hfmPanToggleButtons = null; // { desktop: HTMLButtonElement|null, mobile: HTMLButtonElement|null }
+
+function _syncHfmPanToggleUi() {
+  const btns = [_hfmPanToggleButtons?.desktop, _hfmPanToggleButtons?.mobile].filter(
+    Boolean
+  );
+
+  // Format values with descriptive labels (Harri's technique terminology)
+  // "Edge" = contrast exponent (controls edge sharpness/boundary definition)
+  // "Size" = font scale (controls character size/effective resolution)
+  const edge = _formatHfmContrastValue(_hfmContrastScale);
+  const size = _formatHfmFontScaleValue(_hfmFontScale);
+
+  // Update pan toggle buttons if they exist
+  btns.forEach((btn) => {
+    btn.setAttribute('aria-pressed', _hfmPanAdjustEnabled ? 'true' : 'false');
+    btn.classList.toggle('active', _hfmPanAdjustEnabled);
+    btn.title = _hfmPanAdjustEnabled
+      ? `Alt adjust ON (Pan: Edge ${edge}, Size ${size})`
+      : `Alt adjust OFF (Pan controls). Current: Edge ${edge}, Size ${size}`;
+    btn.setAttribute(
+      'aria-label',
+      _hfmPanAdjustEnabled
+        ? `Alt adjust on. Pan up/down changes edge sharpness (${edge}). Pan left/right changes character size (${size}).`
+        : `Alt adjust off. Pan controls. Current edge sharpness ${edge}, character size ${size}.`
+    );
+  });
+
+  // Update status bar alt adjust display (always, regardless of button state)
+  _updateHfmStatusBar();
+}
+
+/**
+ * Update the preview status bar with alt adjust values.
+ * Only shows in mono/retro theme when alt view is enabled.
+ * Includes auto-calibration info when first launched.
+ */
+function _updateHfmStatusBar() {
+  const root = document.documentElement;
+  const isMono = root.getAttribute('data-ui-variant') === 'mono';
+  const statusBar = document.getElementById('previewStatusBar');
+  const altAdjustEl = document.getElementById('previewStatusAltAdjust');
+
+  if (!statusBar || !altAdjustEl) return;
+
+  // Only show alt adjust info in mono variant when alt view is enabled
+  if (!isMono || !_hfmEnabled) {
+    statusBar.classList.remove('has-alt-adjust');
+    altAdjustEl.textContent = '';
+    return;
+  }
+
+  // Format values
+  // Contrast controls edge sharpness via exponent (Harri technique: higher = sharper edges)
+  // Font scale controls character size/resolution (higher = larger chars, lower resolution)
+  const edge = _formatHfmContrastValue(_hfmContrastScale);
+  const size = _formatHfmFontScaleValue(_hfmFontScale);
+
+  // Build the display string with descriptive labels aligned with Harri's ASCII research:
+  // - Edge Sharpness (contrast exponent): controls boundary definition
+  // - Char Size (font scale): controls effective ASCII resolution
+  // Include device calibration info when available
+  let displayText;
+  const deviceInfo = _hfmCalibratedDevice ? ` [${_hfmCalibratedDevice}]` : '';
+
+  if (_hfmPanAdjustEnabled) {
+    displayText = `[ALT ADJUST]${deviceInfo} Edge: ${edge} (Up/Down) | Size: ${size} (Left/Right)`;
+  } else {
+    displayText = `[ALT VIEW]${deviceInfo} Edge: ${edge} | Size: ${size}`;
+  }
+
+  altAdjustEl.textContent = displayText;
+  statusBar.classList.add('has-alt-adjust');
+}
+
+function _setHfmPanAdjustEnabled(enabled) {
+  _hfmPanAdjustEnabled = Boolean(enabled);
+
+  // When using Pan D-pad for adjustments, hide the sliders to avoid duplicate UI.
+  // When toggled off, restore them (only if alt view is enabled).
+  if (_hfmEnabled) {
+    _initHfmContrastControls().setEnabled(!_hfmPanAdjustEnabled);
+    _initHfmFontScaleControls().setEnabled(!_hfmPanAdjustEnabled);
+  }
+
+  _syncHfmPanToggleUi();
+}
 
 function _isLightThemeActive() {
   const root = document.documentElement;
@@ -154,6 +249,144 @@ function _isLightThemeActive() {
   // Auto mode - check system preference
   return !window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
+
+/**
+ * Auto-calibrate Edge (contrast) and Size (font) settings based on the user's
+ * viewing environment. This provides an optimal initial experience by analyzing:
+ * - Viewport/preview container size
+ * - Device pixel ratio (screen density)
+ * - Touch capability (mobile vs desktop)
+ * - Browser/platform characteristics
+ *
+ * Based on Harri's ASCII rendering research:
+ * - Smaller screens benefit from larger characters and moderate edge sharpening
+ * - Larger/high-DPI screens can handle more characters and sharper edges
+ * - Mobile devices prioritize legibility over resolution
+ *
+ * @returns {{ edgeScale: number, sizeScale: number }} Calibrated values
+ */
+function _calibrateHfmSettings() {
+  // Gather system information
+  const dpr = window.devicePixelRatio || 1;
+  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+  // Get preview container dimensions (primary factor for calibration)
+  const previewContainer = document.getElementById('previewContainer');
+  const containerWidth = previewContainer?.clientWidth || window.innerWidth;
+  const containerHeight = previewContainer?.clientHeight || window.innerHeight;
+  const containerArea = containerWidth * containerHeight;
+
+  // Detect browser/platform hints
+  const isMobile = isTouchDevice && Math.min(containerWidth, containerHeight) < 500;
+  const isTablet = isTouchDevice && !isMobile;
+  const isHighDpi = dpr >= 1.5;
+  const isVeryHighDpi = dpr >= 2.5;
+
+  // Viewport size categories (based on container area in CSS pixels)
+  const isSmallViewport = containerArea < 200000; // ~447x447 or smaller
+  const isMediumViewport = containerArea >= 200000 && containerArea < 500000;
+  const isLargeViewport = containerArea >= 500000;
+
+  // ========================================
+  // SIZE (Font Scale) Calibration
+  // ========================================
+  // Goal: Achieve readable character density based on viewing conditions
+  // - Small/mobile: Larger chars (1.2-1.5) for legibility
+  // - Large/desktop: Can use default or smaller (0.8-1.0) for more detail
+  // - High DPI: Can afford smaller chars while maintaining readability
+
+  let sizeScale = 1.0; // Default
+
+  if (isMobile) {
+    // Mobile: Prioritize legibility with larger characters
+    sizeScale = 1.4;
+    if (isVeryHighDpi) sizeScale = 1.2; // High DPI mobile can be slightly smaller
+  } else if (isTablet) {
+    // Tablet: Balance between legibility and detail
+    sizeScale = 1.15;
+    if (isHighDpi) sizeScale = 1.0;
+  } else if (isSmallViewport) {
+    // Small desktop window
+    sizeScale = 1.1;
+  } else if (isMediumViewport) {
+    // Medium desktop - default works well
+    sizeScale = 1.0;
+    if (isHighDpi) sizeScale = 0.9; // High DPI can show more detail
+  } else if (isLargeViewport) {
+    // Large desktop - can show more characters
+    sizeScale = 0.9;
+    if (isHighDpi) sizeScale = 0.8; // High DPI large screen = maximum detail
+    if (isVeryHighDpi) sizeScale = 0.75;
+  }
+
+  // ========================================
+  // EDGE (Contrast Exponent) Calibration
+  // ========================================
+  // Goal: Sharp edges without artifacts (Harri research: useful range 1-8)
+  // - Small screens: Lower values (artifacts more visible)
+  // - Large screens: Higher values (can appreciate sharper definition)
+  // - High DPI: Can use slightly higher values (finer detail visible)
+
+  let edgeScale = 1.0; // Default (exponent ~1.8)
+
+  if (isMobile) {
+    // Mobile: Conservative edge sharpening (artifacts very visible)
+    edgeScale = 0.85;
+  } else if (isTablet) {
+    // Tablet: Moderate edge sharpening
+    edgeScale = 0.95;
+  } else if (isSmallViewport) {
+    // Small desktop: Slightly conservative
+    edgeScale = 0.9;
+  } else if (isMediumViewport) {
+    // Medium desktop: Default is good
+    edgeScale = 1.0;
+    if (isHighDpi) edgeScale = 1.1; // High DPI can handle slightly sharper
+  } else if (isLargeViewport) {
+    // Large desktop: Can appreciate sharper edges
+    edgeScale = 1.15;
+    if (isHighDpi) edgeScale = 1.25;
+    if (isVeryHighDpi) edgeScale = 1.35;
+  }
+
+  // Clamp to valid ranges
+  edgeScale = Math.max(
+    _HFM_CONTRAST_RANGE.min,
+    Math.min(_HFM_CONTRAST_RANGE.max, edgeScale)
+  );
+  sizeScale = Math.max(
+    _HFM_FONT_SCALE_RANGE.min,
+    Math.min(_HFM_FONT_SCALE_RANGE.max, sizeScale)
+  );
+
+  // Determine device category for display
+  let deviceCategory;
+  if (isMobile) {
+    deviceCategory = isVeryHighDpi ? 'Mobile HD' : 'Mobile';
+  } else if (isTablet) {
+    deviceCategory = isHighDpi ? 'Tablet HD' : 'Tablet';
+  } else if (isSmallViewport) {
+    deviceCategory = 'Compact';
+  } else if (isMediumViewport) {
+    deviceCategory = isHighDpi ? 'Desktop HD' : 'Desktop';
+  } else {
+    deviceCategory = isVeryHighDpi ? 'Large HD' : isHighDpi ? 'Large HD' : 'Large';
+  }
+
+  // Log calibration results for debugging
+  console.log('[Alt View] Auto-calibration:', {
+    viewport: `${containerWidth}x${containerHeight}`,
+    dpr,
+    deviceCategory,
+    calibrated: { edge: `${Math.round(edgeScale * 100)}%`, size: `${Math.round(sizeScale * 100)}%` },
+  });
+
+  return { edgeScale, sizeScale, deviceCategory };
+}
+
+// Track if calibration has been applied this session (only auto-calibrate once)
+let _hfmCalibrated = false;
+let _hfmCalibratedDevice = ''; // Store detected device category for status display
 
 function _formatHfmContrastValue(scale) {
   return `${Math.round(scale * 100)}%`;
@@ -239,6 +472,7 @@ function _applyHfmContrastScale(scale, options = {}) {
   }
 
   _hfmContrastControls?.sync?.(clamped);
+  _syncHfmPanToggleUi();
   if (setBaseline && !_hfmZoomHandling) {
     _setHfmZoomBaseline();
   }
@@ -260,6 +494,7 @@ function _applyHfmFontScale(scale, options = {}) {
   }
 
   _hfmFontScaleControls?.sync?.(clamped);
+  _syncHfmPanToggleUi();
   if (setBaseline && !_hfmZoomHandling) {
     _setHfmZoomBaseline();
   }
@@ -354,12 +589,13 @@ function _initHfmContrastControls() {
   });
 
   _hfmContrastControls = {
-    setEnabled(isEnabled) {
+    setEnabled(_isEnabled) {
+      // Sliders permanently hidden - use Pan D-pad adjust mode instead
       sections.forEach((section) => {
-        section.style.display = isEnabled ? '' : 'none';
+        section.style.display = 'none';
       });
       inputs.forEach((input) => {
-        input.disabled = !isEnabled;
+        input.disabled = true;
       });
     },
     sync(value) {
@@ -471,12 +707,13 @@ function _initHfmFontScaleControls() {
   });
 
   _hfmFontScaleControls = {
-    setEnabled(isEnabled) {
+    setEnabled(_isEnabled) {
+      // Sliders permanently hidden - use Pan D-pad adjust mode instead
       sections.forEach((section) => {
-        section.style.display = isEnabled ? '' : 'none';
+        section.style.display = 'none';
       });
       inputs.forEach((input) => {
-        input.disabled = !isEnabled;
+        input.disabled = true;
       });
     },
     sync(value) {
@@ -700,7 +937,7 @@ function _injectAltToggle() {
   toggleBtn.setAttribute('title', 'Alternate view');
   toggleBtn.innerHTML = `
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <!-- Key icon: "unlock a secret" -->
+      <!-- Key icon -->
       <circle cx="8" cy="8" r="5" />
       <path d="M11.3 11.3L21 21" />
       <path d="M16 16l3-3" />
@@ -746,6 +983,55 @@ function _injectAltToggle() {
   if (mobileDpadLabel) {
     mobileDpadLabel.parentNode.replaceChild(mobileRotateBtn, mobileDpadLabel);
   }
+
+  // Create "Alt adjust" toggle button (placed in PAN D-pad center)
+  const panToggleBtn = document.createElement('button');
+  panToggleBtn.id = '_hfmPanAdjust';
+  panToggleBtn.className =
+    'btn btn-sm btn-icon camera-btn alt-pan-toggle dpad-center';
+  panToggleBtn.setAttribute('aria-pressed', 'false');
+  panToggleBtn.style.display = 'none'; // Hidden until alt view is enabled
+  panToggleBtn.innerHTML = `
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 3v18" />
+      <path d="M3 12h18" />
+      <path d="M7 7h0.01" />
+      <path d="M17 17h0.01" />
+    </svg>
+  `;
+
+  const desktopPanDpad = document
+    .getElementById('cameraPanUp')
+    ?.closest('.camera-control-dpad');
+  if (desktopPanDpad) {
+    desktopPanDpad.appendChild(panToggleBtn);
+  }
+
+  const mobilePanToggleBtn = panToggleBtn.cloneNode(true);
+  mobilePanToggleBtn.id = '_hfmPanAdjustMobile';
+  mobilePanToggleBtn.className =
+    'btn btn-sm btn-icon camera-drawer-btn alt-pan-toggle dpad-center';
+
+  const mobilePanDpad = document
+    .getElementById('mobileCameraPanUp')
+    ?.closest('.camera-drawer-dpad');
+  if (mobilePanDpad) {
+    mobilePanDpad.appendChild(mobilePanToggleBtn);
+  }
+
+  _hfmPanToggleButtons = {
+    desktop: panToggleBtn,
+    mobile: mobilePanToggleBtn,
+  };
+  _setHfmPanAdjustEnabled(false);
+
+  const handlePanToggleClick = () => {
+    // Only meaningful when alt view is enabled
+    if (!_hfmAltView || !_hfmEnabled) return;
+    _setHfmPanAdjustEnabled(!_hfmPanAdjustEnabled);
+  };
+  panToggleBtn.addEventListener('click', handlePanToggleClick);
+  mobilePanToggleBtn.addEventListener('click', handlePanToggleClick);
 
   // Sync function to keep both buttons in sync
   const syncRotateState = (isRotating) => {
@@ -807,6 +1093,9 @@ function _injectAltToggle() {
     _initHfmContrastControls().setEnabled(true);
     _initHfmFontScaleControls().setEnabled(true);
     _enableHfmZoomTracking();
+    if (_hfmPanToggleButtons?.desktop) _hfmPanToggleButtons.desktop.style.display = 'flex';
+    if (_hfmPanToggleButtons?.mobile) _hfmPanToggleButtons.mobile.style.display = 'flex';
+    _setHfmPanAdjustEnabled(false);
   }
 }
 
@@ -853,6 +1142,18 @@ async function _enableAltViewWithPreview(
   }
   _hfmAltView = await _hfmInitPromise;
   _hfmAltView.enable();
+
+  // Auto-calibrate on first launch based on user's viewing environment
+  // This provides optimal initial Edge (contrast) and Size (font) settings
+  // based on viewport size, DPI, device type, etc.
+  if (!_hfmCalibrated) {
+    const calibrated = _calibrateHfmSettings();
+    _hfmContrastScale = calibrated.edgeScale;
+    _hfmFontScale = calibrated.sizeScale;
+    _hfmCalibratedDevice = calibrated.deviceCategory;
+    _hfmCalibrated = true;
+  }
+
   _applyHfmContrastScale(_hfmContrastScale);
   _applyHfmFontScale(_hfmFontScale);
   _setHfmZoomBaseline();
@@ -860,10 +1161,18 @@ async function _enableAltViewWithPreview(
   _initHfmContrastControls().setEnabled(true);
   _initHfmFontScaleControls().setEnabled(true);
 
-  // Reset camera to default view before starting rotation
-  if (previewManager.fitCameraToModel && previewManager.mesh) {
-    previewManager.fitCameraToModel();
+  // Enable rotation centering for better auto-rotate viewing
+  // This centers the object at the origin so rotation looks better
+  if (previewManager?.mesh && previewManager.enableRotationCentering) {
+    previewManager.enableRotationCentering();
   }
+
+  // Set up post-load hook to re-enable rotation centering when models are reloaded
+  previewManager?.setPostLoadHook?.(() => {
+    if (previewManager?.mesh && previewManager.enableRotationCentering) {
+      previewManager.enableRotationCentering();
+    }
+  });
 
   // Enable auto-rotation by default
   _hfmAltView.enableAutoRotate();
@@ -890,6 +1199,11 @@ async function _enableAltViewWithPreview(
   if (rotateBtn) rotateBtn.style.display = 'flex';
   if (mobileRotateBtn) mobileRotateBtn.style.display = 'flex';
   syncRotateState?.(true);
+
+  // Show pan-adjust toggles (default OFF so pan works normally)
+  if (_hfmPanToggleButtons?.desktop) _hfmPanToggleButtons.desktop.style.display = 'flex';
+  if (_hfmPanToggleButtons?.mobile) _hfmPanToggleButtons.mobile.style.display = 'flex';
+  _setHfmPanAdjustEnabled(false);
 }
 
 function _disableAltViewWithPreview(toggleBtn, rotateBtn, mobileRotateBtn) {
@@ -901,6 +1215,12 @@ function _disableAltViewWithPreview(toggleBtn, rotateBtn, mobileRotateBtn) {
   }
   previewManager?.clearRenderOverride();
   previewManager?.clearResizeHook();
+  previewManager?.clearPostLoadHook?.();
+
+  // Disable rotation centering and restore object to auto-bed position
+  if (previewManager?.disableRotationCentering) {
+    previewManager.disableRotationCentering();
+  }
 
   // Remove variant theme
   root.removeAttribute('data-ui-variant');
@@ -922,10 +1242,17 @@ function _disableAltViewWithPreview(toggleBtn, rotateBtn, mobileRotateBtn) {
   // Hide the rotate buttons when alt view is disabled
   if (rotateBtn) rotateBtn.style.display = 'none';
   if (mobileRotateBtn) mobileRotateBtn.style.display = 'none';
+  // Reset pan-adjust mode and hide toggles
+  _hfmPanAdjustEnabled = false;
+  if (_hfmPanToggleButtons?.desktop) _hfmPanToggleButtons.desktop.style.display = 'none';
+  if (_hfmPanToggleButtons?.mobile) _hfmPanToggleButtons.mobile.style.display = 'none';
   _initHfmContrastControls().setEnabled(false);
   _initHfmFontScaleControls().setEnabled(false);
   _disableHfmZoomTracking();
   _hfmZoomBaseline = null;
+
+  // Clear alt adjust info from status bar
+  _updateHfmStatusBar();
 }
 
 // Initialize app
@@ -3443,6 +3770,31 @@ async function initApp() {
     // Initialize camera panel controller (right-side drawer)
     cameraPanelController = initCameraPanelController({
       previewManager: null, // Will be set after preview manager is initialized
+      onPanControl: ({ direction }) => {
+        const root = document.documentElement;
+        const isMono = root.getAttribute('data-ui-variant') === 'mono';
+        const canAdjust = _hfmEnabled && _hfmAltView && _hfmPanAdjustEnabled;
+        if (!isMono) return false;
+        if (!canAdjust) return false;
+
+        if (direction === 'up') {
+          const next = _applyHfmContrastScale(_hfmContrastScale + _HFM_CONTRAST_RANGE.step);
+          return `Alt view contrast: ${_formatHfmContrastValue(next)}`;
+        }
+        if (direction === 'down') {
+          const next = _applyHfmContrastScale(_hfmContrastScale - _HFM_CONTRAST_RANGE.step);
+          return `Alt view contrast: ${_formatHfmContrastValue(next)}`;
+        }
+        if (direction === 'left') {
+          const next = _applyHfmFontScale(_hfmFontScale - _HFM_FONT_SCALE_RANGE.step);
+          return `Alt view font size: ${_formatHfmFontScaleValue(next)}`;
+        }
+        if (direction === 'right') {
+          const next = _applyHfmFontScale(_hfmFontScale + _HFM_FONT_SCALE_RANGE.step);
+          return `Alt view font size: ${_formatHfmFontScaleValue(next)}`;
+        }
+        return true;
+      },
     });
 
     // Initialize input sequence detector (passive)
@@ -3502,6 +3854,22 @@ async function initApp() {
           toggleBtn.setAttribute('aria-label', 'Expand actions menu');
           saveState(false);
         } else {
+          // Mobile portrait: close camera drawer first (mutual exclusion)
+          const cameraDrawer = document.getElementById('cameraDrawer');
+          const cameraToggle = document.getElementById('cameraDrawerToggle');
+          if (cameraDrawer && !cameraDrawer.classList.contains('collapsed')) {
+            cameraDrawer.classList.add('collapsed');
+            if (cameraToggle) {
+              cameraToggle.setAttribute('aria-expanded', 'false');
+              cameraToggle.setAttribute('aria-label', 'Expand camera controls');
+            }
+            // Remove preview panel camera drawer class
+            const previewPanel = document.querySelector('.preview-panel');
+            if (previewPanel) {
+              previewPanel.classList.remove('camera-drawer-open');
+            }
+          }
+          
           // Expand drawer
           drawer.classList.remove('collapsed');
           toggleBtn.setAttribute('aria-expanded', 'true');
@@ -3587,14 +3955,130 @@ async function initApp() {
 
   // Focus Mode - Maximize 3D preview
   const focusModeBtn = document.getElementById('focusModeBtn');
+  const cameraDrawer = document.getElementById('cameraDrawer');
   // mainInterface is already declared at line 484
   // comparisonView container is accessed via DOM query
 
   if (focusModeBtn && mainInterface) {
     let isFocusMode = false;
+    let cameraFocusExitBtn = null;
+    // Assigned below; used by the camera focus exit button handler.
+    // eslint-disable-next-line prefer-const
+    let toggleFocusMode = () => {};
+
+    /**
+     * Check if we're in mobile portrait mode
+     */
+    const isMobilePortrait = () => {
+      return (
+        window.innerWidth <= 480 &&
+        window.matchMedia('(orientation: portrait)').matches
+      );
+    };
+
+    /**
+     * Check if camera drawer is expanded
+     */
+    const isCameraDrawerExpanded = () => {
+      return cameraDrawer && !cameraDrawer.classList.contains('collapsed');
+    };
+
+    /**
+     * Calculate the bottom offset for camera focus mode
+     * based on camera drawer height + primary action bar
+     */
+    const calculateCameraFocusBottomOffset = () => {
+      const actionsBar = document.getElementById('actionsBar');
+      const cameraDrawerBody = document.getElementById('cameraDrawerBody');
+      
+      if (actionsBar) {
+        let totalHeight = 0;
+        
+        // When camera drawer is expanded, calculate distance from viewport bottom
+        // to the top of the camera drawer body
+        if (isCameraDrawerExpanded() && cameraDrawerBody) {
+          // Get the bounding rect of the camera drawer body
+          const bodyRect = cameraDrawerBody.getBoundingClientRect();
+          // The offset should be from viewport bottom to the top of the drawer body
+          totalHeight = window.innerHeight - bodyRect.top;
+          
+          // Add a small buffer for visual separation
+          totalHeight += 2;
+        } else {
+          // Fallback to actions bar height when drawer is collapsed
+          totalHeight = actionsBar.offsetHeight;
+        }
+        
+        document.documentElement.style.setProperty(
+          '--camera-focus-bottom-offset',
+          `${totalHeight}px`
+        );
+      }
+    };
+
+    /**
+     * Create floating exit button for camera focus mode
+     */
+    const createCameraFocusExitBtn = () => {
+      if (cameraFocusExitBtn) return cameraFocusExitBtn;
+
+      cameraFocusExitBtn = document.createElement('button');
+      cameraFocusExitBtn.id = 'cameraFocusExitBtn';
+      cameraFocusExitBtn.className = 'btn camera-focus-exit-btn';
+      cameraFocusExitBtn.setAttribute('aria-label', 'Exit focus mode');
+      cameraFocusExitBtn.title = 'Exit focus mode (Esc)';
+      cameraFocusExitBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
+        </svg>
+        <span>Exit</span>
+      `;
+
+      cameraFocusExitBtn.addEventListener('click', () => toggleFocusMode());
+
+      // Insert after the main interface
+      document.getElementById('app').appendChild(cameraFocusExitBtn);
+
+      return cameraFocusExitBtn;
+    };
+
+    /**
+     * Enter camera focus mode (mobile portrait with camera drawer open)
+     */
+    const enterCameraFocusMode = () => {
+      mainInterface.classList.add('camera-focus-mode');
+      createCameraFocusExitBtn();
+      
+      // Calculate offset after a short delay to ensure layout has settled
+      requestAnimationFrame(() => {
+        calculateCameraFocusBottomOffset();
+        // Recalculate again after animations complete
+        setTimeout(() => {
+          calculateCameraFocusBottomOffset();
+        }, 100);
+      });
+    };
+
+    /**
+     * Exit camera focus mode
+     */
+    const exitCameraFocusMode = () => {
+      mainInterface.classList.remove('camera-focus-mode');
+    };
+
+    /**
+     * Update camera focus mode state based on current conditions
+     */
+    const updateCameraFocusMode = () => {
+      if (isFocusMode && isMobilePortrait() && isCameraDrawerExpanded()) {
+        enterCameraFocusMode();
+      } else {
+        exitCameraFocusMode();
+      }
+    };
 
     // Toggle focus mode
-    const toggleFocusMode = function () {
+    toggleFocusMode = function () {
       // Don't allow focus mode when comparison view is active
       const comparisonViewEl = document.getElementById('comparisonView');
       if (comparisonViewEl && !comparisonViewEl.classList.contains('hidden')) {
@@ -3609,9 +4093,13 @@ async function initApp() {
         focusModeBtn.setAttribute('aria-pressed', 'true');
         focusModeBtn.setAttribute('aria-label', 'Exit focus mode');
         focusModeBtn.title = 'Exit focus mode (Esc)';
+
+        // Check for camera focus mode (mobile portrait + camera drawer open)
+        updateCameraFocusMode();
       } else {
         // Exit focus mode
         mainInterface.classList.remove('focus-mode');
+        exitCameraFocusMode();
         focusModeBtn.setAttribute('aria-pressed', 'false');
         focusModeBtn.setAttribute('aria-label', 'Enter focus mode');
         focusModeBtn.title = 'Focus mode (maximize preview)';
@@ -3627,6 +4115,43 @@ async function initApp() {
 
     // Add click listener
     focusModeBtn.addEventListener('click', toggleFocusMode);
+
+    // Watch for camera drawer state changes to update camera focus mode
+    if (cameraDrawer) {
+      const cameraDrawerObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.attributeName === 'class') {
+            updateCameraFocusMode();
+            // Trigger resize when camera drawer state changes in focus mode
+            if (isFocusMode) {
+              // Delay calculation to allow layout to settle after drawer toggle
+              requestAnimationFrame(() => {
+                calculateCameraFocusBottomOffset();
+                setTimeout(() => {
+                  calculateCameraFocusBottomOffset();
+                  if (previewManager) {
+                    previewManager.handleResize();
+                  }
+                }, 150);
+              });
+            }
+          }
+        });
+      });
+      cameraDrawerObserver.observe(cameraDrawer, { attributes: true });
+    }
+
+    // Watch for window resize/orientation changes
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        if (isFocusMode) {
+          updateCameraFocusMode();
+          calculateCameraFocusBottomOffset();
+        }
+      }, 150);
+    });
 
     // Add Escape key listener to exit focus mode
     document.addEventListener('keydown', (e) => {

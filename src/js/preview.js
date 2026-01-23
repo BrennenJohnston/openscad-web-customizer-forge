@@ -158,9 +158,30 @@ export class PreviewManager {
     // Auto-bed: place object on Z=0 build plate
     this.autoBedEnabled = this.loadAutoBedPreference();
 
+    // Rotation centering: temporarily center object at origin for better rotation
+    this.autoBedOffset = 0; // Z offset applied by auto-bed
+    this.rotationCenteringEnabled = false; // Whether rotation centering is active
+
     // Render hooks for extensibility
     this._renderOverride = null;
     this._resizeHook = null;
+    this._postLoadHook = null; // Called after STL is loaded
+
+    // Resize state tracking for view preservation
+    this._lastAspect = null; // Previous aspect ratio for comparison
+    this._lastContainerWidth = 0; // Track container dimensions
+    this._lastContainerHeight = 0;
+    this._resizeDebounceId = null; // Debounce timer for resize handling
+
+    // Configuration for resize behavior
+    this._resizeConfig = {
+      // Threshold for "significant" aspect ratio change (0.15 = 15%)
+      aspectChangeThreshold: 0.15,
+      // Debounce delay for resize stabilization (ms)
+      debounceDelay: 100,
+      // Whether to adjust camera distance on aspect changes
+      adjustCameraOnResize: true,
+    };
   }
 
   /**
@@ -190,6 +211,11 @@ export class PreviewManager {
     const width = this.container.clientWidth;
     const height = this.container.clientHeight;
     this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 10000);
+
+    // Initialize resize tracking state
+    this._lastAspect = width / height;
+    this._lastContainerWidth = width;
+    this._lastContainerHeight = height;
 
     // Set Z as the up axis (OpenSCAD uses Z-up, Three.js defaults to Y-up)
     this.camera.up.set(0, 0, 1);
@@ -247,22 +273,68 @@ export class PreviewManager {
     this.setupKeyboardControls();
     this.setupCameraControls();
 
-    // Handle window resize
+    // Handle window resize with view preservation
     this.handleResize = () => {
       const width = this.container.clientWidth;
       const height = this.container.clientHeight;
-      this.camera.aspect = width / height;
+
+      // Skip if dimensions are invalid or unchanged
+      if (width <= 0 || height <= 0) return;
+      if (
+        width === this._lastContainerWidth &&
+        height === this._lastContainerHeight
+      ) {
+        return;
+      }
+
+      const newAspect = width / height;
+      const previousAspect = this._lastAspect || newAspect;
+
+      // Update camera aspect and projection
+      this.camera.aspect = newAspect;
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(width, height);
+
+      // Adjust camera to maintain model's relative position when aspect changes significantly
+      if (
+        this.mesh &&
+        this._resizeConfig.adjustCameraOnResize &&
+        this._lastAspect !== null
+      ) {
+        const aspectRatioChange = Math.abs(newAspect - previousAspect) / previousAspect;
+
+        // Only adjust for significant changes (configurable threshold)
+        if (aspectRatioChange > this._resizeConfig.aspectChangeThreshold) {
+          this._adjustCameraForAspectChange(previousAspect, newAspect);
+        }
+      }
+
+      // Store current state for next comparison
+      this._lastAspect = newAspect;
+      this._lastContainerWidth = width;
+      this._lastContainerHeight = height;
+
       // Call resize hook if set (for alternate renderers)
       this._resizeHook?.({ width, height });
     };
-    window.addEventListener('resize', this.handleResize);
+
+    // Debounced resize handler for smoother performance
+    this._debouncedResize = () => {
+      if (this._resizeDebounceId) {
+        cancelAnimationFrame(this._resizeDebounceId);
+      }
+      this._resizeDebounceId = requestAnimationFrame(() => {
+        this.handleResize();
+        this._resizeDebounceId = null;
+      });
+    };
+
+    window.addEventListener('resize', this._debouncedResize);
 
     // Add ResizeObserver for container size changes (e.g., split panel resize)
     if (typeof ResizeObserver !== 'undefined') {
       this.resizeObserver = new ResizeObserver(() => {
-        this.handleResize();
+        this._debouncedResize();
       });
       this.resizeObserver.observe(this.container);
     }
@@ -986,8 +1058,16 @@ export class PreviewManager {
           this.applyColorToMesh();
         }
 
+        // Reset rotation centering state (new mesh needs fresh application)
+        this.rotationCenteringEnabled = false;
+
         // Auto-fit camera to model
         this.fitCameraToModel();
+
+        // Call post-load hook (e.g., for re-applying rotation centering)
+        if (this._postLoadHook) {
+          this._postLoadHook();
+        }
 
         // Show measurements if enabled
         if (this.measurementsEnabled) {
@@ -1127,12 +1207,104 @@ export class PreviewManager {
     this.controls.target.copy(center);
     this.controls.update();
 
+    // Store initial aspect for resize tracking
+    this._lastAspect = this.camera.aspect;
+
     console.log(
       '[Preview] Camera fitted to model (Z-up), size:',
       size,
       'distance:',
       cameraDistance
     );
+  }
+
+  /**
+   * Adjust camera distance to maintain model's relative visual position
+   * when the viewport aspect ratio changes significantly.
+   *
+   * This uses a compensation strategy based on how perspective projection
+   * responds to aspect ratio changes:
+   * - When going narrower (portrait): horizontal FOV shrinks, zoom out to fit
+   * - When going wider (landscape): horizontal FOV expands, zoom in to maintain presence
+   *
+   * @param {number} previousAspect - Previous aspect ratio (width/height)
+   * @param {number} newAspect - New aspect ratio (width/height)
+   */
+  _adjustCameraForAspectChange(previousAspect, newAspect) {
+    if (!this.mesh || !this.controls) return;
+
+    // Calculate the relative change in aspect ratio
+    const aspectRatio = newAspect / previousAspect;
+
+    // Get current camera distance from target
+    const currentDistance = this.camera.position.distanceTo(this.controls.target);
+
+    // Calculate adjustment factor
+    // The idea: when aspect gets narrower, we need to zoom out (increase distance)
+    // to keep the model from being horizontally clipped.
+    // When aspect gets wider, we can zoom in slightly to maintain visual presence.
+    //
+    // Using square root provides a smoother, less aggressive adjustment that
+    // works well across common aspect ratio transitions (e.g., 16:9 to 9:16)
+    let adjustmentFactor;
+    if (aspectRatio < 1.0) {
+      // Going narrower (e.g., landscape to portrait)
+      // Need to zoom out - use inverse sqrt for smoother scaling
+      adjustmentFactor = 1 / Math.sqrt(aspectRatio);
+    } else {
+      // Going wider (e.g., portrait to landscape)
+      // Can zoom in slightly - use sqrt for proportional adjustment
+      adjustmentFactor = 1 / Math.sqrt(aspectRatio);
+    }
+
+    // Apply a damping factor to prevent over-correction
+    // This makes the adjustment less aggressive (70% of calculated adjustment)
+    const dampedFactor = 1.0 + (adjustmentFactor - 1.0) * 0.7;
+
+    // Calculate new distance with bounds checking
+    const newDistance = currentDistance * dampedFactor;
+
+    // Clamp to control limits with some margin
+    const minDist = this.controls.minDistance * 1.2;
+    const maxDist = this.controls.maxDistance * 0.9;
+    const clampedDistance = Math.max(minDist, Math.min(maxDist, newDistance));
+
+    // Only adjust if the change is meaningful (> 1% difference)
+    if (Math.abs(clampedDistance - currentDistance) / currentDistance < 0.01) {
+      return;
+    }
+
+    // Calculate direction vector from target to camera
+    const direction = new THREE.Vector3()
+      .subVectors(this.camera.position, this.controls.target)
+      .normalize();
+
+    // Update camera position along the same viewing direction
+    this.camera.position
+      .copy(this.controls.target)
+      .addScaledVector(direction, clampedDistance);
+
+    // Update controls
+    this.controls.update();
+
+    console.log(
+      `[Preview] Camera adjusted for aspect change: ${previousAspect.toFixed(2)} → ${newAspect.toFixed(2)}, distance: ${currentDistance.toFixed(1)} → ${clampedDistance.toFixed(1)}`
+    );
+  }
+
+  /**
+   * Set resize behavior configuration
+   * @param {Object} config - Configuration options
+   * @param {number} config.aspectChangeThreshold - Threshold for aspect change detection (0-1)
+   * @param {boolean} config.adjustCameraOnResize - Whether to adjust camera on resize
+   */
+  setResizeConfig(config) {
+    if (typeof config.aspectChangeThreshold === 'number') {
+      this._resizeConfig.aspectChangeThreshold = Math.max(0.01, Math.min(0.5, config.aspectChangeThreshold));
+    }
+    if (typeof config.adjustCameraOnResize === 'boolean') {
+      this._resizeConfig.adjustCameraOnResize = config.adjustCameraOnResize;
+    }
   }
 
   /**
@@ -1554,6 +1726,9 @@ export class PreviewManager {
    * @param {THREE.BufferGeometry} geometry - The geometry to transform
    */
   applyAutoBed(geometry) {
+    // Reset offset tracking
+    this.autoBedOffset = 0;
+
     if (!geometry || !geometry.attributes.position) {
       return;
     }
@@ -1581,6 +1756,9 @@ export class PreviewManager {
       positionArray[i] += offset;
     }
 
+    // Store the offset for rotation centering feature
+    this.autoBedOffset = offset;
+
     // Mark the position attribute as needing update
     positions.needsUpdate = true;
 
@@ -1594,11 +1772,79 @@ export class PreviewManager {
   }
 
   /**
+   * Enable rotation centering for better auto-rotate viewing
+   * Temporarily moves the object so its center is at the origin (0,0,0)
+   * This makes rotation around the center look better in the view
+   */
+  enableRotationCentering() {
+    if (!this.mesh || this.rotationCenteringEnabled) {
+      return;
+    }
+
+    // Only apply if auto-bed was used (offset > 0)
+    if (this.autoBedOffset === 0 || !this.autoBedEnabled) {
+      console.log(
+        '[Preview] Rotation centering: No offset to apply (auto-bed not active)'
+      );
+      return;
+    }
+
+    // Move mesh down by half the auto-bed offset to center around origin
+    // The object was moved up by autoBedOffset, so its center is at Z = autoBedOffset/2
+    // We want the center at Z = 0, so we move down by autoBedOffset/2
+    const centeringOffset = -this.autoBedOffset / 2;
+    this.mesh.position.z += centeringOffset;
+
+    this.rotationCenteringEnabled = true;
+
+    // Refit camera to the new centered position
+    this.fitCameraToModel();
+
+    console.log(
+      `[Preview] Rotation centering enabled: mesh moved by ${centeringOffset.toFixed(3)} mm on Z`
+    );
+  }
+
+  /**
+   * Disable rotation centering and restore the object to its auto-bed position
+   */
+  disableRotationCentering() {
+    if (!this.mesh || !this.rotationCenteringEnabled) {
+      return;
+    }
+
+    // Restore mesh position
+    const restorationOffset = this.autoBedOffset / 2;
+    this.mesh.position.z += restorationOffset;
+
+    this.rotationCenteringEnabled = false;
+
+    // Refit camera to restored position
+    this.fitCameraToModel();
+
+    console.log(
+      `[Preview] Rotation centering disabled: mesh restored by ${restorationOffset.toFixed(3)} mm on Z`
+    );
+  }
+
+  /**
+   * Check if rotation centering is currently enabled
+   * @returns {boolean} Whether rotation centering is active
+   */
+  isRotationCenteringEnabled() {
+    return this.rotationCenteringEnabled;
+  }
+
+  /**
    * Clear the preview
    */
   clear() {
     this.hideMeasurements();
     this.dimensions = null;
+
+    // Reset rotation centering state
+    this.rotationCenteringEnabled = false;
+    this.autoBedOffset = 0;
 
     if (this.mesh) {
       this.scene.remove(this.mesh);
@@ -1621,8 +1867,14 @@ export class PreviewManager {
       this.animationId = null;
     }
 
-    if (this.handleResize) {
-      window.removeEventListener('resize', this.handleResize);
+    // Cancel any pending debounced resize
+    if (this._resizeDebounceId) {
+      cancelAnimationFrame(this._resizeDebounceId);
+      this._resizeDebounceId = null;
+    }
+
+    if (this._debouncedResize) {
+      window.removeEventListener('resize', this._debouncedResize);
     }
 
     if (this.resizeObserver) {
@@ -1648,6 +1900,11 @@ export class PreviewManager {
     // Clear any render/resize hooks
     this._renderOverride = null;
     this._resizeHook = null;
+
+    // Clear resize tracking state
+    this._lastAspect = null;
+    this._lastContainerWidth = 0;
+    this._lastContainerHeight = 0;
 
     this.container.innerHTML = '';
 
@@ -1684,5 +1941,22 @@ export class PreviewManager {
    */
   clearResizeHook() {
     this._resizeHook = null;
+  }
+
+  /**
+   * Set an optional post-load hook function
+   * Called after an STL is successfully loaded
+   * Useful for re-applying rotation centering after model reload
+   * @param {Function|null} fn - Hook function or null to clear
+   */
+  setPostLoadHook(fn) {
+    this._postLoadHook = typeof fn === 'function' ? fn : null;
+  }
+
+  /**
+   * Clear the post-load hook
+   */
+  clearPostLoadHook() {
+    this._postLoadHook = null;
   }
 }

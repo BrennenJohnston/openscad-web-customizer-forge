@@ -513,7 +513,7 @@ Skip this section if using default `*.pages.dev` domain.
 
 If Cloudflare has issues, fall back to Vercel:
 
-1. **Follow [Vercel Legacy Configuration](guides/VERCEL_LEGACY_CONFIG.md)**
+1. **Follow [Vercel Legacy Configuration](archive/VERCEL_LEGACY_CONFIG.md)** (archived)
 
 2. **Deploy to Vercel**:
    ```bash
