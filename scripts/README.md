@@ -251,5 +251,4 @@ node scripts/your-script.js
 ## Related Documentation
 
 - [TROUBLESHOOTING.md](../docs/TROUBLESHOOTING.md) - Common issues and solutions
-- [BUILD_PLAN_NEW.md](../docs/BUILD_PLAN_NEW.md) - Complete build and test plan
 - [TESTING.md](../docs/TESTING.md) - Testing strategy and guidelines

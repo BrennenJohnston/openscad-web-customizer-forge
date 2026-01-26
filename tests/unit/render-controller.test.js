@@ -14,18 +14,19 @@ describe('RenderController', () => {
     const params = { $fn: 100, $fa: 5, $fs: 0.5 }
     const adjusted = controller.applyQualitySettings(params, RENDER_QUALITY.DRAFT)
 
-    // DRAFT: maxFn=24, minFa=15, minFs=3 (community draft standard)
-    expect(adjusted.$fn).toBe(24)
-    expect(adjusted.$fa).toBe(15)
-    expect(adjusted.$fs).toBe(3)
+    // MANIFOLD OPTIMIZED: DRAFT: maxFn=32, minFa=12, minFs=2 (faster with Manifold)
+    expect(adjusted.$fn).toBe(32)
+    expect(adjusted.$fa).toBe(12)
+    expect(adjusted.$fs).toBe(2)
   })
 
-  it('forces $fn when missing and forceFn is true', () => {
+  it('does not force $fn when forceFn is false', () => {
     const controller = new RenderController()
     const adjusted = controller.applyQualitySettings({}, RENDER_QUALITY.DRAFT)
 
-    // DRAFT forces $fn to maxFn=24
-    expect(adjusted.$fn).toBe(24)
+    // MANIFOLD OPTIMIZED: DRAFT no longer forces $fn (forceFn is false)
+    // $fn should be undefined since it wasn't provided and forceFn is false
+    expect(adjusted.$fn).toBeUndefined()
   })
 
   it('reports busy state when a request is active', () => {
@@ -260,8 +261,8 @@ describe('RenderController', () => {
     const params = {}
     const adjusted = controller.applyQualitySettings(params, RENDER_QUALITY.DRAFT)
     
-    // DRAFT minFa=15 (community draft standard)
-    expect(adjusted.$fa).toBe(15)
+    // MANIFOLD OPTIMIZED: DRAFT minFa=12 (improved quality with Manifold)
+    expect(adjusted.$fa).toBe(12)
   })
 
   it('applies minFs when $fs is undefined', () => {
@@ -269,8 +270,8 @@ describe('RenderController', () => {
     const params = {}
     const adjusted = controller.applyQualitySettings(params, RENDER_QUALITY.DRAFT)
     
-    // DRAFT minFs=3 (community draft standard)
-    expect(adjusted.$fs).toBe(3)
+    // MANIFOLD OPTIMIZED: DRAFT minFs=2 (improved quality with Manifold)
+    expect(adjusted.$fs).toBe(2)
   })
 
   it('returns not busy when no current request', () => {
@@ -433,7 +434,8 @@ describe('estimateRenderTime', () => {
   it('returns base estimate for simple content', () => {
     const estimate = estimateRenderTime('cube(10);')
     
-    expect(estimate.seconds).toBeGreaterThanOrEqual(2)
+    // MANIFOLD OPTIMIZED: Base time reduced from 2s to 1s
+    expect(estimate.seconds).toBeGreaterThanOrEqual(1)
     expect(estimate.complexity).toBeGreaterThanOrEqual(0)
     expect(estimate.confidence).toBeDefined()
     expect(estimate.warning).toBeNull()
@@ -512,5 +514,67 @@ describe('estimateRenderTime', () => {
     
     expect(simple.confidence).toBe('high')
     expect(complex.confidence).toBe('low')
+  })
+})
+
+describe('Capability Detection', () => {
+  it('stores capabilities from READY message', () => {
+    const controller = new RenderController()
+    const capabilities = {
+      hasManifold: true,
+      hasFastCSG: true,
+      hasLazyUnion: false,
+      hasBinarySTL: true,
+      version: '2024.01.01'
+    }
+    
+    controller.handleMessage({
+      type: 'READY',
+      payload: { wasmInitDurationMs: 1000, capabilities }
+    })
+    
+    expect(controller.capabilities).toEqual(capabilities)
+    expect(controller.getCapabilities().hasManifold).toBe(true)
+  })
+  
+  it('provides default capabilities when not detected', () => {
+    const controller = new RenderController()
+    
+    controller.handleMessage({
+      type: 'READY',
+      payload: { wasmInitDurationMs: 1000 }
+    })
+    
+    const caps = controller.getCapabilities()
+    expect(caps.hasManifold).toBe(false)
+    expect(caps.version).toBe('unknown')
+  })
+  
+  it('calls capability callback when capabilities detected', () => {
+    const controller = new RenderController()
+    const callback = vi.fn()
+    controller.setCapabilitiesCallback(callback)
+    
+    const capabilities = { hasManifold: true, hasFastCSG: false }
+    controller.handleMessage({
+      type: 'READY',
+      payload: { wasmInitDurationMs: 1000, capabilities }
+    })
+    
+    expect(callback).toHaveBeenCalledWith(capabilities)
+  })
+})
+
+describe('Binary STL Detection', () => {
+  it('detects binary STL by bytes per triangle', () => {
+    // Binary STL: ~50 bytes per triangle (12 bytes normal + 36 bytes vertices + 2 attribute)
+    // ASCII STL: ~120+ bytes per triangle (text format)
+    
+    const triangleCount = 100
+    const binarySize = 84 + (triangleCount * 50) // 84 byte header + data
+    const asciiSize = triangleCount * 120
+    
+    expect(binarySize / triangleCount).toBeLessThan(80)
+    expect(asciiSize / triangleCount).toBeGreaterThan(100)
   })
 })

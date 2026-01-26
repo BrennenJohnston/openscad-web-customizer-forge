@@ -1,10 +1,5 @@
 # Parameter Schema Specification
 
-**Version**: 1.0.0-draft  
-**Status**: Draft  
-**Last Updated**: 2026-01-12  
-**Applies To**: v1 (web app) and v2 (CLI toolchain)
-
 ## Overview
 
 This document defines the **Parameter Schema** format used by the OpenSCAD Assistive Forge. The schema serves as the intermediate representation between OpenSCAD Customizer annotations and generated web application UIs.

@@ -229,13 +229,15 @@ self.addEventListener('message', (event) => {
   
   if (event.data && event.data.type === 'CLEAR_CACHE') {
     event.waitUntil(
-      caches.delete(CACHE_NAME).then(() => {
-        return self.clients.matchAll();
-      }).then((clients) => {
-        clients.forEach((client) => {
-          client.postMessage({ type: 'CACHE_CLEARED' });
-        });
-      })
+      caches
+        .keys()
+        .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+        .then(() => self.clients.matchAll())
+        .then((clients) => {
+          clients.forEach((client) => {
+            client.postMessage({ type: 'CACHE_CLEARED' });
+          });
+        })
     );
   }
   

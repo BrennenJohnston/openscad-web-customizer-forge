@@ -9,6 +9,18 @@ Generated web applications include OpenSCAD compiled to WebAssembly (WASM) for c
 **License**: GNU General Public License v2.0 or later
 **Project**: https://openscad.org/
 **Source Code**: https://github.com/openscad/openscad
+**WASM Build**: Official OpenSCAD Playground build (includes Manifold support)
+**Build Source**: https://files.openscad.org/playground/
+**Build Date**: March 25, 2025 (OpenSCAD-2025.03.25.wasm24456-WebAssembly-web)
+**Vendored Location**: `public/wasm/openscad-official/`
+
+### Manifold Geometry Library
+
+This build includes the Manifold geometry library for dramatically faster CSG operations:
+
+**License**: Apache-2.0
+**Project**: https://github.com/elalish/manifold
+**Performance**: 5-30x faster boolean operations, 10-30x faster Minkowski operations
 
 ### GPL Compliance for Generated Web Apps
 
@@ -26,14 +38,17 @@ When you deploy a generated web application that includes OpenSCAD WASM:
    - The web application (including OpenSCAD WASM) is GPL-3.0-or-later
    - Your parameter configurations are not affected
    - Generated STL files (data output) are not GPL-licensed
+   - The Manifold library (Apache-2.0) is compatible with GPL
 
 ### Obtaining OpenSCAD Source
 
 The source code for OpenSCAD is available at:
 - https://github.com/openscad/openscad
+- https://github.com/openscad/openscad-wasm (WASM port)
+- https://github.com/openscad/openscad-playground (playground build system)
 
 To build OpenSCAD WASM from source, see:
-- https://github.com/openscad/openscad/blob/master/doc/testing.txt
+- https://github.com/openscad/openscad-wasm
 
 ---
 

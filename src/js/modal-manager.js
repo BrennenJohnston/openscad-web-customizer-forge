@@ -234,6 +234,13 @@ export function initStaticModals() {
       overlay: '#resetConfirmOverlay',
     });
   }
+
+  // First-Visit Modal
+  const firstVisitModal = document.getElementById('first-visit-modal');
+  if (firstVisitModal) {
+    // No default close handlers for first-visit modal.
+    // It must be closed explicitly after user consent.
+  }
 }
 
 /**

@@ -1,19 +1,6 @@
-# Comparable Projects Research
+# Comparable projects (notes)
 
-**Research Date**: January 17, 2026  
-**Purpose**: Validate Cloudflare Pages hosting approach by examining similar WASM-based CAD projects
-
-## Executive Summary
-
-Researched 5 comparable browser-based CAD projects to understand how they handle WASM hosting, COOP/COEP headers, and deployment. Key findings:
-
-1. **OpenSCAD Playground** (official) uses Vercel with COOP/COEP headers configured
-2. **openscad-web-gui** (seasick) hosted on GitHub Pages, no explicit header config found
-3. **JSCAD/OpenJSCAD** hosted with no explicit COOP/COEP configuration
-4. **CascadeStudio** uses GitHub Pages with WASM, unclear on headers
-5. **Replicad** similar approach with OpenCascade WASM
-
-**Validation**: Our Cloudflare Pages + COOP/COEP approach aligns with OpenSCAD Playground (the official implementation) and represents current best practices for WASM applications.
+These are quick notes from looking at other browser-based CAD/WASM projects while picking a hosting approach.
 
 ---
 

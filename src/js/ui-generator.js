@@ -1359,7 +1359,7 @@ export function renderParameterUI(
 
     const details = document.createElement('details');
     details.className = 'param-group';
-    details.open = true;
+    details.open = false; // Collapsed by default - users can expand if needed
     // Add data attribute for jump-to navigation
     details.dataset.groupId = group.id;
 

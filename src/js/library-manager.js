@@ -5,6 +5,13 @@
  * Manages OpenSCAD library bundles (MCAD, BOSL2, etc.)
  */
 
+// Import validation at module level
+let validateLibraryMapFn = null;
+(async () => {
+  const { validateLibraryMap } = await import('./validation-schemas.js');
+  validateLibraryMapFn = validateLibraryMap;
+})();
+
 /**
  * Library definitions with metadata
  */
@@ -105,6 +112,25 @@ export class LibraryManager {
       const saved = localStorage.getItem('openscad-customizer-libraries');
       if (saved) {
         const state = JSON.parse(saved);
+
+        // Validate library state with Ajv (if available)
+        // Convert state to enablement map for validation
+        const enablementMap = {};
+        for (const [id, lib] of Object.entries(state)) {
+          enablementMap[id] = lib.enabled ?? false;
+        }
+
+        if (validateLibraryMapFn) {
+          const isValid = validateLibraryMapFn(enablementMap);
+          if (!isValid) {
+            console.warn(
+              '[LocalStorage] Invalid library state, skipping:',
+              validateLibraryMapFn.errors
+            );
+            return;
+          }
+        }
+
         // Merge saved enabled state with definitions
         for (const [id, lib] of Object.entries(state)) {
           if (this.libraries[id]) {
@@ -307,7 +333,7 @@ export class LibraryManager {
         // Try to fetch manifest or a test file
         const response = await fetch(`${lib.path}/`, { method: 'HEAD' });
         availability[id] = response.ok;
-      } catch (error) {
+      } catch (_error) {
         availability[id] = false;
       }
     }

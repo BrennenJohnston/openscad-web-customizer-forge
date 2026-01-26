@@ -1845,7 +1845,6 @@ export async function startTutorial(tutorialId, { triggerEl } = {}) {
   activeTutorial = tutorial;
   currentStepIndex = startIndex;
   isMinimized = false;
-
   createTutorialOverlay();
   await showStep(startIndex);
   announceToScreenReader(
@@ -2069,6 +2068,9 @@ function showKeyboardHelp() {
  * Handle clicks on the overlay (outside the panel)
  */
 function handleOverlayClick(e) {
+  if (!tutorialOverlay) {
+    return;
+  }
   const panel = tutorialOverlay.querySelector('.tutorial-panel');
   const minimized = tutorialOverlay.querySelector('.tutorial-minimized');
 
@@ -2762,7 +2764,7 @@ function measureSafeAreaInsets() {
     document.body.appendChild(testEl);
     const rect = testEl.getBoundingClientRect();
     document.body.removeChild(testEl);
-    
+
     if (prop === 'top') return rect.top;
     if (prop === 'left') return rect.left;
     if (prop === 'right') return window.innerWidth - rect.right;

@@ -102,7 +102,10 @@ export class ParameterHistory {
       return JSON.parse(JSON.stringify(state));
     } catch (e) {
       // Fallback for non-serializable values (functions, circular refs, etc.)
-      console.warn('[State] Could not serialize state, using shallow clone:', e);
+      console.warn(
+        '[State] Could not serialize state, using shallow clone:',
+        e
+      );
       return { ...state };
     }
   }
@@ -175,8 +178,8 @@ export class StateManager {
     }
   }
 
-  loadFromURL() {
-    const params = deserializeURLParams();
+  async loadFromURL() {
+    const params = await deserializeURLParams();
     if (params && Object.keys(params).length > 0) {
       // Merge URL params with current parameters
       this.setState({
@@ -227,7 +230,7 @@ export class StateManager {
     }
   }
 
-  loadFromLocalStorage() {
+  async loadFromLocalStorage() {
     if (!isLocalStorageAvailable()) {
       return null;
     }
@@ -238,8 +241,20 @@ export class StateManager {
 
       const draft = JSON.parse(stored);
 
+      // Validate draft with Ajv
+      const { validateDraftState } = await import('./validation-schemas.js');
+      const isValid = validateDraftState(draft);
+      if (!isValid) {
+        console.warn(
+          '[LocalStorage] Invalid draft state, clearing:',
+          validateDraftState.errors
+        );
+        this.clearLocalStorage();
+        return null;
+      }
+
       // Check if draft is recent (within 7 days)
-      const age = Date.now() - draft.timestamp;
+      const age = Date.now() - (draft.timestamp || 0);
       const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
 
       if (age > maxAge) {
@@ -502,7 +517,7 @@ function serializeURLParams(params) {
  * Deserialize parameters from URL hash
  * @returns {Object|null} Parameters object or null if invalid
  */
-function deserializeURLParams() {
+async function deserializeURLParams() {
   const hash = window.location.hash;
   if (!hash || !hash.includes('params=')) {
     return null;
@@ -516,6 +531,16 @@ function deserializeURLParams() {
     const encoded = match[1];
     const json = decodeURIComponent(encoded);
     const params = JSON.parse(json);
+
+    // Validate params with Ajv
+    const { validateUrlParams } = await import('./validation-schemas.js');
+    const validation = validateUrlParams(params);
+
+    if (!validation.valid) {
+      console.warn('[URL Params] Validation failed:', validation.errors);
+      // Return sanitized params (invalid ones removed)
+      return validation.sanitized;
+    }
 
     return params;
   } catch (error) {
@@ -544,7 +569,7 @@ function isLocalStorageAvailable() {
     localStorage.setItem(test, test);
     localStorage.removeItem(test);
     return true;
-  } catch (e) {
+  } catch (_e) {
     return false;
   }
 }

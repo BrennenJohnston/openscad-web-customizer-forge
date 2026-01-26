@@ -1,8 +1,6 @@
-# UI Standards & Design System
+# UI Standards
 
-**Living Style Guide for OpenSCAD Assistive Forge**
-
-This document establishes the UI consistency framework for the project, including design tokens, component patterns, layout rules, and accessibility requirements. All UI work must follow these standards to maintain consistency across themes, viewports, and user preferences.
+This document defines design tokens, component patterns, layout rules, and accessibility requirements. All UI work must follow these standards.
 
 ---
 
@@ -727,132 +725,6 @@ function loadDrawerSize(drawerName, defaultSize) {
 </div>
 ```
 
-### Pull Request Checklist
-
-**Before submitting a PR with UI changes, verify:**
-
-- [ ] All new UI components use design tokens (no hardcoded colors/sizes)
-- [ ] Drawer patterns follow documented orientation rules:
-  - Side panels collapse outward
-  - Bottom drawers open upward
-- [ ] Tested in mobile portrait mode:
-  - Title abbreviation works
-  - Header buttons right-aligned
-  - Drawers don't overlap incorrectly
-- [ ] All themes tested (light, dark, AND high contrast):
-  - Visual elements visible in each theme
-  - Contrast ratios meet WCAG requirements
-- [ ] Keyboard-only navigation works
-- [ ] Focus indicators visible on all interactive elements
-- [ ] Touch targets ≥44×44px
-- [ ] `prefers-reduced-motion` respected
-- [ ] ARIA attributes present and correct
-- [ ] No new button/drawer classes without style guide update
-
-**See also:** `.github/pull_request_template.md` for full PR checklist
-
-### Code Review Focus Areas
-
-**Reviewers should check:**
-
-1. **Token usage**: No hardcoded colors/sizes
-2. **Pattern consistency**: Follows documented component patterns
-3. **Accessibility**: ARIA, keyboard, contrast, touch targets
-4. **Theme testing**: Works in all themes (light/dark/HC)
-5. **Mobile testing**: Portrait/landscape, drawer behavior
-6. **Documentation**: Style guide updated if new patterns added
-
----
-
-## Research & Conventions
-
-### Industry Best Practices Adopted
-
-This design system is based on research into leading open-source design systems and accessibility guidelines:
-
-**Design Systems Studied:**
-- **U.S. Web Design System (USWDS)** - Government accessibility standards
-- **GOV.UK Design System** - Public sector design patterns
-- **Carbon Design System (IBM)** - Enterprise UI patterns
-- **Material Design** - Component behavior patterns
-- **Radix UI** - Headless component patterns
-- **Shoelace** - Web component library
-
-**Similar Web-Based Tools:**
-- **Tinkercad** - Drawer systems and responsive layouts
-- **OnShape** - 3D CAD tool UI patterns
-
-**Accessibility Resources:**
-- **UK Government Digital Service (GDS)** - Accessibility patterns
-- **The A11y Project** - Practical accessibility guidelines
-- **WCAG 2.2** - W3C accessibility standards
-
-### Conventions We Adopted
-
-1. **Design Tokens as Single Source of Truth**
-   - All visual properties (spacing, color, typography) defined as CSS custom properties
-   - Semantic token layers (raw → semantic → component)
-   - Reduces inconsistency and enables global theme changes
-
-2. **Component Contracts**
-   - Each component has documented:
-     - Required HTML structure
-     - Required CSS classes
-     - Required ARIA attributes
-     - Required JavaScript behavior (if interactive)
-   - Prevents implementation drift over time
-
-3. **Accessibility by Default**
-   - 44×44px minimum touch targets (WCAG AAA)
-   - Visible focus rings on all interactive elements
-   - Keyboard navigation for all actions
-   - Color contrast ratios meet or exceed WCAG AA (4.5:1 text, 3:1 UI)
-   - High contrast mode achieves WCAG AAA (7:1)
-   - `prefers-reduced-motion` support
-
-4. **Responsive Drawer Conventions**
-   - Side panels collapse outward (toward their edge)
-   - Bottom drawers expand upward (easier thumb reach on mobile)
-   - Z-index layering prevents visibility conflicts
-   - Consistent resize and state persistence patterns
-
-5. **Enforcement Mechanisms**
-   - PR checklist includes UI-specific items
-   - Contributing guidelines reference this style guide
-   - Color contrast tests in test suite
-   - Visual regression tests (future enhancement)
-
-### Why These Conventions?
-
-**Consistency:** Tokens and patterns ensure all features look and behave the same way.
-
-**Accessibility:** Following WCAG and GDS patterns makes the app usable by everyone.
-
-**Maintainability:** Clear rules prevent ad-hoc implementations that accumulate technical debt.
-
-**Scalability:** New features can be built faster by reusing documented patterns.
-
----
-
-## Quick Reference Checklist
-
-**For every UI change, verify:**
-
-- [ ] Uses design tokens from `variables.css`
-- [ ] Follows documented component pattern
-- [ ] Has correct ARIA attributes
-- [ ] Keyboard-only navigation works (Tab, Enter/Space, Escape)
-- [ ] Focus indicator visible (`:focus-visible`)
-- [ ] Touch targets ≥44×44px
-- [ ] Works in light mode
-- [ ] Works in dark mode
-- [ ] Works in high contrast mode
-- [ ] Works in forced-colors mode (Windows HC)
-- [ ] Respects `prefers-reduced-motion`
-- [ ] Mobile portrait tested (≤480px)
-- [ ] Mobile landscape tested (≤767px)
-- [ ] Contrast ratios meet WCAG (4.5:1 text, 3:1 UI)
-
 ---
 
 ## File Locations
@@ -869,10 +741,3 @@ This design system is based on research into leading open-source design systems 
 | Contributing Guide | `CONTRIBUTING.md` |
 | Accessibility Guide | `docs/guides/ACCESSIBILITY_GUIDE.md` |
 
----
-
-## Questions?
-
-If you need to add a new component pattern or are unsure whether a design decision follows these standards, ask during PR review or open a discussion issue before implementing.
-
-**Remember:** Consistency benefits everyone—users, developers, and future contributors.

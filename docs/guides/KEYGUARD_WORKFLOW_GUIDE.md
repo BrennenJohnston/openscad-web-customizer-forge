@@ -443,9 +443,3 @@ If you encounter issues:
    - AAC app being used
    - Parameter values tried
    - Photos of failed prints/fits
-
----
-
-**Last Updated**: 2026-01-22  
-**Version**: 4.0.0  
-**Maintained by**: OpenSCAD Assistive Forge community

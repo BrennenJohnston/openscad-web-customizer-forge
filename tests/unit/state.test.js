@@ -427,7 +427,7 @@ describe('State Management', () => {
       vi.useRealTimers()
     })
 
-    it('should load draft from localStorage', () => {
+    it('should load draft from localStorage', async () => {
       const draft = {
         version: '1.0.0',
         timestamp: Date.now(),
@@ -439,13 +439,13 @@ describe('State Management', () => {
       
       localStorage.setItem(state.localStorageKey, JSON.stringify(draft))
       
-      const loaded = state.loadFromLocalStorage()
+      const loaded = await state.loadFromLocalStorage()
       expect(loaded).toBeDefined()
       expect(loaded.fileName).toBe('test.scad')
       expect(loaded.parameters).toEqual({ width: 100 })
     })
 
-    it('should reject old drafts (> 7 days)', () => {
+    it('should reject old drafts (> 7 days)', async () => {
       const oldDraft = {
         version: '1.0.0',
         timestamp: Date.now() - (8 * 24 * 60 * 60 * 1000), // 8 days ago
@@ -456,17 +456,17 @@ describe('State Management', () => {
       
       localStorage.setItem(state.localStorageKey, JSON.stringify(oldDraft))
       
-      const loaded = state.loadFromLocalStorage()
+      const loaded = await state.loadFromLocalStorage()
       expect(loaded).toBeNull()
       
       // Should also clear the old draft
       expect(localStorage.getItem(state.localStorageKey)).toBeNull()
     })
 
-    it('should handle corrupted localStorage data', () => {
+    it('should handle corrupted localStorage data', async () => {
       localStorage.setItem(state.localStorageKey, 'invalid json')
       
-      const loaded = state.loadFromLocalStorage()
+      const loaded = await state.loadFromLocalStorage()
       expect(loaded).toBeNull()
     })
 
@@ -617,10 +617,10 @@ describe('State Management', () => {
       window.location.hash = ''
     })
 
-    it('should load parameters from URL hash', () => {
+    it('should load parameters from URL hash', async () => {
       window.location.hash = '#width=100&height=50'
       
-      const loaded = state.loadFromURL()
+      const loaded = await state.loadFromURL()
       
       // Should return loaded params (may be null if hash parsing not implemented in test env)
       if (loaded) {
@@ -628,10 +628,10 @@ describe('State Management', () => {
       }
     })
 
-    it('should return null when no URL params', () => {
+    it('should return null when no URL params', async () => {
       window.location.hash = ''
       
-      const loaded = state.loadFromURL()
+      const loaded = await state.loadFromURL()
       expect(loaded).toBeNull()
     })
   })

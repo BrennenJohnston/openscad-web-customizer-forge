@@ -287,10 +287,6 @@ The palette is designed to be distinguishable for common color vision deficienci
 - **Colorblindly Extension**: [Chrome Web Store](https://chrome.google.com/webstore/detail/colorblindly)
 - **Coblis Simulator**: [color-blindness.com/coblis](https://www.color-blindness.com/coblis-color-blindness-simulator/)
 
-## Migration from Old System
-
-If you're updating existing components, see the [Color Migration Guide](./COLOR_MIGRATION_GUIDE.md) for token mapping.
-
 ## Automated Testing
 
 The color system includes automated tests:
@@ -307,35 +303,6 @@ npm run test:e2e          # E2E tests
 
 ## Resources
 
-### Official Documentation
-
 - [Radix Colors](https://www.radix-ui.com/colors)
 - [WCAG 2.2 Guidelines](https://www.w3.org/WAI/WCAG22/quickref/)
-- [MDN: CSS Color](https://developer.mozilla.org/en-US/docs/Web/CSS/color_value)
-
-### Contrast Checking Tools
-
 - [WebAIM Contrast Checker](https://webaim.org/resources/contrastchecker/)
-- [Colour Contrast Analyser](https://www.tpgi.com/color-contrast-checker/)
-- [APCA Contrast Calculator](https://www.myndex.com/APCA/)
-
-### Color Accessibility
-
-- [WCAG 1.4.1 Use of Color](https://www.w3.org/WAI/WCAG22/Understanding/use-of-color.html)
-- [WCAG 1.4.3 Contrast (Minimum)](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)
-- [WCAG 1.4.11 Non-text Contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html)
-- [WCAG 2.4.13 Focus Appearance](https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance.html)
-
-## Support
-
-For questions or issues with the color system:
-
-1. Check the [Migration Guide](./COLOR_MIGRATION_GUIDE.md)
-2. Review [Accessibility Guide](./ACCESSIBILITY_GUIDE.md)
-3. File an issue on GitHub
-
-## License
-
-The color system implementation is part of the OpenSCAD Assistive Forge project.
-
-Radix Colors is licensed under MIT. See [Radix UI License](https://github.com/radix-ui/colors/blob/main/LICENSE).

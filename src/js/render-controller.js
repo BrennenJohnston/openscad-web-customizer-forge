@@ -22,6 +22,9 @@ export {
  * NOTE: New code should use the adaptive quality tier system from quality-tiers.js
  * These presets are based on community standards for STANDARD complexity models.
  *
+ * MANIFOLD OPTIMIZED: These values have been recalibrated for the Manifold
+ * rendering backend, which is 10-100x faster than CGAL for boolean operations.
+ *
  * For adaptive quality based on model complexity and hardware, use:
  * - getAdaptiveQualityConfig(scadContent, parameters)
  * - getQualityPreset(tier, hardwareLevel, qualityLevel, mode)
@@ -32,58 +35,62 @@ export const RENDER_QUALITY = {
    */
   DRAFT: {
     name: 'draft',
-    maxFn: 24,
-    forceFn: true,
-    minFa: 15,
-    minFs: 3,
-    timeoutMs: 20000,
+    maxFn: 32,
+    forceFn: false, // No need to force with Manifold speed
+    minFa: 12,
+    minFs: 2,
+    timeoutMs: 8000, // Reduced from 20s
   },
   /**
    * Low quality - fast exports, coarse tessellation
    */
   LOW: {
     name: 'low',
-    maxFn: 32,
+    maxFn: 48,
     forceFn: false,
-    minFa: 15,
-    minFs: 3,
-    timeoutMs: 45000,
+    minFa: 10,
+    minFs: 2,
+    timeoutMs: 15000, // Reduced from 45s
   },
   /**
-   * Preview quality - balanced for interactive use
+   * Preview quality - balanced for interactive use (~50% of full quality)
+   * Targets approximately 50% triangle count vs full render:
+   * - For STANDARD models (export-medium $fn=192): $fn=96 gives ~50%
+   * - For COMPLEX models: $fn=96 capped by their lower limits, still rounded
    */
   PREVIEW: {
     name: 'preview',
-    maxFn: 48,
+    maxFn: 96, // ~50% of STANDARD export-medium ($fn=192)
     forceFn: false,
-    minFa: 12,
-    minFs: 2,
-    timeoutMs: 30000,
+    minFa: 8,
+    minFs: 1.5,
+    timeoutMs: 12000,
   },
   /**
    * Medium quality - community standard (STANDARD tier)
    */
   MEDIUM: {
     name: 'medium',
-    maxFn: 128,
+    maxFn: 192,
     forceFn: false,
-    minFa: 6,
-    minFs: 1,
-    timeoutMs: 60000,
+    minFa: 4,
+    minFs: 0.75,
+    timeoutMs: 30000, // Reduced from 60s
   },
   /**
    * High quality - community high standard (STANDARD tier)
    */
   HIGH: {
     name: 'high',
-    maxFn: 256,
+    maxFn: 360,
     forceFn: false,
-    minFa: 2,
-    minFs: 0.5,
-    timeoutMs: 90000,
+    minFa: 1,
+    minFs: 0.25,
+    timeoutMs: 45000, // Reduced from 90s
   },
   /**
-   * Desktop-equivalent - respects model's settings
+   * Desktop-equivalent - respects model's settings (OpenSCAD defaults)
+   * Matches native OpenSCAD behavior: $fn, $fa, $fs from model
    */
   DESKTOP_DEFAULT: {
     name: 'desktop',
@@ -91,10 +98,10 @@ export const RENDER_QUALITY = {
     forceFn: false,
     minFa: 12,
     minFs: 2,
-    timeoutMs: 60000,
+    timeoutMs: 30000, // Reduced from 60s
   },
   /**
-   * Full quality - for final export
+   * Full quality - for final export (respects model's settings)
    */
   FULL: {
     name: 'full',
@@ -102,7 +109,7 @@ export const RENDER_QUALITY = {
     forceFn: false,
     minFa: 12,
     minFs: 2,
-    timeoutMs: 60000,
+    timeoutMs: 30000, // Reduced from 60s
   },
 };
 
@@ -213,12 +220,13 @@ export function estimateRenderTime(scadContent, parameters = {}) {
   }
 
   // Estimate time (in seconds)
-  // Base time + complexity factor
-  // These constants are calibrated based on typical models
-  const baseTime = 2;
+  // MANIFOLD OPTIMIZED: Reduced base time and multiplier since Manifold
+  // renders 10-100x faster than CGAL for boolean operations.
+  // A complex keyguard that takes ~10s with CGAL takes ~0.2s with Manifold
+  const baseTime = 0.5;
   const estimatedSeconds = Math.max(
-    2,
-    Math.round(baseTime + complexityScore * 0.12) // Slightly more aggressive estimate
+    1,
+    Math.round(baseTime + complexityScore * 0.03) // Much lower multiplier for Manifold
   );
 
   // Determine confidence level
@@ -265,8 +273,8 @@ export class RenderController {
   /**
    * Create a new RenderController
    * @param {Object} options - Configuration options
-   * @param {number} options.defaultTimeoutMs - Default render timeout in milliseconds (default: 60000)
-   * @param {number} options.previewTimeoutMs - Preview render timeout in milliseconds (default: 30000)
+   * @param {number} options.defaultTimeoutMs - Default render timeout in milliseconds (default: 30000)
+   * @param {number} options.previewTimeoutMs - Preview render timeout in milliseconds (default: 15000)
    * @param {number} options.initTimeoutMs - WASM initialization timeout in milliseconds (default: 120000)
    */
   constructor(options = {}) {
@@ -282,11 +290,12 @@ export class RenderController {
     this.memoryUsage = null;
     this.onMemoryWarning = null;
 
+    // MANIFOLD OPTIMIZED: Reduced default timeouts since Manifold renders much faster
     // Configurable timeout settings
     this.timeoutConfig = {
-      defaultTimeoutMs: options.defaultTimeoutMs || 60000,
-      previewTimeoutMs: options.previewTimeoutMs || 30000,
-      initTimeoutMs: options.initTimeoutMs || 120000,
+      defaultTimeoutMs: options.defaultTimeoutMs || 30000, // Was 60000
+      previewTimeoutMs: options.previewTimeoutMs || 15000, // Was 30000
+      initTimeoutMs: options.initTimeoutMs || 120000, // Keep init timeout (WASM loading)
     };
   }
 
@@ -476,9 +485,27 @@ export class RenderController {
         this.ready = true;
         // Store WASM init timing if provided
         this.wasmInitDurationMs = payload?.wasmInitDurationMs || 0;
+
+        // Store detected capabilities
+        this.capabilities = payload?.capabilities || {
+          hasManifold: false,
+          hasFastCSG: false,
+          hasLazyUnion: false,
+          hasBinarySTL: false,
+          version: 'unknown',
+        };
+
         console.log(
-          `[RenderController] Worker ready (WASM init: ${this.wasmInitDurationMs}ms)`
+          `[RenderController] Worker ready (WASM init: ${this.wasmInitDurationMs}ms, ` +
+            `Manifold: ${this.capabilities.hasManifold}, ` +
+            `fast-csg: ${this.capabilities.hasFastCSG})`
         );
+
+        // Emit capability event for UI to handle
+        if (this.onCapabilitiesDetected) {
+          this.onCapabilitiesDetected(this.capabilities);
+        }
+
         if (onInitProgress) {
           onInitProgress(100, 'OpenSCAD engine ready');
         }
@@ -513,6 +540,36 @@ export class RenderController {
           };
           this.currentRequest.resolve(result);
           this.currentRequest = null;
+
+          // Collect performance metrics if enabled
+          const metricsEnabled =
+            localStorage.getItem('openscad-perf-metrics') === 'true';
+          if (metricsEnabled && payload.timing) {
+            try {
+              const metrics = JSON.parse(
+                localStorage.getItem('openscad-metrics-log') || '[]'
+              );
+              metrics.push({
+                timestamp: Date.now(),
+                renderMs: payload.timing.renderMs || 0,
+                wasmInitMs: payload.timing.wasmInitMs || 0,
+                cached: false,
+              });
+
+              // Keep last 100 entries
+              while (metrics.length > 100) {
+                metrics.shift();
+              }
+
+              localStorage.setItem(
+                'openscad-metrics-log',
+                JSON.stringify(metrics)
+              );
+              console.log('[Perf] Render timing:', payload.timing);
+            } catch (error) {
+              console.warn('[Perf] Failed to log metrics:', error);
+            }
+          }
 
           // Check memory after render completes
           this.checkMemoryUsage();
@@ -591,6 +648,30 @@ export class RenderController {
    */
   setMemoryWarningCallback(callback) {
     this.onMemoryWarning = callback;
+  }
+
+  /**
+   * Set callback for when OpenSCAD capabilities are detected
+   * @param {Function} callback - Called with capability info after init
+   */
+  setCapabilitiesCallback(callback) {
+    this.onCapabilitiesDetected = callback;
+  }
+
+  /**
+   * Get detected capabilities
+   * @returns {Object} Capability flags
+   */
+  getCapabilities() {
+    return (
+      this.capabilities || {
+        hasManifold: false,
+        hasFastCSG: false,
+        hasLazyUnion: false,
+        hasBinarySTL: false,
+        version: 'unknown',
+      }
+    );
   }
 
   /**
@@ -725,6 +806,20 @@ export class RenderController {
         const msg = err?.message || String(err);
         const code = err?.code;
         const details = err?.details;
+
+        // Don't retry CGAL geometry errors - these are real compilation failures
+        if (msg.includes('CGAL error') || msg.includes('assertion violation')) {
+          return false;
+        }
+
+        // Don't retry compilation failures with useful error messages
+        if (
+          msg.includes('OpenSCAD compilation failed') &&
+          msg.includes('Output:')
+        ) {
+          return false;
+        }
+
         // Pattern we see in logs: "Failed to render model: 1101176" (numeric code, no stack)
         if (/^Failed to render model:\s*\d+/.test(msg)) return true;
         // Worker translates numeric callMain errors to INTERNAL_ERROR with raw numeric details.
@@ -757,6 +852,12 @@ export class RenderController {
           // Determine output format (default to stl)
           const outputFormat = options.outputFormat || 'stl';
 
+          // Read performance options from localStorage (worker can't access localStorage)
+          const renderOptions = {
+            enableLazyUnion:
+              localStorage.getItem('openscad-lazy-union') === 'true',
+          };
+
           this.worker.postMessage({
             type: 'RENDER',
             payload: {
@@ -768,6 +869,7 @@ export class RenderController {
               files: filesObject,
               mainFile: options.mainFile,
               libraries: options.libraries,
+              renderOptions,
             },
           });
         });

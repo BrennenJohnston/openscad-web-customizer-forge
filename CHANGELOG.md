@@ -432,7 +432,6 @@ This is the first **major stable release** for production deployment on Cloudfla
 ### Technical
 - No new features (polish release)
 - Service Worker cache auto-invalidates with version bump
-- See [docs/changelogs/CHANGELOG_v2.3.md](docs/changelogs/CHANGELOG_v2.3.md) for complete details
 
 ## [2.2.0] - 2026-01-15
 
@@ -453,7 +452,6 @@ This is the first **major stable release** for production deployment on Cloudfla
 - Updated scaffold command to support Vue and Svelte
 - Template dependencies: Vue 3.4+, Svelte 4.2+
 - Total new code: ~2,800 lines
-- See [docs/changelogs/CHANGELOG_v2.2.md](docs/changelogs/CHANGELOG_v2.2.md) for complete details
 
 ## [2.1.0] - 2026-01-15
 
@@ -473,7 +471,6 @@ This is the first **major stable release** for production deployment on Cloudfla
 - Updated scaffold command with `--template react` option
 - Version bumped to 2.1.0
 - Total new code: ~2,400 lines
-- See [docs/changelogs/CHANGELOG_v2.1.md](docs/changelogs/CHANGELOG_v2.1.md) for complete details
 
 ## [2.0.0] - 2026-01-15
 
@@ -492,7 +489,6 @@ This is the first **major stable release** for production deployment on Cloudfla
 - Commander.js for command parsing
 - Chalk for colorized output
 - Dependencies: commander@^11.1.0, chalk@^5.3.0
-- See [docs/changelogs/CHANGELOG_v2.0.md](docs/changelogs/CHANGELOG_v2.0.md) for complete details
 
 ## [1.10.0] - 2026-01-14
 
@@ -516,7 +512,6 @@ This is the first **major stable release** for production deployment on Cloudfla
 - Modified 7 core files for library integration
 - Added 250+ lines of CSS for library UI
 - Total: ~1,352 lines added
-- See [docs/changelogs/CHANGELOG_v1.10.md](docs/changelogs/CHANGELOG_v1.10.md) for complete details
 
 ## [1.9.0] - 2026-01-14
 
@@ -541,8 +536,6 @@ Multi-variant comparison system for side-by-side parameter testing.
 - Build time: 3.15s
 - Bundle size: +14.4KB gzipped
 
-See [docs/changelogs/CHANGELOG_v1.9.md](docs/changelogs/CHANGELOG_v1.9.md) for complete details.
-
 ## [1.8.0] - 2026-01-14
 
 ### Added - STL Measurements
@@ -561,8 +554,6 @@ See [docs/changelogs/CHANGELOG_v1.9.md](docs/changelogs/CHANGELOG_v1.9.md) for c
 - Three.js BoxHelper for bounding box visualization
 - +4.2KB gzipped bundle size impact
 - Build time: 3.55s
-
-See [docs/changelogs/CHANGELOG_v1.8.md](docs/changelogs/CHANGELOG_v1.8.md) for complete details.
 
 ## [1.7.0] - 2026-01-13
 
@@ -584,8 +575,6 @@ See [docs/changelogs/CHANGELOG_v1.8.md](docs/changelogs/CHANGELOG_v1.8.md) for c
 - +4.1KB gzipped bundle size impact
 - Build time: 3.83s
 
-See [docs/changelogs/CHANGELOG_v1.7.md](docs/changelogs/CHANGELOG_v1.7.md) for complete details.
-
 ## [1.6.0] - 2026-01-13
 
 ### Added - Multiple Output Formats
@@ -600,8 +589,6 @@ See [docs/changelogs/CHANGELOG_v1.7.md](docs/changelogs/CHANGELOG_v1.7.md) for c
 - Format detection and conversion
 - +0.73KB gzipped bundle size impact
 - Build time: 2.39s
-
-See [docs/changelogs/CHANGELOG_v1.6.md](docs/changelogs/CHANGELOG_v1.6.md) for complete details.
 
 ## [1.5.0] - 2026-01-13
 
@@ -622,8 +609,6 @@ See [docs/changelogs/CHANGELOG_v1.6.md](docs/changelogs/CHANGELOG_v1.6.md) for c
 - +0.89KB gzipped bundle size impact
 - Build time: 2.53s
 
-See [docs/changelogs/CHANGELOG_v1.5.md](docs/changelogs/CHANGELOG_v1.5.md) for complete details.
-
 ## [1.4.0] - 2026-01-13
 
 ### Added - Dark Mode
@@ -639,8 +624,6 @@ See [docs/changelogs/CHANGELOG_v1.5.md](docs/changelogs/CHANGELOG_v1.5.md) for c
 - Theme integration in `PreviewManager`
 - +3KB (+0.8KB gzipped) bundle size impact
 - Build time: 2.71s
-
-See [docs/changelogs/CHANGELOG_v1.4.md](docs/changelogs/CHANGELOG_v1.4.md) for complete details.
 
 ## [1.3.0] - 2026-01-13
 
@@ -662,8 +645,6 @@ See [docs/changelogs/CHANGELOG_v1.4.md](docs/changelogs/CHANGELOG_v1.4.md) for c
 - ~10KB bundle size impact (JSZip)
 - Build time: 2.72s
 
-See [docs/changelogs/CHANGELOG_v1.3.md](docs/changelogs/CHANGELOG_v1.3.md) for complete details.
-
 ## [1.2.0] - 2026-01-13
 
 ### Added - Auto-Preview & Progressive Enhancement
@@ -681,8 +662,6 @@ See [docs/changelogs/CHANGELOG_v1.3.md](docs/changelogs/CHANGELOG_v1.3.md) for c
 - 5-10x faster parameter iteration
 - Preview renders: 2-8s vs Full: 10-60s
 
-See [docs/changelogs/CHANGELOG_v1.2.md](docs/changelogs/CHANGELOG_v1.2.md) for complete details.
-
 ## [1.1.0] - 2026-01-12
 
 ### Added - Enhanced Usability
@@ -699,8 +678,6 @@ See [docs/changelogs/CHANGELOG_v1.2.md](docs/changelogs/CHANGELOG_v1.2.md) for c
 - URL serialization with non-default values only
 - LocalStorage persistence with housekeeping
 - Clipboard API with fallback
-
-See [docs/changelogs/CHANGELOG_v1.1.md](docs/changelogs/CHANGELOG_v1.1.md) for complete details.
 
 ## [1.0.0] - 2026-01-12
 
@@ -727,8 +704,6 @@ See [docs/changelogs/CHANGELOG_v1.1.md](docs/changelogs/CHANGELOG_v1.1.md) for c
 - CSS custom properties for theming
 - Mobile-responsive design
 
-See [docs/changelogs/CHANGELOG_v1.0.md](docs/changelogs/CHANGELOG_v1.0.md) for complete details (if exists).
-
 ## [0.2.0] - 2026-01-12
 
 ### Changed
@@ -744,8 +719,6 @@ See [docs/changelogs/CHANGELOG_v1.0.md](docs/changelogs/CHANGELOG_v1.0.md) for c
 - Security considerations and threat model
 - Performance optimization guidelines
 - CSS architecture and design system
-
-See [docs/BUILD_PLAN_NEW.md](docs/BUILD_PLAN_NEW.md) for complete details.
 
 ## [0.1.0] - 2026-01-11
 
@@ -778,11 +751,6 @@ We follow [Semantic Versioning](https://semver.org/):
 - **Repository**: [GitHub](https://github.com/BrennenJohnston/openscad-assistive-forge)
 - **Live Demo**: [Cloudflare Pages](https://openscad-assistive-forge.pages.dev/)
 - **Documentation**: [docs/](docs/)
-- **Version Changelogs**: [docs/changelogs/](docs/changelogs/)
 - **License**: GPL-3.0-or-later
 
 ---
-
-<p align="center">
-  <strong>Built with ❤️ by the open-source community</strong>
-</p>

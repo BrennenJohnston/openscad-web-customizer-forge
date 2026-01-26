@@ -31,9 +31,18 @@ export class AutoPreviewController {
     this.previewManager = previewManager;
 
     // Configuration
-    this.debounceMs = options.debounceMs ?? 1500;
+    // MANIFOLD OPTIMIZED: Reduced debounce time for more responsive previews
+    // Manifold renders most models in under 1 second, so we can respond faster
+    this.debounceMs = options.debounceMs ?? 800; // Was 1500ms, now 800ms
     this.maxCacheSize = options.maxCacheSize ?? 10;
     this.enabled = options.enabled ?? true;
+    // When enabled is false, this helps distinguish "user turned it off"
+    // vs "auto-paused due to complexity". Used to decide whether param changes
+    // should still schedule a debounced preview render.
+    this.pauseReason = options.pauseReason ?? null; // 'user' | 'complexity' | null
+    // MANIFOLD OPTIMIZED: Also reduced paused debounce time
+    this.pausedDebounceMs =
+      options.pausedDebounceMs ?? Math.max(this.debounceMs, 1500); // Was 2000ms
     this.previewQuality = options.previewQuality ?? null;
     this.resolvePreviewQuality = options.resolvePreviewQuality || null;
     this.resolvePreviewParameters = options.resolvePreviewParameters || null;
@@ -149,9 +158,11 @@ export class AutoPreviewController {
   /**
    * Enable or disable auto-preview
    * @param {boolean} enabled - Whether auto-preview is enabled
+   * @param {'user'|'complexity'|null} [pauseReason] - Why auto-preview is disabled
    */
-  setEnabled(enabled) {
+  setEnabled(enabled, pauseReason = null) {
     this.enabled = enabled;
+    this.pauseReason = enabled ? null : pauseReason;
     if (!enabled && this.debounceTimer) {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
@@ -321,13 +332,47 @@ export class AutoPreviewController {
       this.setState(PREVIEW_STATE.STALE);
     }
 
-    // If auto-preview disabled, just mark as stale/pending
+    // If auto-preview disabled (user off OR auto-paused for complex models),
+    // do NOT show "pending" because no render will be scheduled.
+    // Instead:
+    // - If we have any preview, mark it stale
+    // - If we have no preview, remain idle ("No preview")
     if (!this.enabled) {
-      if (this.previewParamHash) {
-        this.setState(PREVIEW_STATE.STALE);
-      } else {
+      // If auto-paused due to complexity, still allow a debounced preview update
+      // when the user changes parameters (otherwise the initial one-shot preview
+      // can never update, which feels broken).
+      if (this.pauseReason === 'complexity') {
+        // Mark stale if a preview exists
+        if (this.previewCacheKey && this.state === PREVIEW_STATE.CURRENT) {
+          this.setState(PREVIEW_STATE.STALE);
+        }
+        // If a render is already in progress, store the latest requested params.
+        if (this.renderController?.isBusy?.()) {
+          if (this.debounceTimer) {
+            clearTimeout(this.debounceTimer);
+            this.debounceTimer = null;
+          }
+          this.pendingParameters = parameters;
+          this.pendingParamHash = paramHash;
+          this.pendingPreviewKey = cacheKey;
+          this.setState(PREVIEW_STATE.PENDING);
+          return;
+        }
+
+        // Schedule a debounced preview render (slower debounce than normal).
         this.setState(PREVIEW_STATE.PENDING);
+        if (this.debounceTimer) {
+          clearTimeout(this.debounceTimer);
+        }
+        this.debounceTimer = setTimeout(() => {
+          this.renderPreview(parameters, paramHash);
+        }, this.pausedDebounceMs);
+        return;
       }
+
+      this.setState(
+        this.previewCacheKey ? PREVIEW_STATE.STALE : PREVIEW_STATE.IDLE
+      );
       return;
     }
 
@@ -374,7 +419,7 @@ export class AutoPreviewController {
       try {
         const params = JSON.parse(paramHash);
         previewColor = this.resolvePreviewColor(params);
-      } catch (error) {
+      } catch (_error) {
         previewColor = null;
       }
       // Only apply SCAD-derived color if one exists; don't clear user's manual color override
@@ -393,6 +438,34 @@ export class AutoPreviewController {
         parseMs: loadResult?.parseMs || 0,
         cached: true,
       };
+
+      // Collect performance metrics if enabled
+      const metricsEnabled =
+        localStorage.getItem('openscad-perf-metrics') === 'true';
+      if (metricsEnabled) {
+        try {
+          const metrics = JSON.parse(
+            localStorage.getItem('openscad-metrics-log') || '[]'
+          );
+          metrics.push({
+            timestamp: Date.now(),
+            renderMs: 0, // Cached, no render time
+            wasmInitMs: 0,
+            cached: true,
+            parseMs: timing.parseMs || 0,
+          });
+
+          // Keep last 100 entries
+          while (metrics.length > 100) {
+            metrics.shift();
+          }
+
+          localStorage.setItem('openscad-metrics-log', JSON.stringify(metrics));
+          console.log('[Perf] Cache hit');
+        } catch (error) {
+          console.warn('[Perf] Failed to log cached metrics:', error);
+        }
+      }
 
       this.setState(PREVIEW_STATE.CURRENT, {
         cached: true,
@@ -430,6 +503,9 @@ export class AutoPreviewController {
       qualityKey,
       quality
     );
+    const overrideKeys = Object.keys(previewParameters).filter(
+      (key) => previewParameters[key] !== parameters[key]
+    );
 
     // Check if this render is still relevant
     if (
@@ -441,7 +517,7 @@ export class AutoPreviewController {
     }
 
     this.setState(PREVIEW_STATE.RENDERING);
-
+    let renderFailed = false;
     try {
       const startTime = Date.now();
       const result = await this.renderController.renderPreview(
@@ -494,6 +570,18 @@ export class AutoPreviewController {
         parseMs: loadResult?.parseMs || 0,
       };
 
+      // Log preview performance metrics
+      const bytesPerTri =
+        result.stats?.triangles > 0
+          ? Math.round((result.stl?.byteLength || 0) / result.stats.triangles)
+          : 0;
+      console.log(
+        `[Preview Performance] ${qualityKey} | ` +
+          `${timing.renderMs}ms | ` +
+          `${result.stats?.triangles || 0} triangles | ` +
+          `${bytesPerTri < 80 ? 'Binary STL ✓' : bytesPerTri > 100 ? 'ASCII STL ⚠️' : 'Unknown'}`
+      );
+
       this.setState(PREVIEW_STATE.CURRENT, {
         stats: result.stats,
         renderDurationMs: durationMs,
@@ -502,6 +590,7 @@ export class AutoPreviewController {
       });
       this.onPreviewReady(result.stl, result.stats, false, durationMs, timing);
     } catch (error) {
+      renderFailed = true;
       console.error('[AutoPreview] Preview render failed:', error);
 
       // If the file changed mid-render, ignore this error.
@@ -527,18 +616,27 @@ export class AutoPreviewController {
         this.pendingParamHash === this.currentParamHash &&
         this.pendingPreviewKey === this.currentPreviewKey
       ) {
-        // If parameters changed during this render, immediately render the latest once we are free.
-        // (OpenSCAD WASM render is blocking in the worker, so "cancel" can't interrupt mid-render.)
-        const nextParams = this.pendingParameters;
-        const nextHash = this.pendingParamHash;
-        this.pendingParameters = null;
-        this.pendingParamHash = null;
-        this.pendingPreviewKey = null;
+        // FIX: Don't retry pending renders if the render failed - this causes infinite loops
+        // Only process pending renders after SUCCESSFUL renders
+        if (renderFailed) {
+          // Clear pending to avoid retry loop
+          this.pendingParameters = null;
+          this.pendingParamHash = null;
+          this.pendingPreviewKey = null;
+        } else {
+          // If parameters changed during this render, immediately render the latest once we are free.
+          // (OpenSCAD WASM render is blocking in the worker, so "cancel" can't interrupt mid-render.)
+          const nextParams = this.pendingParameters;
+          const nextHash = this.pendingParamHash;
+          this.pendingParameters = null;
+          this.pendingParamHash = null;
+          this.pendingPreviewKey = null;
 
-        // Avoid re-entrancy: render on next tick.
-        setTimeout(() => {
-          this.renderPreview(nextParams, nextHash);
-        }, 0);
+          // Avoid re-entrancy: render on next tick.
+          setTimeout(() => {
+            this.renderPreview(nextParams, nextHash);
+          }, 0);
+        }
       }
     }
   }
@@ -735,6 +833,45 @@ export class AutoPreviewController {
     this.currentPreviewKey = this.getPreviewCacheKey(paramHash, qualityKey);
     await this.renderPreview(parameters, paramHash);
     return true;
+  }
+
+  /**
+   * Dispose of the controller and clean up all resources
+   * Clears timers, caches, and resets state
+   */
+  dispose() {
+    // Clear any pending debounce timer
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+    }
+
+    // Clear pending render state
+    this.pendingParameters = null;
+    this.pendingParamHash = null;
+    this.pendingPreviewKey = null;
+
+    // Clear cache
+    this.clearCache();
+
+    // Clear full quality STL
+    this.fullQualitySTL = null;
+    this.fullQualityStats = null;
+    this.fullQualityKey = null;
+
+    // Reset state
+    this.state = PREVIEW_STATE.IDLE;
+    this.currentScadContent = null;
+    this.currentParamHash = null;
+    this.previewParamHash = null;
+    this.previewCacheKey = null;
+    this.currentPreviewKey = null;
+    this.fullRenderParamHash = null;
+    this.scadVersion = 0;
+
+    // Clear references
+    this.renderController = null;
+    this.previewManager = null;
   }
 
   /**

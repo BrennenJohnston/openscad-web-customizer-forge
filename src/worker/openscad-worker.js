@@ -4,42 +4,26 @@
  *
  * ## Performance Notes: Threading and WASM
  *
- * This worker uses `openscad-wasm-prebuilt` which provides a **single-threaded** WASM build.
+ * This worker uses the **official OpenSCAD WASM build** with Manifold support.
  * OpenSCAD renders run on a single core, which is the primary bottleneck for complex models.
  *
- * ### Threaded WASM Considerations (Future Enhancement)
+ * ### Performance Optimizations Implemented:
+ * - **Manifold Backend:** 5-30x faster boolean operations (--backend=Manifold)
+ * - **Binary STL Export:** 18x faster than ASCII STL (--export-format=binstl)
+ * - **Capability Detection:** Automatic detection of available features
+ * - **Lazy Union:** Optional optimization for union() calls (--enable=lazy-union)
+ * - **Performance Observability:** Real-time metrics and logging
  *
- * **Potential Benefits:**
- * - Multi-core speedup for CGAL boolean operations (difference, intersection, etc.)
- * - Faster rendering of models with many independent geometry operations
- * - Better utilization of modern multi-core CPUs
+ * ### WASM Build Info:
+ * - Source: Official OpenSCAD Playground build (https://files.openscad.org/playground/)
+ * - Location: /wasm/openscad-official/openscad.js
+ * - Features: Manifold geometry engine, fast-csg, lazy-union support
  *
- * **Requirements for pthread-enabled WASM:**
- * - SharedArrayBuffer support (requires COOP/COEP headers - already configured in `public/_headers`)
- * - Browser support: Chrome 67+, Firefox 79+, Safari 15.2+, Edge 79+
- * - Web Workers for spawning pthread threads
- * - Larger WASM binary size due to threading runtime
- *
- * **Tradeoffs:**
- * - Increased memory usage (each thread needs stack space)
- * - More complex error handling (thread synchronization issues)
- * - Some browsers limit pthread thread counts
- * - iOS Safari has stricter SharedArrayBuffer requirements
- * - Threading overhead may slow simple models
- *
- * **How to Enable (if/when available):**
- * 1. Switch to a pthread-enabled OpenSCAD WASM build
- * 2. Configure thread pool size based on `navigator.hardwareConcurrency`
- * 3. Test across target browsers for compatibility
- * 4. Monitor memory usage and add safeguards for mobile devices
- *
- * For now, performance optimizations focus on:
- * - Aggressive preview quality adaptation (auto-fast mode)
- * - Caching of preview results
- * - Lower tessellation for complex models during interactive editing
+ * ### Future Enhancements:
+ * - Threaded WASM for multi-core parallelism (requires SharedArrayBuffer)
  */
 
-import { createOpenSCAD } from 'openscad-wasm-prebuilt';
+// Official WASM is loaded dynamically in initWASM() from /wasm/openscad-official/
 
 // Worker state
 let openscadInstance = null;
@@ -50,6 +34,7 @@ let mountedFiles = new Map(); // Track files in virtual filesystem
 let mountedLibraries = new Set(); // Track mounted library IDs
 let assetBaseUrl = ''; // Base URL for fetching assets (fonts, libraries, etc.)
 let wasmAssetLogShown = false;
+let openscadConsoleOutput = ''; // Accumulated console output from OpenSCAD
 
 function isAbsoluteUrl(value) {
   return /^[a-z]+:\/\//i.test(value);
@@ -60,7 +45,7 @@ function normalizeBaseUrl(value) {
   return value.endsWith('/') ? value : `${value}/`;
 }
 
-function resolveWasmAsset(path, prefix) {
+function _resolveWasmAsset(path, prefix) {
   if (!path) return path;
   if (/^(data:|blob:)/i.test(path)) return path;
   if (isAbsoluteUrl(path)) return path;
@@ -94,10 +79,9 @@ let wasmInitDurationMs = 0;
  */
 async function ensureOpenSCADModule() {
   if (openscadModule) return openscadModule;
-  if (openscadInstance?.getInstance) {
-    const maybeModule = openscadInstance.getInstance();
-    openscadModule =
-      typeof maybeModule?.then === 'function' ? await maybeModule : maybeModule;
+  // With official WASM, openscadInstance IS the module after ready resolves
+  if (openscadInstance) {
+    openscadModule = openscadInstance;
   }
   return openscadModule;
 }
@@ -186,11 +170,26 @@ const ERROR_TRANSLATIONS = [
 
 /**
  * Translate raw OpenSCAD error to user-friendly message
- * @param {string} rawError - Raw error message from OpenSCAD
+ * @param {string|Error|Object} rawError - Raw error from OpenSCAD (can be string, Error, or object)
  * @returns {{message: string, code: string, raw: string}} Translated error info
  */
 function translateError(rawError) {
-  const errorStr = String(rawError);
+  // Handle various error types to avoid "[object Object]"
+  let errorStr;
+  if (typeof rawError === 'string') {
+    errorStr = rawError;
+  } else if (rawError instanceof Error) {
+    errorStr = rawError.message || rawError.toString();
+  } else if (rawError && typeof rawError === 'object') {
+    // Try to extract a meaningful message from the object
+    errorStr =
+      rawError.message ||
+      rawError.error ||
+      rawError.msg ||
+      JSON.stringify(rawError).substring(0, 500);
+  } else {
+    errorStr = String(rawError);
+  }
 
   for (const { pattern, message, code } of ERROR_TRANSLATIONS) {
     if (pattern.test(errorStr)) {
@@ -240,17 +239,55 @@ async function initWASM(baseUrl = '') {
       payload: {
         requestId: 'init',
         percent: 5,
-        message: 'Downloading WASM module (~15-30MB)...',
+        message: 'Loading official OpenSCAD WASM with Manifold...',
       },
     });
 
-    // Initialize OpenSCAD WASM
-    openscadInstance = await createOpenSCAD({
-      locateFile: (path, prefix) => {
+    // Load official OpenSCAD WASM from vendored location
+    const wasmBasePath = `${assetBaseUrl}/wasm/openscad-official`;
+    const wasmJsUrl = `${wasmBasePath}/openscad.js`;
+
+    console.log('[Worker] Loading official OpenSCAD from:', wasmJsUrl);
+
+    // Dynamic import of official WASM module
+    const OpenSCADModule = await import(/* @vite-ignore */ wasmJsUrl);
+    const OpenSCAD = OpenSCADModule.default;
+
+    self.postMessage({
+      type: 'PROGRESS',
+      payload: {
+        requestId: 'init',
+        percent: 20,
+        message: 'Initializing WebAssembly module...',
+      },
+    });
+
+    // Initialize OpenSCAD with configuration
+    const module = await OpenSCAD({
+      // Prevent auto-running main (GUI) on init; we call callMain manually.
+      noInitialRun: true,
+      // Keep runtime alive after callMain (e.g., --help during capability checks).
+      noExitRuntime: true,
+      locateFile: (path) => {
+        // All WASM assets are in the same directory
         if (path.endsWith('.wasm') || path.endsWith('.data')) {
-          return resolveWasmAsset(path, prefix);
+          const resolved = `${wasmBasePath}/${path}`;
+          if (!wasmAssetLogShown) {
+            console.log('[Worker] Resolved WASM asset:', resolved);
+            wasmAssetLogShown = true;
+          }
+          return resolved;
         }
-        return prefix ? `${prefix}${path}` : path;
+        return path;
+      },
+      print: (text) => {
+        openscadConsoleOutput += text + '\n';
+        console.log('[OpenSCAD]', text);
+      },
+      printErr: (text) => {
+        openscadConsoleOutput += '[ERR] ' + text + '\n';
+        console.error('[OpenSCAD ERR]', text);
+        // Detecting GUI mode or abort errors is done via console output inspection
       },
     });
 
@@ -258,13 +295,20 @@ async function initWASM(baseUrl = '') {
       type: 'PROGRESS',
       payload: {
         requestId: 'init',
-        percent: 60,
-        message: 'Initializing WebAssembly...',
+        percent: 50,
+        message: 'Waiting for WebAssembly to be ready...',
       },
     });
 
-    openscadModule = await ensureOpenSCADModule();
+    // Wait for the module to be fully ready
+    await module.ready;
+
+    // Store module references
+    openscadInstance = module;
+    openscadModule = module;
     initialized = true;
+
+    console.log('[Worker] Official OpenSCAD WASM loaded successfully');
 
     self.postMessage({
       type: 'PROGRESS',
@@ -277,6 +321,18 @@ async function initWASM(baseUrl = '') {
 
     // Mount fonts for text() support
     await mountFonts();
+
+    // Check OpenSCAD capabilities (Manifold, fast-csg, etc.)
+    self.postMessage({
+      type: 'PROGRESS',
+      payload: {
+        requestId: 'init',
+        percent: 85,
+        message: 'Checking rendering capabilities...',
+      },
+    });
+
+    const detectedCapabilities = await checkCapabilities();
 
     // Calculate total WASM init duration
     wasmInitDurationMs = Math.round(performance.now() - wasmInitStartTime);
@@ -294,6 +350,7 @@ async function initWASM(baseUrl = '') {
       type: 'READY',
       payload: {
         wasmInitDurationMs,
+        capabilities: detectedCapabilities,
       },
     });
 
@@ -332,27 +389,27 @@ async function mountFonts() {
   const fontPath = '/usr/share/fonts/truetype/liberation';
   try {
     FS.mkdir('/usr');
-  } catch (e) {
+  } catch (_e) {
     /* may exist */
   }
   try {
     FS.mkdir('/usr/share');
-  } catch (e) {
+  } catch (_e) {
     /* may exist */
   }
   try {
     FS.mkdir('/usr/share/fonts');
-  } catch (e) {
+  } catch (_e) {
     /* may exist */
   }
   try {
     FS.mkdir('/usr/share/fonts/truetype');
-  } catch (e) {
+  } catch (_e) {
     /* may exist */
   }
   try {
     FS.mkdir('/usr/share/fonts/truetype/liberation');
-  } catch (e) {
+  } catch (_e) {
     /* may exist */
   }
 
@@ -396,6 +453,85 @@ async function mountFonts() {
     console.warn(
       '[Worker] No fonts mounted - text() function may not work correctly'
     );
+  }
+}
+
+/**
+ * Check which OpenSCAD features are available in this WASM build
+ * This runs `--help` and parses the output to detect supported flags
+ * @returns {Promise<Object>} Capability flags
+ */
+async function checkCapabilities() {
+  const capabilities = {
+    hasManifold: false,
+    hasFastCSG: false,
+    hasLazyUnion: false,
+    hasBinarySTL: false,
+    version: 'unknown',
+    checkedAt: Date.now(),
+  };
+
+  try {
+    const module = await ensureOpenSCADModule();
+    if (!module || typeof module.callMain !== 'function') {
+      console.warn('[Worker] Cannot check capabilities: module not available');
+      return capabilities;
+    }
+
+    // Capture --help output
+    const helpOutput = [];
+    const originalPrint = module.print;
+    const originalPrintErr = module.printErr;
+    module.print = (text) => helpOutput.push(String(text));
+    module.printErr = (text) => helpOutput.push(String(text));
+
+    try {
+      await module.callMain(['--help']);
+    } catch (_e) {
+      // --help might exit with non-zero, that's okay
+    }
+
+    module.print = originalPrint;
+    module.printErr = originalPrintErr;
+    const helpText = helpOutput.join('\n');
+
+    // Parse capabilities from help text
+    // Note: Modern OpenSCAD uses --backend=Manifold instead of --enable=manifold
+    // Check for --backend option that mentions Manifold
+    // The help text format is: "--backend arg   3D rendering backend to use: 'CGAL' ... or 'Manifold'"
+    // Use a more flexible pattern that matches various help text formats
+    const hasManifoldBackend = /--backend\s+.*Manifold/i.test(helpText);
+    const hasManifoldMention = helpText.toLowerCase().includes('manifold');
+    const hasManifoldEnable = /--enable[^\n]*manifold/i.test(helpText);
+    capabilities.hasManifold =
+      hasManifoldBackend || hasManifoldMention || hasManifoldEnable;
+
+    // fast-csg was an older experimental flag, now integrated into Manifold backend
+    // Check if it's still available as --enable option
+    capabilities.hasFastCSG = /--enable[^\n]*fast-csg/i.test(helpText);
+
+    // lazy-union is still an --enable flag
+    capabilities.hasLazyUnion =
+      /--enable\s+arg.*lazy-union/i.test(helpText) ||
+      helpText.includes('lazy-union');
+
+    // Check for export-format option (binary STL support)
+    capabilities.hasBinarySTL =
+      helpText.includes('export-format') || helpText.includes('binstl');
+
+    // Try to extract version
+    const versionMatch =
+      helpText.match(/OpenSCAD version (\d+\.\d+\.\d+)/i) ||
+      helpText.match(/version[:\s]+(\d+\.\d+)/i);
+    if (versionMatch) {
+      capabilities.version = versionMatch[1];
+    }
+
+    console.log('[Worker] Detected capabilities:', capabilities);
+    return capabilities;
+  } catch (error) {
+    console.error('[Worker] Capability check failed:', error);
+    return capabilities;
   }
 }
 
@@ -473,7 +609,7 @@ function clearMountedFiles() {
   for (const filePath of mountedFiles.keys()) {
     try {
       FS.unlink(filePath);
-    } catch (error) {
+    } catch (_error) {
       // File may already be deleted, ignore
     }
   }
@@ -495,11 +631,49 @@ async function mountLibraries(libraries) {
 
   const FS = module.FS;
   let totalMounted = 0;
+  const baseRoot = '/libraries';
+
+  const ensureDir = (dirPath) => {
+    const parts = dirPath.split('/').filter(Boolean);
+    let current = '';
+    for (const part of parts) {
+      current += `/${part}`;
+
+      // Check if path exists and what type it is
+      const analyzed = FS.analyzePath(current);
+
+      // If exists and is a directory, skip
+      if (analyzed.exists && analyzed.object?.isFolder) {
+        continue;
+      }
+
+      // If exists but NOT a directory, we have a problem
+      if (analyzed.exists && !analyzed.object?.isFolder) {
+        throw new Error(`Path exists as file, not directory: ${current}`);
+      }
+
+      try {
+        FS.mkdir(current);
+      } catch (error) {
+        if (error.code !== 'EEXIST') {
+          throw error;
+        }
+      }
+    }
+  };
+
+  ensureDir(baseRoot);
 
   for (const lib of libraries) {
+    const libRoot = lib.path.startsWith('/') ? lib.path : `/${lib.path}`;
     if (mountedLibraries.has(lib.id)) {
-      console.log(`[Worker FS] Library ${lib.id} already mounted`);
-      continue;
+      const rootExists = !!FS.analyzePath(libRoot).exists;
+      if (rootExists) {
+        console.log(`[Worker FS] Library ${lib.id} already mounted`);
+        continue;
+      }
+      // Stale mount tracked (root missing) - remount
+      mountedLibraries.delete(lib.id);
     }
 
     try {
@@ -512,16 +686,25 @@ async function mountLibraries(libraries) {
         return null;
       });
 
+      let manifest = null;
       if (response && response.ok) {
-        const manifest = await response.json();
-        const files = manifest.files || [];
-
-        // Create library directory
         try {
-          FS.mkdir(lib.id);
+          manifest = await response.json();
         } catch (error) {
-          if (error.code !== 'EEXIST') throw error;
+          console.warn(
+            `[Worker FS] Invalid manifest for ${lib.id}, skipping:`,
+            error.message
+          );
         }
+      }
+
+      if (manifest && Array.isArray(manifest.files)) {
+        const files = manifest.files || [];
+        let _mountedCount = 0;
+        let _failedCount = 0;
+        let failedSample = null;
+
+        ensureDir(libRoot);
 
         // Fetch and mount each file
         for (const file of files) {
@@ -531,11 +714,11 @@ async function mountLibraries(libraries) {
             );
             if (fileResponse.ok) {
               const content = await fileResponse.text();
-              const filePath = `${lib.id}/${file}`;
+              const filePath = `${libRoot}/${file}`;
 
               // Create subdirectories if needed
               const parts = file.split('/');
-              let currentPath = lib.id;
+              let currentPath = libRoot;
               for (let i = 0; i < parts.length - 1; i++) {
                 currentPath += '/' + parts[i];
                 try {
@@ -547,12 +730,18 @@ async function mountLibraries(libraries) {
 
               FS.writeFile(filePath, content);
               totalMounted++;
+              _mountedCount++;
+            } else {
+              _failedCount++;
+              if (!failedSample) failedSample = file;
             }
           } catch (error) {
             console.warn(
               `[Worker FS] Failed to mount ${file} from ${lib.id}:`,
               error.message
             );
+            _failedCount++;
+            if (!failedSample) failedSample = file;
           }
         }
 
@@ -564,7 +753,11 @@ async function mountLibraries(libraries) {
       }
     } catch (error) {
       console.error(`[Worker FS] Failed to mount library ${lib.id}:`, error);
-      throw new Error(`Failed to mount library: ${lib.id}`);
+      self.postMessage({
+        type: 'WARNING',
+        message: `Failed to mount library: ${lib.id}`,
+      });
+      continue;
     }
   }
 
@@ -732,7 +925,7 @@ function parametersToScad(parameters, paramTypes = {}) {
  * @param {Object} parameters
  * @returns {{scad: string, replacedKeys: string[], prependedKeys: string[]}}
  */
-function applyOverrides(scadContent, parameters) {
+function _applyOverrides(scadContent, parameters) {
   if (!parameters || Object.keys(parameters).length === 0) {
     return { scad: scadContent, replacedKeys: [], prependedKeys: [] };
   }
@@ -823,10 +1016,20 @@ async function renderWithCallMain(
   scadContent,
   parameters,
   format,
-  mainFilePath = null
+  mainFilePath = null,
+  renderOptions = {}
 ) {
   const inputFile = mainFilePath || '/tmp/input.scad';
   const outputFile = `/tmp/output.${format}`;
+  // Performance flags: Use Manifold backend for 5-30x faster CSG operations
+  // Note: Modern OpenSCAD uses --backend=Manifold instead of --enable=manifold
+  // lazy-union is still opt-in via --enable flag
+  const enableLazyUnion = Boolean(renderOptions?.enableLazyUnion);
+  const performanceFlags = ['--backend=Manifold'];
+  if (enableLazyUnion) {
+    performanceFlags.push('--enable=lazy-union');
+  }
+  const shouldRetryWithoutFlags = performanceFlags.length > 0;
 
   try {
     const module = await ensureOpenSCADModule();
@@ -837,25 +1040,86 @@ async function renderWithCallMain(
     // Ensure /tmp directory exists
     try {
       module.FS.mkdir('/tmp');
-    } catch (e) {
+    } catch (_e) {
       // May already exist
     }
 
     // Write input file to FS (unless it's already mounted via mainFilePath)
     if (!mainFilePath || mainFilePath.startsWith('/tmp/')) {
       module.FS.writeFile(inputFile, scadContent);
-    }
-
-    // Build -D arguments
+    } // Build -D arguments
     const defineArgs = buildDefineArgs(parameters);
 
-    // Build command: [-D key=value, ...] -o outputFile inputFile
-    const args = [...defineArgs, '-o', outputFile, inputFile];
+    // OpenSCAD WASM doesn't support -I flag, so we need to use environment variables
+    // Set OPENSCADPATH environment variable (if supported by WASM build)
+    if (module.ENV && module.ENV.OPENSCADPATH === undefined) {
+      module.ENV.OPENSCADPATH = '/libraries';
+    }
+
+    // Build command: [performance flags, -D key=value, ...] -o outputFile inputFile
+    // Note: removed -I flag as it's not supported by this OpenSCAD WASM build
+    const args = [
+      ...performanceFlags,
+      '--export-format=binstl', // Force binary STL output (18x faster than ASCII)
+      ...defineArgs,
+      '-o',
+      outputFile,
+      inputFile,
+    ];
 
     console.log('[Worker] Calling OpenSCAD with args:', args);
+    let inputExists = false;
+    let inputSize = null;
+    try {
+      inputExists = module.FS.analyzePath(inputFile).exists;
+      if (inputExists) {
+        inputSize = module.FS.stat(inputFile).size;
+      }
+    } catch (_e) {
+      inputExists = false;
+    }
 
-    // Execute OpenSCAD
-    await module.callMain(args);
+    // Clear accumulated console output for this render
+    openscadConsoleOutput = '';
+
+    // Execute OpenSCAD with fail-open retry logic
+    try {
+      const exitCode = await module.callMain(args);
+
+      // Check exit code - non-zero means compilation failed
+      if (exitCode !== 0) {
+        throw new Error(
+          `OpenSCAD compilation failed with exit code ${exitCode}. Output: ${openscadConsoleOutput.substring(0, 500)}`
+        );
+      }
+    } catch (error) {
+      if (shouldRetryWithoutFlags) {
+        console.warn(
+          '[Worker] Render failed with performance flags, retrying without flags'
+        );
+        const argsWithoutFlags = [...defineArgs, '-o', outputFile, inputFile];
+
+        // Clear console output for retry
+        openscadConsoleOutput = '';
+
+        const retryExitCode = await module.callMain(argsWithoutFlags);
+
+        if (retryExitCode !== 0) {
+          throw new Error(
+            `OpenSCAD compilation failed with exit code ${retryExitCode}. Output: ${openscadConsoleOutput.substring(0, 500)}`
+          );
+        }
+
+        // Emit warning so UI can show "using default backend"
+        postMessage({
+          type: 'WARNING',
+          message:
+            'Performance flags not supported by this OpenSCAD build (retried without flags)',
+        });
+      } else {
+        throw error; // Re-throw non-flag errors
+      }
+    }
 
     // Read output file
     const outputData = module.FS.readFile(outputFile);
@@ -865,12 +1129,12 @@ async function renderWithCallMain(
       if (!mainFilePath || mainFilePath.startsWith('/tmp/')) {
         module.FS.unlink(inputFile);
       }
-    } catch (e) {
+    } catch (_e) {
       // Ignore cleanup errors
     }
     try {
       module.FS.unlink(outputFile);
-    } catch (e) {
+    } catch (_e) {
       // Ignore cleanup errors
     }
 
@@ -887,7 +1151,7 @@ async function renderWithCallMain(
  * @param {string} format - Output format (obj, off, amf, 3mf)
  * @returns {Promise<string|ArrayBuffer>} Rendered data
  */
-async function renderWithExport(scadContent, format) {
+async function _renderWithExport(scadContent, format) {
   // This is a fallback approach if OpenSCAD WASM doesn't have format-specific methods
   // We'll try using the file system approach: write .scad, export to format
 
@@ -903,7 +1167,7 @@ async function renderWithExport(scadContent, format) {
     // Ensure /tmp directory exists
     try {
       module.FS.mkdir('/tmp');
-    } catch (e) {
+    } catch (_e) {
       // May already exist
     }
 
@@ -981,6 +1245,7 @@ async function render(payload) {
     outputFormat = 'stl',
     libraries,
     mainFile,
+    renderOptions = {},
   } = payload;
 
   try {
@@ -1050,7 +1315,6 @@ async function render(payload) {
         },
       });
     }
-
     console.log('[Worker] Rendering with parameters:', parameters);
 
     self.postMessage({
@@ -1068,13 +1332,6 @@ async function render(payload) {
     // Determine the format to render
     const format = (outputFormat || 'stl').toLowerCase();
     const formatName = format.toUpperCase();
-
-    // Determine rendering strategy:
-    // 1. If parameters are provided, use callMain with -D flags (Phase 1.2 requirement)
-    // 2. If mainFile is specified (multi-file project), use file-based rendering
-    // 3. Otherwise, use legacy renderToStl/renderToObj methods as fallback
-    const useCallMainApproach =
-      (parameters && Object.keys(parameters).length > 0) || mainFile;
 
     // Track render timing
     let renderStartTime = 0;
@@ -1096,84 +1353,34 @@ async function render(payload) {
       // Start timing the actual render operation
       renderStartTime = performance.now();
 
-      let outputData;
+      // Always use callMain approach - official WASM uses callMain for all operations
+      console.log('[Worker] Using callMain with official OpenSCAD WASM');
 
-      if (useCallMainApproach) {
-        // File-based rendering with -D flags via callMain
-        console.log('[Worker] Using callMain approach with -D flags');
+      // Determine main file path
+      const mainFileToUse = mainFile || '/tmp/input.scad';
 
-        // Determine main file path
-        const mainFileToUse = mainFile || '/tmp/input.scad';
-
-        // If mainFile is specified and exists in mounted files, use it directly
-        // Otherwise, write scadContent to the filesystem
-        if (!mainFile) {
-          // Write to temporary location
-          const module = await ensureOpenSCADModule();
-          if (!module || !module.FS) {
-            throw new Error('OpenSCAD filesystem not available');
-          }
-          try {
-            module.FS.mkdir('/tmp');
-          } catch (e) {
-            // May already exist
-          }
+      // If mainFile is specified and exists in mounted files, use it directly
+      // Otherwise, write scadContent to the filesystem
+      if (!mainFile) {
+        // Write to temporary location
+        const module = await ensureOpenSCADModule();
+        if (!module || !module.FS) {
+          throw new Error('OpenSCAD filesystem not available');
         }
-
-        outputData = await renderWithCallMain(
-          scadContent,
-          parameters,
-          format,
-          mainFileToUse
-        );
-      } else {
-        // Legacy approach: use renderToStl/renderToObj methods
-        console.log('[Worker] Using legacy renderTo* methods');
-
-        // Apply parameter overrides via source modification (fallback)
-        const applied = applyOverrides(scadContent, parameters);
-        const fullScadContent = applied.scad;
-
-        // Call appropriate render method based on format
-        // OpenSCAD WASM may support: renderToStl, renderToObj, renderToOff, renderToAmf, renderTo3mf
-        switch (format) {
-          case 'stl':
-            outputData = await openscadInstance.renderToStl(fullScadContent);
-            break;
-          case 'obj':
-            // Try renderToObj method if available
-            if (typeof openscadInstance.renderToObj === 'function') {
-              outputData = await openscadInstance.renderToObj(fullScadContent);
-            } else {
-              // Fallback: use writeFile approach
-              outputData = await renderWithExport(fullScadContent, 'obj');
-            }
-            break;
-          case 'off':
-            if (typeof openscadInstance.renderToOff === 'function') {
-              outputData = await openscadInstance.renderToOff(fullScadContent);
-            } else {
-              outputData = await renderWithExport(fullScadContent, 'off');
-            }
-            break;
-          case 'amf':
-            if (typeof openscadInstance.renderToAmf === 'function') {
-              outputData = await openscadInstance.renderToAmf(fullScadContent);
-            } else {
-              outputData = await renderWithExport(fullScadContent, 'amf');
-            }
-            break;
-          case '3mf':
-            if (typeof openscadInstance.renderTo3mf === 'function') {
-              outputData = await openscadInstance.renderTo3mf(fullScadContent);
-            } else {
-              outputData = await renderWithExport(fullScadContent, '3mf');
-            }
-            break;
-          default:
-            throw new Error(`Unsupported output format: ${format}`);
+        try {
+          module.FS.mkdir('/tmp');
+        } catch (_e) {
+          // May already exist
         }
       }
+
+      const outputData = await renderWithCallMain(
+        scadContent,
+        parameters,
+        format,
+        mainFileToUse,
+        renderOptions
+      );
 
       // Capture render duration
       renderDurationMs = Math.round(performance.now() - renderStartTime);
@@ -1297,10 +1504,9 @@ async function render(payload) {
     }
 
     console.error('[Worker] Render failed:', error);
-
     // Translate error to user-friendly message
-    const errorMessage = error?.message || String(error);
-    const translated = translateError(errorMessage);
+    // Pass the entire error object to translateError which now handles all types
+    const translated = translateError(error);
 
     self.postMessage({
       type: 'ERROR',

@@ -17,6 +17,10 @@ export const COMPLEXITY_TIER = {
  * Quality presets organized by complexity tier
  * Each tier has preview and export quality levels (low, medium, high)
  *
+ * MANIFOLD OPTIMIZED: These values have been recalibrated for the Manifold
+ * rendering backend, which is 10-100x faster than CGAL for boolean operations.
+ * Manifold enables higher $fn values with much shorter timeouts.
+ *
  * Triangle count estimates are approximate and vary by model geometry.
  */
 export const QUALITY_TIERS = {
@@ -25,7 +29,7 @@ export const QUALITY_TIERS = {
    * Optimized for: cubes, simple boxes, basic shapes with minimal curves
    * Example: simple_box.scad (4 corner cylinders, basic ventilation holes)
    *
-   * These models can handle higher $fn without performance issues.
+   * With Manifold, these models render nearly instantly even at high quality.
    */
   [COMPLEXITY_TIER.BEGINNER]: {
     name: 'Beginner',
@@ -33,56 +37,56 @@ export const QUALITY_TIERS = {
     preview: {
       low: {
         name: 'beginner-preview-low',
-        maxFn: 24,
-        forceFn: false,
-        minFa: 15,
-        minFs: 3,
-        timeoutMs: 15000,
-      },
-      medium: {
-        name: 'beginner-preview-medium',
         maxFn: 32,
         forceFn: false,
         minFa: 12,
         minFs: 2,
-        timeoutMs: 20000,
+        timeoutMs: 5000, // Reduced from 15s - Manifold is fast
       },
-      high: {
-        name: 'beginner-preview-high',
+      medium: {
+        name: 'beginner-preview-medium',
         maxFn: 48,
         forceFn: false,
         minFa: 8,
         minFs: 1.5,
-        timeoutMs: 30000,
+        timeoutMs: 8000, // Reduced from 20s
+      },
+      high: {
+        name: 'beginner-preview-high',
+        maxFn: 64,
+        forceFn: false,
+        minFa: 6,
+        minFs: 1,
+        timeoutMs: 15000, // Reduced from 30s
       },
     },
     export: {
       low: {
         name: 'beginner-export-low',
-        maxFn: 32,
+        maxFn: 48,
         forceFn: false,
-        minFa: 12,
-        minFs: 2,
-        timeoutMs: 30000,
-        // ~500-2K triangles for simple box
+        minFa: 8,
+        minFs: 1.5,
+        timeoutMs: 10000, // Reduced from 30s
+        // ~1K-3K triangles for simple box
       },
       medium: {
         name: 'beginner-export-medium',
-        maxFn: 64,
+        maxFn: 96,
         forceFn: false,
-        minFa: 6,
-        minFs: 1,
-        timeoutMs: 45000,
-        // ~2K-5K triangles for simple box
+        minFa: 4,
+        minFs: 0.75,
+        timeoutMs: 20000, // Reduced from 45s
+        // ~3K-8K triangles for simple box
       },
       high: {
         name: 'beginner-export-high',
-        maxFn: 128,
+        maxFn: 192,
         forceFn: false,
-        minFa: 3,
-        minFs: 0.5,
-        timeoutMs: 60000,
-        // ~5K-15K triangles for simple box
+        minFa: 2,
+        minFs: 0.3,
+        timeoutMs: 30000, // Reduced from 60s
+        // ~8K-20K triangles for simple box
       },
     },
   },
@@ -91,10 +95,10 @@ export const QUALITY_TIERS = {
    * STANDARD tier - Community standard for typical OpenSCAD models
    * Optimized for: gear sets, enclosures, mechanical parts, decorative items
    *
-   * Based on community-recommended $fn values from OpenSCAD forums/docs:
-   * - Low/Draft: $fn=20-32 preview, $fn=64 render
-   * - Medium: $fn=50-80 preview, $fn=128 render
-   * - High: $fn=100 preview, $fn=256 render
+   * With Manifold, standard models can use native OpenSCAD defaults:
+   * - Low/Draft: $fn=32-48 preview, $fn=96 render
+   * - Medium: $fn=64-96 preview, $fn=192 render
+   * - High: $fn=128 preview, $fn=360 render (smooth circles)
    */
   [COMPLEXITY_TIER.STANDARD]: {
     name: 'Standard',
@@ -102,56 +106,56 @@ export const QUALITY_TIERS = {
     preview: {
       low: {
         name: 'standard-preview-low',
-        maxFn: 24,
-        forceFn: true, // Force for consistent preview
-        minFa: 15,
-        minFs: 3,
-        timeoutMs: 20000,
+        maxFn: 32,
+        forceFn: false, // No need to force with Manifold speed
+        minFa: 12,
+        minFs: 2,
+        timeoutMs: 8000, // Reduced from 20s
       },
       medium: {
         name: 'standard-preview-medium',
-        maxFn: 48,
+        maxFn: 64,
         forceFn: false,
-        minFa: 12,
-        minFs: 2,
-        timeoutMs: 30000,
+        minFa: 8,
+        minFs: 1.5,
+        timeoutMs: 15000, // Reduced from 30s
       },
       high: {
         name: 'standard-preview-high',
-        maxFn: 80,
+        maxFn: 96,
         forceFn: false,
-        minFa: 6,
+        minFa: 4,
         minFs: 1,
-        timeoutMs: 45000,
+        timeoutMs: 25000, // Reduced from 45s
       },
     },
     export: {
       low: {
         name: 'standard-export-low',
-        maxFn: 64,
+        maxFn: 96,
         forceFn: false,
-        minFa: 12,
-        minFs: 2,
-        timeoutMs: 45000,
-        // Community low standard
+        minFa: 8,
+        minFs: 1.5,
+        timeoutMs: 20000, // Reduced from 45s
+        // Good quality with Manifold
       },
       medium: {
         name: 'standard-export-medium',
-        maxFn: 128,
+        maxFn: 192,
         forceFn: false,
-        minFa: 6,
-        minFs: 1,
-        timeoutMs: 60000,
-        // Community medium standard
+        minFa: 4,
+        minFs: 0.75,
+        timeoutMs: 30000, // Reduced from 60s
+        // High quality - matches OpenSCAD defaults
       },
       high: {
         name: 'standard-export-high',
-        maxFn: 256,
+        maxFn: 360,
         forceFn: false,
-        minFa: 2,
-        minFs: 0.5,
-        timeoutMs: 90000,
-        // Community high standard
+        minFa: 1,
+        minFs: 0.25,
+        timeoutMs: 45000, // Reduced from 90s
+        // Professional quality - smooth circles
       },
     },
   },
@@ -161,9 +165,17 @@ export const QUALITY_TIERS = {
    * Optimized for: braille embossers, perforated patterns, organic shapes,
    *                models with 100+ spheres/cylinders
    *
-   * Based on braille_embosser.scad which has 264+ small curved dots.
-   * Using community standards here would produce 500K+ triangles.
-   * These conservative values keep STL size manageable.
+   * MANIFOLD RECALIBRATED: Previously very conservative due to CGAL slowness.
+   * With Manifold, we can significantly increase quality while maintaining
+   * reasonable render times. The keyguard (complex model) renders in ~1s.
+   *
+   * GEOMETRY THRESHOLD ANALYSIS:
+   * - $fn determines segments per circle. For a quarter-circle (rounded corner),
+   *   segments = $fn/4. Minimum to avoid "right angle" appearance:
+   *   - $fn=8: 2 segments/corner = octagonal (borderline angular)
+   *   - $fn=10: 2.5 segments/corner = minimum "rounded" appearance
+   *   - $fn=12: 3 segments/corner = clearly rounded
+   * - Triangle count scales linearly with $fn, so $fn=10 gives ~30% of full quality
    */
   [COMPLEXITY_TIER.COMPLEX]: {
     name: 'Complex',
@@ -171,57 +183,60 @@ export const QUALITY_TIERS = {
     preview: {
       low: {
         name: 'complex-preview-low',
-        maxFn: 8,
-        forceFn: true, // Force low for responsiveness
-        minFa: 30,
+        maxFn: 10,
+        forceFn: true, // Force for very complex models
+        minFa: 36, // 360/10 = 36° per segment
         minFs: 5,
-        timeoutMs: 20000,
-        // Very coarse for quick feedback
+        timeoutMs: 8000,
+        // MINIMUM SAFE: ~30% triangles, rounded corners preserved
+        // Going below $fn=10 risks corners becoming visually angular
       },
       medium: {
         name: 'complex-preview-medium',
-        maxFn: 12,
+        maxFn: 16,
         forceFn: true,
         minFa: 24,
         minFs: 4,
-        timeoutMs: 30000,
+        timeoutMs: 12000,
+        // ~50% triangles, clearly rounded curves
       },
       high: {
         name: 'complex-preview-high',
-        maxFn: 16,
+        maxFn: 24,
         forceFn: false,
         minFa: 18,
         minFs: 3,
-        timeoutMs: 45000,
+        timeoutMs: 18000,
+        // ~75% triangles, smooth preview
       },
     },
     export: {
       low: {
         name: 'complex-export-low',
-        maxFn: 12,
-        forceFn: false,
-        minFa: 24,
-        minFs: 4,
-        timeoutMs: 45000,
-        // ~22K triangles for braille embosser, ~1 MB STL
-      },
-      medium: {
-        name: 'complex-export-medium',
-        maxFn: 16,
+        maxFn: 24,
         forceFn: false,
         minFa: 18,
         minFs: 3,
-        timeoutMs: 60000,
-        // ~35K triangles for braille embosser, ~1.7 MB STL
+        timeoutMs: 20000, // Reduced from 45s
+        // ~40K triangles for braille embosser
       },
-      high: {
-        name: 'complex-export-high',
-        maxFn: 24,
+      medium: {
+        name: 'complex-export-medium',
+        maxFn: 32,
         forceFn: false,
         minFa: 12,
         minFs: 2,
-        timeoutMs: 90000,
-        // ~80K triangles for braille embosser, ~4 MB STL
+        timeoutMs: 30000, // Reduced from 60s
+        // ~80K triangles for braille embosser
+      },
+      high: {
+        name: 'complex-export-high',
+        maxFn: 48,
+        forceFn: false,
+        minFa: 8,
+        minFs: 1.5,
+        timeoutMs: 45000, // Reduced from 90s
+        // ~150K triangles for braille embosser - still manageable
       },
     },
   },

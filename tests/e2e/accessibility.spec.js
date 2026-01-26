@@ -12,6 +12,14 @@ async function waitForWasmReady(page) {
   }
 }
 
+// Most tests assume the welcome UI is interactable (no blocking first-visit modal).
+// Ensure a consistent baseline by marking first-visit as already seen.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('openscad-forge-first-visit-seen', 'true')
+  })
+})
+
 test.describe('Accessibility Compliance (WCAG 2.1 AA)', () => {
   test('should have no accessibility violations on landing page', async ({ page }) => {
     await page.goto('/')
@@ -745,6 +753,13 @@ test.describe('Screen Reader Support', () => {
     test('should have keyboard-accessible accessibility spotlight links', async ({ page }) => {
       await page.goto('/')
       
+      // Expand the (collapsible) Accessibility Highlights section
+      const spotlightsDetails = page.locator('#accessibilitySpotlights')
+      const spotlightsSummary = spotlightsDetails.locator('summary')
+      await expect(spotlightsSummary).toBeVisible()
+      await spotlightsSummary.click()
+      await expect(spotlightsDetails).toHaveJSProperty('open', true)
+
       // Check that spotlight links exist
       const spotlightLinks = page.locator('.spotlight-link')
       const linkCount = await spotlightLinks.count()
@@ -752,6 +767,7 @@ test.describe('Screen Reader Support', () => {
       
       // Check that links are keyboard accessible
       const firstLink = spotlightLinks.first()
+      await expect(firstLink).toBeVisible()
       await firstLink.focus()
       const isFocused = await firstLink.evaluate(el => el === document.activeElement)
       expect(isFocused).toBe(true)
@@ -775,8 +791,13 @@ test.describe('Screen Reader Support', () => {
       expect(buttonBox.width).toBeGreaterThan(0) // Full width in card, so just check it exists
       
       // Check spotlight links
+      const spotlightsSummary = page.locator('#accessibilitySpotlights summary')
+      await expect(spotlightsSummary).toBeVisible()
+      await spotlightsSummary.click()
+
       const spotlightLinks = page.locator('.spotlight-link')
       const firstLink = spotlightLinks.first()
+      await expect(firstLink).toBeVisible()
       const linkBox = await firstLink.boundingBox()
       
       expect(linkBox).not.toBeNull()

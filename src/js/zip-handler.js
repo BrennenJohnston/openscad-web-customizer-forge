@@ -127,18 +127,21 @@ function hasCustomizerAnnotations(content) {
  * @param {File} file - File to validate
  * @returns {{valid: boolean, error?: string}}
  */
+import { FILE_SIZE_LIMITS } from './validation-constants.js';
+
 export function validateZipFile(file) {
   // Check file extension
   if (!file.name.toLowerCase().endsWith('.zip')) {
     return { valid: false, error: 'File must have .zip extension' };
   }
 
-  // Check file size (20MB limit for ZIP files)
-  const maxSize = 20 * 1024 * 1024; // 20MB
-  if (file.size > maxSize) {
+  // Check file size using shared constant
+  if (file.size > FILE_SIZE_LIMITS.ZIP_FILE) {
+    const limitMB = FILE_SIZE_LIMITS.ZIP_FILE / (1024 * 1024);
+    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
     return {
       valid: false,
-      error: `ZIP file exceeds 20MB limit (${(file.size / 1024 / 1024).toFixed(1)}MB)`,
+      error: `ZIP file exceeds ${limitMB}MB limit (${fileSizeMB}MB)`,
     };
   }
 

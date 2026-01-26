@@ -1,8 +1,5 @@
 # Tutorial Design Research
 
-**Version:** 1.0 (January 2026)  
-**Context:** OpenSCAD Assistive Forge - Tutorial and Onboarding System Design
-
 ## Overview
 
 This document synthesizes research, standards, and best practices that inform the design of the app's tutorial and onboarding systems, including role-based tutorials and UI orientation.

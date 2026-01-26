@@ -3020,15 +3020,21 @@ details summary:focus,
   .header-branding-text {
     display: none !important;
   }
-  
+
   /* Minimal header padding */
   .app-header {
     padding: var(--space-2xs) var(--space-sm) !important;
-    padding-top: calc(var(--space-2xs) + env(safe-area-inset-top, 0px)) !important;
-    padding-left: calc(var(--space-sm) + env(safe-area-inset-left, 0px)) !important;
-    padding-right: calc(var(--space-sm) + env(safe-area-inset-right, 0px)) !important;
+    padding-top: calc(
+      var(--space-2xs) + env(safe-area-inset-top, 0px)
+    ) !important;
+    padding-left: calc(
+      var(--space-sm) + env(safe-area-inset-left, 0px)
+    ) !important;
+    padding-right: calc(
+      var(--space-sm) + env(safe-area-inset-right, 0px)
+    ) !important;
   }
-  
+
   /* Single row layout - logo and buttons inline */
   .header-content {
     flex-wrap: nowrap !important;
@@ -3036,7 +3042,7 @@ details summary:focus,
     align-items: center !important;
     justify-content: flex-start !important;
   }
-  
+
   /* Logo container - minimal, no extra space */
   .header-branding {
     flex: 0 0 auto !important;
@@ -3044,7 +3050,7 @@ details summary:focus,
     gap: 0 !important;
     order: 1 !important;
   }
-  
+
   /* Logo matches button size (44px) */
   .header-logo {
     width: var(--size-touch-target) !important;
@@ -3052,7 +3058,7 @@ details summary:focus,
     max-height: var(--size-touch-target) !important;
     object-fit: contain !important;
   }
-  
+
   /* Buttons align right on same row as logo */
   .header-controls {
     flex: 1 1 auto !important;
@@ -3063,7 +3069,7 @@ details summary:focus,
     gap: var(--space-xs) !important;
     flex-wrap: nowrap !important;
   }
-  
+
   /* ============================================================================
      Mobile Portrait: Side-by-Side Actions & Camera Drawer Toggles
      ============================================================================
@@ -3071,19 +3077,19 @@ details summary:focus,
      Each drawer body expands to full width when opened.
      Only one drawer can be open at a time (handled by JavaScript).
      ============================================================================ */
-  
+
   /* Actions bar: use CSS Grid for precise control */
   .preview-panel .actions-bar {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
     grid-template-rows: auto auto auto !important;
     grid-template-areas:
-      "drawer-content drawer-content"
-      "actions camera"
-      "primary primary" !important;
+      'drawer-content drawer-content'
+      'actions camera'
+      'primary primary' !important;
     flex-direction: unset !important;
   }
-  
+
   /* Actions drawer in left column */
   .actions-drawer {
     grid-area: actions !important;
@@ -3092,7 +3098,7 @@ details summary:focus,
     border-right: 1px solid var(--color-border) !important;
     border-bottom: none !important;
   }
-  
+
   /* Camera drawer in right column */
   .camera-drawer {
     grid-area: camera !important;
@@ -3104,13 +3110,13 @@ details summary:focus,
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
-  
+
   /* Primary actions span full width at bottom */
   .actions-primary {
     grid-area: primary !important;
     border-top: 1px solid var(--color-border) !important;
   }
-  
+
   /* Make Actions drawer header match Camera drawer toggle button styling exactly */
   .actions-drawer-header {
     position: relative !important;
@@ -3124,7 +3130,7 @@ details summary:focus,
     background: var(--color-bg-tertiary) !important;
     cursor: pointer !important;
   }
-  
+
   /* Make the toggle button cover the entire header area (invisible but clickable) */
   .actions-drawer-toggle-btn {
     position: absolute !important;
@@ -3135,7 +3141,7 @@ details summary:focus,
     cursor: pointer !important;
     z-index: 1 !important;
   }
-  
+
   /* Style the Actions title to match Camera label exactly */
   .actions-drawer-title {
     display: inline-flex !important;
@@ -3147,21 +3153,21 @@ details summary:focus,
     color: var(--color-text-primary) !important;
     pointer-events: none !important;
   }
-  
+
   /* Add a chevron icon to Actions title via pseudo-element */
   .actions-drawer-title::before {
-    content: "▼" !important;
+    content: '▼' !important;
     font-size: 10px !important;
     margin-right: var(--space-xs) !important;
     transition: transform 0.2s ease !important;
     display: inline-block !important;
   }
-  
+
   /* Rotate chevron when expanded (points up) */
   .actions-drawer:not(.collapsed) .actions-drawer-title::before {
     transform: rotate(180deg) !important;
   }
-  
+
   /* Camera drawer toggle - match Actions drawer styling exactly */
   .camera-drawer-toggle-btn {
     display: flex !important;
@@ -3179,26 +3185,26 @@ details summary:focus,
     font-weight: 600 !important;
     cursor: pointer !important;
   }
-  
+
   /* Hide the SVG icon in Camera toggle - we'll use CSS pseudo-element instead */
   .camera-drawer-toggle-btn .camera-drawer-icon {
     display: none !important;
   }
-  
+
   /* Add chevron via pseudo-element to match Actions */
   .camera-drawer-label::before {
-    content: "▼" !important;
+    content: '▼' !important;
     font-size: 10px !important;
     margin-right: var(--space-xs) !important;
     transition: transform 0.2s ease !important;
     display: inline-block !important;
   }
-  
+
   /* Rotate chevron when Camera drawer is expanded */
   .camera-drawer:not(.collapsed) .camera-drawer-label::before {
     transform: rotate(180deg) !important;
   }
-  
+
   /* Actions drawer body - fixed overlay above the bar */
   .actions-drawer:not(.collapsed) .actions-drawer-body {
     position: fixed !important;
@@ -3206,13 +3212,15 @@ details summary:focus,
     right: 0 !important;
     width: 100% !important;
     /* Position above: toggle row (44px) + primary row (44px) + safe area */
-    bottom: calc((var(--actions-bar-height) * 2) + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: calc(
+      (var(--actions-bar-height) * 2) + env(safe-area-inset-bottom, 0px)
+    ) !important;
     max-height: 45vh !important;
     overflow-y: auto !important;
     border-radius: var(--border-radius-md) var(--border-radius-md) 0 0 !important;
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15) !important;
   }
-  
+
   /* Camera drawer body - fixed overlay, scales with viewport */
   .camera-drawer:not(.collapsed) .camera-drawer-body {
     position: fixed !important;
@@ -3220,7 +3228,9 @@ details summary:focus,
     right: 0 !important;
     width: 100% !important;
     /* Position above: toggle row (44px) + primary row (44px) + safe area */
-    bottom: calc((var(--actions-bar-height) * 2) + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: calc(
+      (var(--actions-bar-height) * 2) + env(safe-area-inset-bottom, 0px)
+    ) !important;
     /* Limit height and allow scrolling */
     max-height: 45vh !important;
     overflow-y: auto !important;
@@ -3242,7 +3252,7 @@ details summary:focus,
     /* Center items vertically - critical for D-pad alignment */
     align-items: center !important;
   }
-  
+
   /* Camera drawer sizing tokens (scale with viewport + zoom) */
   .camera-drawer:not(.collapsed) {
     /*
@@ -3262,10 +3272,12 @@ details summary:focus,
       while buttons were ~40px, causing overflow/squeezing and “uneven” spacing.
     */
     max-width: none !important;
-    width: calc((var(--camera-btn-size) * 3) + 2px) !important; /* 3 cols + 2 gaps (gap=1px) */
+    width: calc(
+      (var(--camera-btn-size) * 3) + 2px
+    ) !important; /* 3 cols + 2 gaps (gap=1px) */
     gap: 1px !important;
   }
-  
+
   /* D-pad buttons - smaller touch targets for tight space */
   .camera-drawer:not(.collapsed) .camera-drawer-btn {
     width: var(--camera-btn-size) !important;
@@ -3291,25 +3303,25 @@ details summary:focus,
     min-height: var(--camera-btn-size) !important;
     padding: 0 !important;
   }
-  
+
   /* D-pad rows - tighter */
   .camera-drawer:not(.collapsed) .camera-drawer-dpad {
     grid-template-columns: repeat(3, var(--camera-btn-size)) !important;
     grid-template-rows: repeat(3, var(--camera-btn-size)) !important;
   }
-  
+
   /* Rotate section - vertically centered, aligned to left */
   .camera-drawer:not(.collapsed) .camera-drawer-rotate {
     justify-self: center !important;
     align-self: center !important;
   }
-  
+
   /* Pan section - vertically centered, aligned to right */
   .camera-drawer:not(.collapsed) .camera-drawer-pan {
     justify-self: center !important;
     align-self: center !important;
   }
-  
+
   /* Zoom section - compact vertical stack, centered */
   .camera-drawer:not(.collapsed) .camera-drawer-zoom {
     justify-self: center !important;
@@ -3321,7 +3333,9 @@ details summary:focus,
   }
 
   /* Keep Zoom title visible but remove it from layout height */
-  .camera-drawer:not(.collapsed) .camera-drawer-zoom .camera-drawer-section-title {
+  .camera-drawer:not(.collapsed)
+    .camera-drawer-zoom
+    .camera-drawer-section-title {
     position: absolute !important;
     top: 0 !important;
     left: 50% !important;
@@ -3329,7 +3343,7 @@ details summary:focus,
     margin: 0 !important;
     white-space: nowrap !important;
   }
-  
+
   .camera-drawer:not(.collapsed) .camera-drawer-zoom-controls {
     gap: var(--space-2xs) !important;
     flex-direction: column !important;
@@ -3338,14 +3352,16 @@ details summary:focus,
   }
 
   /* Zoom in/out buttons: force same size as D-pad arrows */
-  .camera-drawer:not(.collapsed) .camera-drawer-zoom-controls .camera-drawer-btn {
+  .camera-drawer:not(.collapsed)
+    .camera-drawer-zoom-controls
+    .camera-drawer-btn {
     width: var(--camera-btn-size) !important;
     height: var(--camera-btn-size) !important;
     min-width: var(--camera-btn-size) !important;
     min-height: var(--camera-btn-size) !important;
     padding: 0 !important;
   }
-  
+
   .camera-drawer:not(.collapsed) .camera-drawer-reset-btn {
     width: var(--camera-btn-size) !important;
     min-width: var(--camera-btn-size) !important;
@@ -3358,13 +3374,13 @@ details summary:focus,
   .camera-drawer:not(.collapsed) .camera-drawer-reset-btn span {
     display: none !important;
   }
-  
+
   /* Section titles - smaller */
   .camera-drawer:not(.collapsed) .camera-drawer-section-title {
     font-size: var(--font-size-2xs) !important;
     margin-bottom: var(--space-2xs) !important;
   }
-  
+
   /* D-pad center labels - smaller */
   .camera-drawer:not(.collapsed) .camera-drawer-dpad-label {
     font-size: 9px !important;
@@ -3395,7 +3411,10 @@ details summary:focus,
     left: 0 !important;
     right: 0 !important;
     /* Leave space for camera drawer + primary action + safe area */
-    bottom: calc(var(--camera-focus-bottom-offset, 180px) + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: calc(
+      var(--camera-focus-bottom-offset, 180px) +
+        env(safe-area-inset-bottom, 0px)
+    ) !important;
     display: flex !important;
     flex-direction: column !important;
     border: none !important;
@@ -3411,13 +3430,17 @@ details summary:focus,
     overflow: hidden !important;
   }
 
-  .main-interface.focus-mode.camera-focus-mode .preview-panel .preview-canvas-section {
+  .main-interface.focus-mode.camera-focus-mode
+    .preview-panel
+    .preview-canvas-section {
     flex: 1 !important;
     margin: 0 !important;
     padding: var(--space-2xs) !important;
   }
 
-  .main-interface.focus-mode.camera-focus-mode .preview-panel .preview-container {
+  .main-interface.focus-mode.camera-focus-mode
+    .preview-panel
+    .preview-container {
     flex: 1 !important;
     min-height: 0 !important;
   }
@@ -3463,7 +3486,11 @@ details summary:focus,
     min-width: 44px !important;
     min-height: 44px !important;
     padding: var(--space-xs) var(--space-sm) !important;
-    background: color-mix(in srgb, var(--color-bg-primary) 92%, transparent) !important;
+    background: color-mix(
+      in srgb,
+      var(--color-bg-primary) 92%,
+      transparent
+    ) !important;
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
     border: 2px solid var(--color-border) !important;
@@ -3499,7 +3526,8 @@ details summary:focus,
 
   /* Show exit button when in camera focus mode */
   .main-interface.focus-mode.camera-focus-mode ~ .camera-focus-exit-btn,
-  #app:has(.main-interface.focus-mode.camera-focus-mode) .camera-focus-exit-btn {
+  #app:has(.main-interface.focus-mode.camera-focus-mode)
+    .camera-focus-exit-btn {
     display: flex !important;
   }
 
@@ -3535,7 +3563,11 @@ details summary:focus,
 
   /* Dark mode adjustments for camera focus */
   :root[data-theme='dark'] .camera-focus-exit-btn {
-    background: color-mix(in srgb, var(--color-bg-secondary) 95%, transparent) !important;
+    background: color-mix(
+      in srgb,
+      var(--color-bg-secondary) 95%,
+      transparent
+    ) !important;
   }
 
   @supports not (background-color: color-mix(in srgb, red 50%, blue)) {

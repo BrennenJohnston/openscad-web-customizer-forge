@@ -170,26 +170,47 @@
             </label>
             
               <div class="features-overview" role="region" aria-labelledby="features-heading">
-              <h3 id="features-heading">Discover Features for Your Needs</h3>
-                <p class="features-intro">Start with the guided beginner tutorial, then use Help for deeper explanations and examples.</p>
+              <h3 id="features-heading">Discover features (optional)</h3>
+                <p class="features-intro">Take a quick guided start, or open Help to browse workflow tips, libraries, presets, and accessibility options.</p>
               
               <div class="role-paths-grid">
                 <!-- Beginners Start Here (only visible tutorial for now) -->
                 <div class="role-path-card">
                   <h4 class="role-path-title">Beginners Start Here</h4>
-                    <p class="role-path-description">New here? Learn the interface and the basic workflow with a simple example.</p>
-                  <ul class="role-path-tips" aria-label="What you'll learn">
-                      <li>Find Parameters, Preview, and Actions</li>
-                      <li>Change Width/Height → watch Preview update</li>
-                      <li>Use Presets, Actions, and Camera controls</li>
-                      <li>Generate and download your first file (~3 min)</li>
-                  </ul>
+                  <p class="role-path-meta">Guided tour • about 3 minutes</p>
+                  <p class="role-path-description">Load a simple example, change a few parameters, and generate your first file.</p>
+                  <details class="role-path-details">
+                    <summary>What you’ll learn</summary>
+                    <ul class="role-path-tips" aria-label="What you'll learn">
+                      <li>Where parameters live and how Preview updates</li>
+                      <li>Presets and key actions (Generate / Download)</li>
+                      <li>Camera controls and keyboard basics</li>
+                    </ul>
+                  </details>
                   <div class="role-path-actions">
                       <button class="btn btn-primary btn-role-try" data-example="simple-box" data-role="beginners" data-tutorial="intro">
                       Start Tutorial
                     </button>
-                    <button class="btn btn-link btn-role-learn" data-feature-tab="presets" aria-label="Open Features Guide: Presets">
-                      Learn More
+                    <button class="btn btn-link btn-role-learn" data-feature-tab="workflow" aria-label="Open Help: Workflow">
+                      Open Help
+                    </button>
+                  </div>
+                </div>
+
+                <div class="role-path-card">
+                  <h4 class="role-path-title">Explore Features</h4>
+                  <p class="role-path-description">Prefer to browse? Open Help for examples and deeper guidance.</p>
+                  <details class="role-path-details">
+                    <summary>Common tasks</summary>
+                    <ul class="role-path-tips" aria-label="Common tasks">
+                      <li>Enable libraries and resolve dependencies</li>
+                      <li>Save and reuse presets for repeatable settings</li>
+                      <li>Export files and work with ZIP projects</li>
+                    </ul>
+                  </details>
+                  <div class="role-path-actions">
+                    <button class="btn btn-outline btn-role-learn" data-feature-tab="libraries" aria-label="Open Help: Libraries">
+                      Open Help & Examples
                     </button>
                   </div>
                 </div>
@@ -243,7 +264,7 @@
                     <button class="btn btn-primary btn-role-try" data-example="simple-box" data-role="low-vision" data-tutorial="low-vision">
                       Start Tutorial
                     </button>
-                    <button class="btn btn-link btn-role-learn" data-doc="ACCESSIBILITY_GUIDE" aria-label="Learn about visual accessibility features">
+                    <button class="btn btn-link btn-role-learn" data-doc="ACCESSIBILITY_GUIDE" data-feature-tab="accessibility" aria-label="Learn about visual accessibility features">
                       Learn More
                     </button>
                   </div>
@@ -261,7 +282,7 @@
                     <button class="btn btn-primary btn-role-try" data-example="simple-box" data-role="voice-input" data-tutorial="voice-input">
                       Start Tutorial
                     </button>
-                    <button class="btn btn-link btn-role-learn" data-doc="ACCESSIBILITY_GUIDE" aria-label="Learn about voice input and accessible control names">
+                    <button class="btn btn-link btn-role-learn" data-doc="ACCESSIBILITY_GUIDE" data-feature-tab="accessibility" aria-label="Learn about voice input and accessible control names">
                       Learn More
                     </button>
                   </div>
@@ -279,7 +300,7 @@
                     <button class="btn btn-primary btn-role-try" data-example="simple-box" data-role="screen-reader" data-tutorial="screen-reader">
                       Start Tutorial
                     </button>
-                    <button class="btn btn-link btn-role-learn" data-doc="ACCESSIBILITY_GUIDE" aria-label="Learn about screen reader accessibility features">
+                    <button class="btn btn-link btn-role-learn" data-doc="ACCESSIBILITY_GUIDE" data-feature-tab="accessibility" aria-label="Learn about screen reader accessibility features">
                       Learn More
                     </button>
                   </div>
@@ -287,31 +308,71 @@
               </div>
               
               <!-- Accessibility Spotlights -->
-              <div class="accessibility-spotlights">
-                <h4 class="spotlights-heading">Accessibility Highlights</h4>
-                <ul class="spotlights-list">
-                  <li>
-                    <a href="#" class="spotlight-link" data-doc="ACCESSIBILITY_GUIDE">
-                      Keyboard-first design with logical tab order
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" class="spotlight-link" data-doc="ACCESSIBILITY_GUIDE">
-                      High contrast &amp; forced colors support
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" class="spotlight-link" data-doc="ACCESSIBILITY_GUIDE">
-                      Plain-language error messages
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" class="spotlight-link" data-doc="KEYGUARD_WORKFLOW_GUIDE">
-                      Full workflow without drag gestures
-                    </a>
-                  </li>
-                </ul>
-              </div>
+              <details class="accessibility-spotlights" id="accessibilitySpotlights">
+                <summary class="spotlights-summary">
+                  <span class="spotlights-summary-title">Accessibility Highlights</span>
+                  <span class="sr-only">Expand to learn more about accessibility features</span>
+                </summary>
+                <div class="spotlights-body" role="group" aria-label="Accessibility highlights details">
+                  <p class="spotlights-intro">
+                    Built around accessibility patterns commonly seen in open source tools like VS Code and JupyterLab:
+                    predictable keyboard navigation, strong focus visibility, and clear status messaging.
+                  </p>
+                  <ul class="spotlights-list" aria-label="Accessibility highlights">
+                    <li>
+                      <a href="#" class="spotlight-link" data-doc="KEYGUARD_WORKFLOW_GUIDE" data-feature-tab="accessibility">
+                        <span class="spotlight-title">Keyboard-first workflow (no required drag gestures)</span>
+                        <span class="spotlight-detail">
+                          Tab through controls, activate with Enter/Space, and adjust sliders/number fields without dragging.
+                          Step-by-step workflow guidance is available.
+                        </span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="spotlight-link" data-doc="ACCESSIBILITY_GUIDE" data-feature-tab="accessibility">
+                        <span class="spotlight-title">High contrast, dark mode, and Windows forced-colors support</span>
+                        <span class="spotlight-detail">
+                          Theme controls plus OS-enforced contrast modes keep borders, focus rings, and text readable.
+                        </span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="spotlight-link" data-doc="ACCESSIBILITY_GUIDE" data-feature-tab="accessibility">
+                        <span class="spotlight-title">Screen reader-friendly status updates and focus-safe dialogs</span>
+                        <span class="spotlight-detail">
+                          Key actions announce status changes, and dialogs use focus trapping + focus restoration.
+                        </span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="#" class="spotlight-link" data-doc="ACCESSIBILITY_GUIDE" data-feature-tab="accessibility">
+                        <span class="spotlight-title">Plain-language errors and guidance (not cryptic console logs)</span>
+                        <span class="spotlight-detail">
+                          Errors are translated into actionable messages so you can recover quickly.
+                        </span>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </details>
+              
+              <!-- Storage Panel -->
+              <section class="storage-panel" aria-labelledby="storage-heading">
+                <h3 id="storage-heading">Storage Usage</h3>
+                <p class="storage-description">Persistent storage for cached files, presets, and settings</p>
+                <div class="storage-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Storage usage percentage">
+                  <div class="storage-meter-fill"></div>
+                </div>
+                <div class="storage-info">
+                  <span id="storage-used">-- used</span>
+                </div>
+                <button type="button" class="btn btn-secondary" id="clearStorageBtn" aria-describedby="storage-heading">
+                  Clear Cache
+                </button>
+                <p class="storage-not-supported hidden" id="storageNotSupported">
+                  Storage information not available in this browser.
+                </p>
+              </section>
               
             </div>
           </div>
@@ -656,9 +717,9 @@
                       <label class="preview-setting" for="previewQualitySelect">
                         <span class="preview-setting-label">Preview quality</span>
                         <select id="previewQualitySelect" aria-label="Select preview quality">
-                          <option value="auto" selected>Auto (adaptive)</option>
+                          <option value="auto">Auto (adaptive)</option>
                           <option value="fidelity">Fidelity (slower)</option>
-                          <option value="balanced">Balanced</option>
+                          <option value="balanced" selected>Balanced (~50%)</option>
                           <option value="fast">Fast (lower resolution)</option>
                         </select>
                       </label>
@@ -752,7 +813,7 @@
               <!-- Actions Drawer (collapsible, left side) -->
               <div class="actions-drawer collapsed" id="actionsDrawer" role="region" aria-label="Additional actions">
                 <!-- Drawer header with toggle button and title -->
-                <div class="actions-drawer-header">
+                <div class="actions-drawer-header" data-tutorial-target="actions-drawer-toggle">
                   <button 
                     id="actionsDrawerToggle" 
                     class="btn btn-sm btn-icon btn-collapse-panel actions-drawer-toggle-btn" 
@@ -760,7 +821,6 @@
                     aria-controls="actionsDrawerBody"
                     aria-label="Expand actions menu"
                     title="More Actions"
-                    data-tutorial-target="actions-drawer-toggle"
                   >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                       <polyline points="13 6 7 12 13 18"></polyline>
@@ -1502,6 +1562,48 @@ secondary_color = "E74C3C"; // [color]</code></pre>
         <div class="modal-footer confirm-modal-footer">
           <button id="resetConfirmCancel" class="btn btn-secondary">Cancel</button>
           <button id="resetConfirmOk" class="btn btn-primary">Reset All</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- First-Visit Disclosure Modal -->
+    <div class="modal hidden" id="first-visit-modal" role="dialog" aria-labelledby="first-visit-title" aria-describedby="first-visit-description" aria-modal="true">
+      <div class="modal-overlay" id="firstVisitOverlay"></div>
+      <div class="modal-content modal-medium">
+        <div class="modal-header">
+          <h2 id="first-visit-title">Welcome to OpenSCAD Assistive Forge</h2>
+        </div>
+        <div class="modal-body" id="first-visit-description">
+          <p><strong>This runs locally in your browser.</strong> Your model is processed on this device and is not uploaded to a server.</p>
+
+          <h3>Before you start</h3>
+          <ul class="features-list">
+            <li><strong>One-time download:</strong> Your first render downloads the OpenSCAD engine (~15–30MB) and caches it for next time.</li>
+            <li><strong>Saved here:</strong> Your designs and settings are stored in this browser (storage limits vary by device/browser).</li>
+            <li><strong>Clearing site data removes saves:</strong> If you clear your browser storage/site data, saved work may be removed.</li>
+          </ul>
+
+          <p class="features-note"><strong>Continue</strong> to download and run the OpenSCAD engine locally.</p>
+
+          <details class="file-info-details first-visit-details">
+            <summary>Technical details</summary>
+            <ul class="features-list">
+              <li><strong>Local processing:</strong> Rendering happens on your device.</li>
+              <li><strong>No server:</strong> Nothing is sent to external servers.</li>
+              <li><strong>Privacy:</strong> Your data stays on your device.</li>
+            </ul>
+            <p class="features-note">
+              Learn more:
+              <a href="https://github.com/BrennenJohnston/openscad-assistive-forge/blob/main/README.md#how-it-works" target="_blank" rel="noopener noreferrer">How it works (opens in new tab)</a>
+              ·
+              <a href="https://github.com/BrennenJohnston/openscad-assistive-forge/blob/main/docs/TROUBLESHOOTING.md#wasm-loading-issues" target="_blank" rel="noopener noreferrer">WASM download help (opens in new tab)</a>
+            </p>
+          </details>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" id="first-visit-continue">
+            Download &amp; Continue
+          </button>
         </div>
       </div>
     </div>

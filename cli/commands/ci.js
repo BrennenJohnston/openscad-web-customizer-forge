@@ -63,13 +63,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
         with:
-          vercel-token: \${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: \${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: \${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
+          apiToken: \${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: \${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=\${{ vars.CLOUDFLARE_PAGES_PROJECT }}
 `,
     },
   },
@@ -116,38 +115,6 @@ deploy_production:
   only:
     - main
   when: manual
-`,
-    },
-  },
-  
-  vercel: {
-    name: 'Vercel (Legacy)',
-    description: 'Vercel deployment configuration (see Cloudflare Pages as alternative)',
-    files: {
-      'vercel.json': `{
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Cross-Origin-Opener-Policy",
-          "value": "same-origin"
-        },
-        {
-          "key": "Cross-Origin-Embedder-Policy",
-          "value": "require-corp"
-        },
-        {
-          "key": "Cross-Origin-Resource-Policy",
-          "value": "cross-origin"
-        }
-      ]
-    }
-  ],
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
 `,
     },
   },
@@ -522,10 +489,10 @@ export async function ciCommand(options) {
     if (options.provider === 'github') {
       console.log(chalk.blue('\\n🚀 Next Steps:'));
       console.log(chalk.gray('1. Add secrets to GitHub repository:'));
-      console.log(chalk.gray('   - VERCEL_TOKEN'));
-      console.log(chalk.gray('   - VERCEL_ORG_ID'));
-      console.log(chalk.gray('   - VERCEL_PROJECT_ID'));
-      console.log(chalk.gray('2. Push to GitHub to trigger workflow'));
+      console.log(chalk.gray('   - CLOUDFLARE_API_TOKEN'));
+      console.log(chalk.gray('   - CLOUDFLARE_ACCOUNT_ID'));
+      console.log(chalk.gray('2. Add repo variable: CLOUDFLARE_PAGES_PROJECT (your Pages project name)'));
+      console.log(chalk.gray('3. Push to GitHub to trigger workflow'));
     } else if (options.provider === 'cloudflare') {
       console.log(chalk.blue('\\n🚀 Next Steps:'));
       console.log(chalk.gray('1. Create Cloudflare account at https://dash.cloudflare.com'));
@@ -536,12 +503,6 @@ export async function ciCommand(options) {
       console.log(chalk.gray('6. Deploy: wrangler pages deploy dist --project-name=<name>'));
       console.log(chalk.gray('\\nFor GitHub Actions:'));
       console.log(chalk.gray('  Add secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID'));
-    } else if (options.provider === 'vercel') {
-      console.log(chalk.blue('\\n🚀 Next Steps:'));
-      console.log(chalk.gray('1. Install Vercel CLI: npm i -g vercel'));
-      console.log(chalk.gray('2. Login: vercel login'));
-      console.log(chalk.gray('3. Deploy: vercel --prod'));
-      console.log(chalk.yellow('\\nNote: Consider Cloudflare Pages for unlimited bandwidth'));
     } else if (options.provider === 'netlify') {
       console.log(chalk.blue('\\n🚀 Next Steps:'));
       console.log(chalk.gray('1. Install Netlify CLI: npm i -g netlify-cli'));

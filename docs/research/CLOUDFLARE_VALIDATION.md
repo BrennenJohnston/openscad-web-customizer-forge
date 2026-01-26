@@ -1,26 +1,8 @@
-# Cloudflare Pages Configuration Validation
+# Cloudflare Pages validation (notes)
 
-**Validation Date**: January 17, 2026  
-**Project**: OpenSCAD Assistive Forge  
-**Version**: 3.0.0
+This is the paper trail for getting Cloudflare Pages working with OpenSCAD WASM.
 
----
-
-## Executive Summary
-
-✅ **Status**: **DEPLOYED AND LIVE**
-
-**Live URL**: https://openscad-assistive-forge.pages.dev/
-
-All Cloudflare Pages configuration files have been verified, deployed, and tested in production. The application is live with proper cross-origin isolation headers and full WASM functionality.
-
-**Validation Result**: PASS ✓
-- Configuration files: ✅ Present and correct
-- Build process: ✅ Files copied to dist
-- Headers configuration: ✅ COOP/COEP configured and verified
-- SPA routing: ✅ Redirect rules configured
-- Deployment guide: ✅ Comprehensive and accurate
-- **Live deployment**: ✅ Fully functional on Cloudflare Pages
+If you just want to deploy the app, start with `docs/DEPLOYMENT.md`.
 
 ---
 
@@ -271,7 +253,7 @@ server: {
 
 ## Deployment Guide Verification
 
-**Guide Location**: `docs/guides/CLOUDFLARE_PAGES_DEPLOYMENT.md`
+**Guide Location**: `docs/DEPLOYMENT.md`
 
 **Guide Review Date**: January 17, 2026
 
@@ -593,9 +575,9 @@ Based on research in `COMPARABLE_PROJECTS.md`:
 
 | Aspect | Our Configuration | OpenSCAD Playground | Assessment |
 |--------|------------------|-------------------|------------|
-| Headers | COOP/COEP via `_headers` | COOP/COEP via `vercel.json` | ✅ Equivalent |
-| Platform | Cloudflare Pages | Vercel | ✅ Comparable |
-| Config Method | `_headers` file | `vercel.json` | ✅ Both valid |
+| Headers | COOP/COEP via `_headers` | COOP/COEP enabled | ✅ Equivalent |
+| Platform | Cloudflare Pages | (reference deployment) | ✅ Comparable |
+| Config Method | `_headers` file | (project-specific) | ✅ Both valid |
 | Security | Full headers | Full headers | ✅ Matching |
 | Documentation | Comprehensive | Limited public docs | ✅ Better |
 
@@ -641,7 +623,7 @@ Based on:
 ### Internal Documentation
 - [WASM Threading Analysis](./WASM_THREADING_ANALYSIS.md)
 - [Comparable Projects Research](./COMPARABLE_PROJECTS.md)
-- [Cloudflare Pages Deployment Guide](../guides/CLOUDFLARE_PAGES_DEPLOYMENT.md)
+- [Deployment](../DEPLOYMENT.md)
 
 ### External Resources
 - [Cloudflare Pages Documentation](https://developers.cloudflare.com/pages/)

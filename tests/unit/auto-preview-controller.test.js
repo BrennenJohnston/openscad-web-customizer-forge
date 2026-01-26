@@ -39,7 +39,8 @@ describe('AutoPreviewController', () => {
     it('initializes with default options', () => {
       const ctrl = new AutoPreviewController(renderController, previewManager)
       
-      expect(ctrl.debounceMs).toBe(1500)
+      // MANIFOLD OPTIMIZED: Default debounceMs reduced from 1500 to 800
+      expect(ctrl.debounceMs).toBe(800)
       expect(ctrl.maxCacheSize).toBe(10)
       expect(ctrl.enabled).toBe(true)
       expect(ctrl.state).toBe(PREVIEW_STATE.IDLE)
@@ -176,13 +177,15 @@ describe('AutoPreviewController', () => {
   })
 
   describe('Parameter Change Handling', () => {
-    it('marks state as stale when auto-preview is disabled', () => {
+    it('marks state as stale when auto-preview is disabled and has existing preview', () => {
       controller.enabled = false
       controller.previewParamHash = 'existing'
+      controller.previewCacheKey = 'existing|model'
       controller.state = PREVIEW_STATE.CURRENT
 
       controller.onParameterChange({ width: 20 })
 
+      // When auto-preview disabled (not complexity), state should be STALE if there's a cached preview
       expect(controller.state).toBe(PREVIEW_STATE.STALE)
     })
 
@@ -256,13 +259,15 @@ describe('AutoPreviewController', () => {
       expect(controller.debounceTimer).toBeNull()
     })
 
-    it('sets state to PENDING when auto-preview disabled and no existing preview', () => {
+    it('sets state to IDLE when auto-preview disabled and no existing preview', () => {
       controller.enabled = false
       controller.previewParamHash = null
+      controller.previewCacheKey = null
       
       controller.onParameterChange({ width: 20 })
       
-      expect(controller.state).toBe(PREVIEW_STATE.PENDING)
+      // When auto-preview disabled (not complexity pause), state should be IDLE if no cached preview
+      expect(controller.state).toBe(PREVIEW_STATE.IDLE)
     })
   })
 

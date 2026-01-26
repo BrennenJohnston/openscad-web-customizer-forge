@@ -134,6 +134,13 @@
   --focus-ring: 0 0 0 3px rgba(0, 82, 204, 0.35);
 
   /* ========================================================================
+     Skip Link Colors
+     High-contrast colors for skip link accessibility (WCAG AAA)
+     ======================================================================== */
+  --color-skip-link-bg: #0047b3; /* Brand-neutral blue with 7:1 on white */
+  --color-skip-link-text: #ffffff;
+
+  /* ========================================================================
      Shadows (using Radix alpha scales for depth)
      ======================================================================== */
   --shadow-sm: 0 1px 3px var(--slate-a4);
@@ -219,6 +226,10 @@
   --color-focus: #66b3ff;
   --focus-ring: 0 0 0 3px rgba(102, 179, 255, 0.5);
 
+  /* Skip Link Colors - Light blue for dark mode (4.5:1 contrast) */
+  --color-skip-link-bg: #66b3ff;
+  --color-skip-link-text: #000000;
+
   /* Shadows */
   --shadow-sm: 0 1px 3px var(--slate-a6);
   --shadow-md: 0 4px 6px var(--slate-a7);
@@ -294,6 +305,10 @@
     --color-focus: #66b3ff;
     --focus-ring: 0 0 0 3px rgba(102, 179, 255, 0.5);
 
+    /* Skip Link Colors */
+    --color-skip-link-bg: #66b3ff;
+    --color-skip-link-text: #000000;
+
     /* Shadows */
     --shadow-sm: 0 1px 3px var(--slate-a6);
     --shadow-md: 0 4px 6px var(--slate-a7);
@@ -362,6 +377,9 @@
 
   --color-focus: #0052cc;
   --focus-ring: 0 0 0 3px rgba(0, 82, 204, 0.35);
+
+  --color-skip-link-bg: #0047b3;
+  --color-skip-link-text: #ffffff;
 
   --shadow-sm: 0 1px 3px var(--slate-a4);
   --shadow-md: 0 4px 6px var(--slate-a5);

@@ -3,6 +3,13 @@
  * @license GPL-3.0-or-later
  */
 
+// Import validation at module level
+let validatePresetsCollectionFn = null;
+(async () => {
+  const { validatePresetsCollection } = await import('./validation-schemas.js');
+  validatePresetsCollectionFn = validatePresetsCollection;
+})();
+
 /**
  * PresetManager handles saving, loading, and managing parameter presets
  */
@@ -289,8 +296,32 @@ export class PresetManager {
       if (!stored) return {};
 
       const data = JSON.parse(stored);
+
+      // Validate presets collections with Ajv (if available)
+      if (validatePresetsCollectionFn) {
+        const validatedData = {};
+
+        for (const [modelName, presets] of Object.entries(data)) {
+          const isValid = validatePresetsCollectionFn(presets);
+          if (isValid) {
+            validatedData[modelName] = presets;
+          } else {
+            console.warn(
+              `[LocalStorage] Invalid presets for model '${modelName}', skipping:`,
+              validatePresetsCollectionFn.errors
+            );
+          }
+        }
+
+        console.log(
+          `Loaded ${Object.keys(validatedData).length} model preset collections`
+        );
+        return validatedData;
+      }
+
+      // Fallback if validation not yet loaded
       console.log(
-        `Loaded ${Object.keys(data).length} model preset collections`
+        `Loaded ${Object.keys(data).length} model preset collections (validation pending)`
       );
       return data;
     } catch (error) {

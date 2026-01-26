@@ -1,18 +1,9 @@
-# WASM Threading Analysis for openscad-wasm-prebuilt
+# WASM threading notes
 
-**Analysis Date**: January 17, 2026  
-**Package Version Analyzed**: openscad-wasm-prebuilt@1.2.0
+These are notes from checking whether the `openscad-wasm-prebuilt@1.2.0` package actually needs cross-origin isolation / `SharedArrayBuffer`.
 
-## Executive Summary
-
-**Finding**: The `openscad-wasm-prebuilt@1.2.0` package appears to be a **non-threaded WASM build** that does NOT require `SharedArrayBuffer` or COOP/COEP headers to function.
-
-**Evidence**: Extensive code analysis found **zero occurrences** of SharedArrayBuffer, Atomics, or PTHREAD references in the compiled code, indicating this is a single-threaded build.
-
-**Recommendation**: While COOP/COEP headers are not technically required for this package version to work, they should be maintained for:
-1. Future-proofing (if upgrading to a threaded build)
-2. Performance optimization (if/when threaded builds become available)
-3. Best practices for WASM-heavy applications
+- I didn’t find threading primitives (`SharedArrayBuffer`, `Atomics`, `PTHREAD`) in the shipped bundle, so it looks like a non-threaded build.
+- I still keep COOP/COEP headers configured because they’re harmless and make future upgrades easier.
 
 ---
 

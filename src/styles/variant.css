@@ -523,7 +523,9 @@
 }
 
 /* Alt adjust info line - visible only in mono variant */
-:root[data-ui-variant='mono'] .preview-status-bar.has-alt-adjust .preview-status-alt-adjust {
+:root[data-ui-variant='mono']
+  .preview-status-bar.has-alt-adjust
+  .preview-status-alt-adjust {
   /* Force new line using flex basis */
   flex-basis: 100%;
   display: block;

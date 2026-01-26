@@ -393,7 +393,6 @@ When "Reduce Motion" is enabled:
 
 For detailed information:
 - **System Overview**: See [Color System Guide](./COLOR_SYSTEM_GUIDE.md)
-- **Migration Info**: See [Color Migration Guide](./COLOR_MIGRATION_GUIDE.md)
 - **Token Reference**: Check `src/styles/semantic-tokens.css`
 
 ---
@@ -446,11 +445,6 @@ If you encounter an accessibility barrier:
 ## Additional Resources
 
 - [Keyguard Workflow Guide](./KEYGUARD_WORKFLOW_GUIDE.md) - Detailed AAC keyguard customization
-- [Manual Testing Procedures](./MANUAL_TESTING_PROCEDURES.md) - For contributors testing accessibility
+- [Testing](../TESTING.md) - How to run unit/e2e tests
 - [Features Guide](../../README.md#features) - Overview of all features
-- [Deployment Guide](./DEPLOYMENT_GUIDE.md) - For developers
-
----
-
-**Last Updated**: 2026-01-22  
-**Version**: 4.0.0
+- [Deployment](../DEPLOYMENT.md) - Cloudflare Pages notes

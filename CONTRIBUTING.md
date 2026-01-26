@@ -1,16 +1,10 @@
 # Contributing
 
-Thanks for your interest in contributing to **OpenSCAD Assistive Forge**.
+Hey — thanks for taking a look.
 
-This project’s core goal is to make **one of the most accessible SCAD interfaces available**. Contributions that improve accessibility, clarity, and reliability are especially welcome.
+This is a one-person project, so I’m mostly trying to keep things easy to understand and hard to break. Accessibility improvements are always welcome.
 
-## Quick start (local dev)
-
-### Prerequisites
-
-- Node.js **18+**
-
-### Setup
+## Local dev
 
 ```bash
 npm install
@@ -19,121 +13,51 @@ npm run dev
 
 Open `http://localhost:5173`.
 
-## What to work on
+## What’s helpful
 
-- **Accessibility improvements** (keyboard navigation, focus management, ARIA, contrast, reduced motion)
-- **Better error messages** for common OpenSCAD/CGAL failures
-- **Examples**: add or improve models in `public/examples/`
-- **Docs**: make onboarding and usage clearer
-- **Tests**: improve unit/E2E coverage for new behavior
+- Fixes for accessibility issues (keyboard traps, focus order, labeling, contrast, motion)
+- Better error messages for common OpenSCAD / CGAL failures
+- Example models in `public/examples/`
+- Docs that help real people use the app
+- Tests for bug fixes and new behavior
 
-## Development workflow
+## Workflow
 
-**📖 For complete branching strategy and release process, see [DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT_WORKFLOW.md)**
+There’s a longer writeup in `docs/DEVELOPMENT_WORKFLOW.md`. The short version:
 
-### Branch Structure
+- Work from `develop`
+- Keep PRs small when possible
+- Include a quick test plan in the PR description (what you ran / clicked)
 
-- **`main`** - Production releases (protected, requires PR)
-- **`develop`** - Active development (base for feature branches)
-- **`feat/*`** - Feature branches (merge to `develop`)
-- **`fix/*`** - Bug fix branches (merge to `develop`)
-- **`hotfix/*`** - Critical fixes (merge to both `main` and `develop`)
+## Code quality
 
-### Quick Start for Contributors
-
-```bash
-# Start a new feature
-git checkout develop
-git pull origin develop
-git checkout -b feat/your-feature-name
-
-# Make changes and commit
-git add .
-git commit -m "feat: description of your changes"
-
-# Push and create PR to develop
-git push -u origin feat/your-feature-name
-```
-
-See [DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT_WORKFLOW.md) for detailed workflow, release process, and commit conventions.
-
-### Code style
-
-- Run formatting: `npm run format`
-- Run linting: `npm run lint`
-
-### Tests
-
-```bash
-# unit tests
-npm run test:run
-
-# e2e tests (safe wrapper)
-npm run test:e2e
-```
+- Format: `npm run format`
+- Lint: `npm run lint`
+- Unit tests: `npm run test:run`
+- E2E tests: `npm run test:e2e`
 
 On Windows, see `docs/TROUBLESHOOTING.md#playwright-terminal-hangs-windows` if Playwright gets stuck.
 
-### Asset setup (optional)
+## Accessibility checklist (for UI changes)
 
-```bash
-npm run setup-wasm
-npm run setup-libraries
-```
+Please sanity-check:
 
-## Accessibility acceptance checklist (for UI changes)
+- [ ] Keyboard-only: feature works without a mouse
+- [ ] Focus: visible focus ring + sensible focus order
+- [ ] Screen reader: controls have names/labels; status changes are announced when needed
+- [ ] Reduced motion: no animation is required to understand/operate
+- [ ] High contrast: still readable and usable
+- [ ] Touch targets: still reasonable on small screens
 
-When you change UI behavior or markup, please verify:
+If you’re adding a new interactive pattern, prefer semantic HTML (`button`, `details/summary`, `fieldset/legend`, etc.) before adding ARIA.
 
-- [ ] **Keyboard-only**: feature is usable without a mouse
-- [ ] **Visible focus**: focus order makes sense and focus rings are visible
-- [ ] **Screen reader**: controls have names/labels; status changes are announced when needed
-- [ ] **Reduced motion**: animations are not required for understanding/operation
-- [ ] **High contrast**: content remains readable and controls remain discoverable
-- [ ] **Touch targets**: tap targets remain usable at small viewports
+## UI consistency (so the themes don’t explode)
 
-If you add new interactive patterns, prefer semantic HTML (`button`, `details/summary`, `fieldset/legend`, etc.) before adding ARIA.
-
-## UI consistency rules (for UI changes)
-
-All UI work must follow our design system to maintain consistency across themes, viewports, and user preferences. **See the complete guide:**
-
-- **[UI_STANDARDS.md](docs/guides/UI_STANDARDS.md)** - Comprehensive design system documentation
-
-### Quick UI Rules
-
-**Use Design Tokens (Required):**
-- Always use tokens from `src/styles/variables.css` for colors, spacing, typography, and sizing
-- Never hardcode colors (hex codes) or magic numbers (arbitrary pixel values)
-- Example: Use `var(--space-sm)` instead of `8px`
-
-**Follow Component Patterns:**
-- **Drawers**: Side panels collapse outward, bottom drawers expand upward
-- **Buttons**: Use existing button classes (`.btn`, `.btn-icon`, `.btn-primary`) — don't create new variants
-- **Icons**: Always use `currentColor` for SVG icons so they adapt to themes
-
-**Test All Themes:**
-- Light mode
-- Dark mode
-- High contrast mode (toggle with HC button)
-- Windows forced-colors mode (if possible)
-
-**Test Mobile:**
-- Portrait mode (≤480px): Title abbreviates, buttons right-aligned
-- Landscape mode: Drawers and controls remain accessible
-- Touch targets: Minimum 44×44px for all interactive elements
-
-**Documentation Updates:**
-- If you add a new component pattern, document it in `UI_STANDARDS.md`
-- Update PR template checklist to verify your changes
-
-## Submitting changes
-
-- Keep PRs focused: one behavior change per PR when possible.
-- Include a short test plan in your PR description (what you ran, what you clicked).
-- If your change impacts accessibility, say **what you tested** (keyboard + at least one screen reader if available).
+- Use the existing tokens in `src/styles/variables.css` and `src/styles/semantic-tokens.css`
+- Avoid hardcoded colors when a token exists
+- Test light/dark/high-contrast (and forced-colors if you can)
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the project license: **GPL-3.0-or-later** (see `LICENSE`).
+By contributing, you agree your contributions are licensed under GPL-3.0-or-later (see `LICENSE`).
 

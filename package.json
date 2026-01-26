@@ -56,11 +56,13 @@
   "license": "GPL-3.0-or-later",
   "devDependencies": {
     "@axe-core/playwright": "^4.11.0",
+    "@eslint/js": "^9.39.2",
     "@playwright/test": "^1.57.0",
     "@vitest/coverage-v8": "^4.0.17",
     "@vitest/ui": "^4.0.17",
     "colorjs.io": "^0.6.1",
-    "eslint": "^8.55.0",
+    "eslint": "^9.39.2",
+    "globals": "^17.1.0",
     "happy-dom": "^20.3.0",
     "jsdom": "^27.4.0",
     "lighthouse": "^12.8.2",
@@ -75,7 +77,6 @@
     "chalk": "^5.3.0",
     "commander": "^14.0.2",
     "jszip": "^3.10.1",
-    "openscad-wasm-prebuilt": "^1.2.0",
     "split.js": "^1.6.5",
     "three": "^0.182.0",
     "yaml": "^2.8.2"

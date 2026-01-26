@@ -49,6 +49,14 @@ import { RenderQueue } from './js/render-queue.js';
 import { openModal, closeModal, initStaticModals } from './js/modal-manager.js';
 import { translateError } from './js/error-translator.js';
 import {
+  getStorageEstimate,
+  clearCachedData,
+  isFirstVisit,
+  markFirstVisitComplete,
+  updateStoragePrefs,
+  shouldDeferLargeDownloads,
+} from './js/storage-manager.js';
+import {
   showWorkflowProgress,
   hideWorkflowProgress,
   setWorkflowStep,
@@ -167,9 +175,10 @@ let _hfmPanAdjustEnabled = false;
 let _hfmPanToggleButtons = null; // { desktop: HTMLButtonElement|null, mobile: HTMLButtonElement|null }
 
 function _syncHfmPanToggleUi() {
-  const btns = [_hfmPanToggleButtons?.desktop, _hfmPanToggleButtons?.mobile].filter(
-    Boolean
-  );
+  const btns = [
+    _hfmPanToggleButtons?.desktop,
+    _hfmPanToggleButtons?.mobile,
+  ].filter(Boolean);
 
   // Format values with descriptive labels (Harri's technique terminology)
   // "Edge" = contrast exponent (controls edge sharpness/boundary definition)
@@ -279,7 +288,8 @@ function _isLightThemeActive() {
 function _calibrateHfmSettings() {
   // Gather system information
   const dpr = window.devicePixelRatio || 1;
-  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  const isTouchDevice =
+    'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
   // Get preview container dimensions (primary factor for calibration)
   const previewContainer = document.getElementById('previewContainer');
@@ -288,7 +298,8 @@ function _calibrateHfmSettings() {
   const containerArea = containerWidth * containerHeight;
 
   // Detect browser/platform hints
-  const isMobile = isTouchDevice && Math.min(containerWidth, containerHeight) < 500;
+  const isMobile =
+    isTouchDevice && Math.min(containerWidth, containerHeight) < 500;
   const isTablet = isTouchDevice && !isMobile;
   const isHighDpi = dpr >= 1.5;
   const isVeryHighDpi = dpr >= 2.5;
@@ -381,7 +392,11 @@ function _calibrateHfmSettings() {
   } else if (isMediumViewport) {
     deviceCategory = isHighDpi ? 'Desktop HD' : 'Desktop';
   } else {
-    deviceCategory = isVeryHighDpi ? 'Large HD' : isHighDpi ? 'Large HD' : 'Large';
+    deviceCategory = isVeryHighDpi
+      ? 'Large HD'
+      : isHighDpi
+        ? 'Large HD'
+        : 'Large';
   }
 
   // Log calibration results for debugging
@@ -389,7 +404,10 @@ function _calibrateHfmSettings() {
     viewport: `${containerWidth}x${containerHeight}`,
     dpr,
     deviceCategory,
-    calibrated: { edge: `${Math.round(edgeScale * 100)}%`, size: `${Math.round(sizeScale * 100)}%` },
+    calibrated: {
+      edge: `${Math.round(edgeScale * 100)}%`,
+      size: `${Math.round(sizeScale * 100)}%`,
+    },
   });
 
   return { edgeScale, sizeScale, deviceCategory };
@@ -1104,8 +1122,10 @@ function _injectAltToggle() {
     _initHfmContrastControls().setEnabled(true);
     _initHfmFontScaleControls().setEnabled(true);
     _enableHfmZoomTracking();
-    if (_hfmPanToggleButtons?.desktop) _hfmPanToggleButtons.desktop.style.display = 'flex';
-    if (_hfmPanToggleButtons?.mobile) _hfmPanToggleButtons.mobile.style.display = 'flex';
+    if (_hfmPanToggleButtons?.desktop)
+      _hfmPanToggleButtons.desktop.style.display = 'flex';
+    if (_hfmPanToggleButtons?.mobile)
+      _hfmPanToggleButtons.mobile.style.display = 'flex';
     _setHfmPanAdjustEnabled(false);
   }
 }
@@ -1212,8 +1232,10 @@ async function _enableAltViewWithPreview(
   syncRotateState?.(true);
 
   // Show pan-adjust toggles (default OFF so pan works normally)
-  if (_hfmPanToggleButtons?.desktop) _hfmPanToggleButtons.desktop.style.display = 'flex';
-  if (_hfmPanToggleButtons?.mobile) _hfmPanToggleButtons.mobile.style.display = 'flex';
+  if (_hfmPanToggleButtons?.desktop)
+    _hfmPanToggleButtons.desktop.style.display = 'flex';
+  if (_hfmPanToggleButtons?.mobile)
+    _hfmPanToggleButtons.mobile.style.display = 'flex';
   _setHfmPanAdjustEnabled(false);
 }
 
@@ -1255,8 +1277,10 @@ function _disableAltViewWithPreview(toggleBtn, rotateBtn, mobileRotateBtn) {
   if (mobileRotateBtn) mobileRotateBtn.style.display = 'none';
   // Reset pan-adjust mode and hide toggles
   _hfmPanAdjustEnabled = false;
-  if (_hfmPanToggleButtons?.desktop) _hfmPanToggleButtons.desktop.style.display = 'none';
-  if (_hfmPanToggleButtons?.mobile) _hfmPanToggleButtons.mobile.style.display = 'none';
+  if (_hfmPanToggleButtons?.desktop)
+    _hfmPanToggleButtons.desktop.style.display = 'none';
+  if (_hfmPanToggleButtons?.mobile)
+    _hfmPanToggleButtons.mobile.style.display = 'none';
   _initHfmContrastControls().setEnabled(false);
   _initHfmFontScaleControls().setEnabled(false);
   _disableHfmZoomTracking();
@@ -1274,15 +1298,19 @@ async function initApp() {
   let statusArea = null;
   let cameraPanelController = null; // Declared here, initialized later
   let autoPreviewEnabled = true;
+  let autoPreviewUserEnabled = true;
   let previewQuality = RENDER_QUALITY.PREVIEW;
-  // Default to 'auto' mode for adaptive preview quality based on model complexity
-  let previewQualityMode = 'auto';
+  // Default to 'balanced' mode (~50% quality) for faster preview during parameter changes
+  // The adaptive system will determine appropriate full quality when generating STL
+  let previewQualityMode = 'balanced';
 
   const AUTO_PREVIEW_FORCE_FAST_MS = 2 * 60 * 1000;
-  // Lowered threshold to detect slow renders more promptly (5s instead of 7s)
-  const AUTO_PREVIEW_SLOW_RENDER_MS = 5000;
-  // Lowered threshold for heavy triangle counts (150K instead of 200K)
-  const AUTO_PREVIEW_TRIANGLE_THRESHOLD = 150000;
+  // MANIFOLD OPTIMIZED: Raised threshold since Manifold renders much faster
+  // Previously 5s, now 15s to avoid unnecessary fast-mode triggers
+  const AUTO_PREVIEW_SLOW_RENDER_MS = 15000;
+  // MANIFOLD OPTIMIZED: Raised threshold since Manifold handles high polygon counts efficiently
+  // Previously 150K, now 300K as Manifold can handle complex geometry
+  const AUTO_PREVIEW_TRIANGLE_THRESHOLD = 300000;
   const autoPreviewHints = {
     forceFastUntil: 0,
     lastPreviewDurationMs: null,
@@ -1446,6 +1474,200 @@ async function initApp() {
   // Initialize static modal focus management (WCAG 2.2 SC 2.4.11 Focus Not Obscured)
   initStaticModals();
 
+  // Storage UI - Update storage display
+  const formatStorageUsage = (usage) => {
+    if (typeof usage !== 'number' || !Number.isFinite(usage) || usage < 0) {
+      return 'Unknown';
+    }
+    if (usage === 0) {
+      return '0 MB';
+    }
+
+    const gb = 1024 * 1024 * 1024;
+    const mb = 1024 * 1024;
+    const useGb = usage >= gb;
+    const value = useGb ? usage / gb : usage / mb;
+    const unit = useGb ? 'GB' : 'MB';
+    const decimals = useGb ? 1 : value < 1 ? 3 : value < 10 ? 2 : 1;
+
+    return `${parseFloat(value.toFixed(decimals))} ${unit}`;
+  };
+
+  async function updateStorageDisplay() {
+    const estimate = await getStorageEstimate();
+
+    if (!estimate.supported) {
+      // Hide storage panel if not supported
+      const storagePanel = document.querySelector('.storage-panel');
+      const notSupported = document.getElementById('storageNotSupported');
+      if (storagePanel) storagePanel.style.display = 'none';
+      if (notSupported) notSupported.classList.remove('hidden');
+      return;
+    }
+
+    const meterFill = document.querySelector('.storage-meter-fill');
+    const usedEl = document.getElementById('storage-used');
+    const meter = document.querySelector('.storage-meter');
+
+    if (meterFill && meter) {
+      meterFill.style.width = `${estimate.percentUsed}%`;
+      meter.setAttribute('aria-valuenow', estimate.percentUsed);
+
+      // Set warning level
+      if (estimate.percentUsed > 90) {
+        meterFill.setAttribute('data-warning', 'high');
+      } else if (estimate.percentUsed > 75) {
+        meterFill.setAttribute('data-warning', 'medium');
+      } else {
+        meterFill.removeAttribute('data-warning');
+      }
+    }
+
+    const usageText = formatStorageUsage(estimate.usage);
+
+    // Add context about what's being measured
+    let displayText = `${usageText} used`;
+    const isDevMode = import.meta.env.DEV;
+    const hasServiceWorker =
+      'serviceWorker' in navigator && navigator.serviceWorker.controller;
+
+    // Show helpful context when storage is minimal
+    if (estimate.usage < 1024 * 1024 && isDevMode && !hasServiceWorker) {
+      displayText += ' (dev mode: assets not cached)';
+    } else if (estimate.usage < 1024 * 1024 && !hasServiceWorker) {
+      displayText += ' (service worker inactive)';
+    }
+
+    if (usedEl) usedEl.textContent = displayText;
+  }
+
+  // Shared clear cache handler
+  async function handleClearCache() {
+    try {
+      const success = await clearCachedData();
+      if (success) {
+        updateStatus('Site data cleared. Reloading...', 'success');
+        await updateStorageDisplay();
+        setTimeout(() => {
+          window.location.reload();
+        }, 300);
+      } else {
+        updateStatus('Failed to clear cache', 'error');
+      }
+    } catch (error) {
+      console.error('[Storage] Clear cache error:', error);
+      updateStatus('Error clearing cache', 'error');
+    }
+  }
+
+  // Wire up storage clear button
+  const clearStorageBtn = document.getElementById('clearStorageBtn');
+  if (clearStorageBtn) {
+    clearStorageBtn.addEventListener('click', handleClearCache);
+  }
+
+  let storageUpdateTimeout = null;
+  const scheduleStorageUpdate = (delayMs = 2500) => {
+    if (storageUpdateTimeout) {
+      clearTimeout(storageUpdateTimeout);
+    }
+    storageUpdateTimeout = setTimeout(() => {
+      updateStorageDisplay();
+    }, delayMs);
+  };
+
+  // Update storage display on init
+  updateStorageDisplay();
+
+  // Keep storage usage fresh after state changes (localStorage saves are debounced)
+  stateManager.subscribe((state, prevState) => {
+    if (
+      state.uploadedFile !== prevState.uploadedFile ||
+      state.parameters !== prevState.parameters ||
+      state.defaults !== prevState.defaults
+    ) {
+      scheduleStorageUpdate();
+    }
+  });
+
+  const appRoot = document.getElementById('app');
+  let firstVisitBlocking = false;
+  let hasUserAcceptedDownload = !isFirstVisit();
+  let pendingWasmInit = false;
+  let pendingDraft = null; // Draft to restore after first-visit modal is dismissed
+
+  const setFirstVisitBlocking = (blocked) => {
+    firstVisitBlocking = blocked;
+    if (appRoot) {
+      if (blocked) {
+        appRoot.setAttribute('aria-hidden', 'true');
+      } else {
+        appRoot.removeAttribute('aria-hidden');
+      }
+      if ('inert' in appRoot) {
+        appRoot.inert = blocked;
+      }
+    }
+    document.body.classList.toggle('first-visit-blocking', blocked);
+  };
+
+  // First-visit modal check
+  const firstVisitModal = document.getElementById('first-visit-modal');
+  const firstVisitCheck = isFirstVisit();
+  if (firstVisitCheck && firstVisitModal) {
+    setFirstVisitBlocking(true);
+    // Delay slightly to ensure DOM is ready
+    setTimeout(() => {
+      openModal(firstVisitModal);
+    }, 500);
+  }
+
+  // First-visit modal handlers
+  if (!isFirstVisit()) {
+    setFirstVisitBlocking(false);
+  }
+
+  const firstVisitContinue = document.getElementById('first-visit-continue');
+
+  const handleFirstVisitClose = async (_source = 'unknown') => {
+    hasUserAcceptedDownload = true;
+    updateStoragePrefs({ allowLargeDownloads: true, seenDisclosure: true });
+    markFirstVisitComplete();
+    closeModal(firstVisitModal);
+    setFirstVisitBlocking(false);
+    if (pendingWasmInit) {
+      pendingWasmInit = false;
+      await ensureWasmInitialized();
+    }
+    // Restore pending draft if one was deferred
+    if (pendingDraft) {
+      const draftToRestore = pendingDraft;
+      pendingDraft = null;
+
+      const shouldRestore = confirm(
+        `Found a saved draft of "${draftToRestore.fileName}" from ${new Date(draftToRestore.timestamp).toLocaleString()}.\n\nWould you like to restore it?`
+      );
+
+      if (shouldRestore) {
+        console.log('Restoring deferred draft...');
+        // handleFile will be available since it's defined later but hoisted
+        handleFile(
+          { name: draftToRestore.fileName },
+          draftToRestore.fileContent
+        );
+        updateStatus('Draft restored');
+      } else {
+        stateManager.clearLocalStorage();
+      }
+    }
+  };
+
+  if (firstVisitContinue && firstVisitModal) {
+    firstVisitContinue.addEventListener('click', () =>
+      handleFirstVisitClose('continue')
+    );
+  }
+
   // Initialize theme toggle button
   initThemeToggle('themeToggle', (theme, activeTheme, message) => {
     console.log(`[App] ${message}`);
@@ -1533,58 +1755,147 @@ async function initApp() {
     return;
   }
 
-  // Initialize render controller
-  console.log('Initializing OpenSCAD WASM...');
-  renderController = new RenderController();
+  // Track WASM initialization state
+  let wasmInitialized = false;
 
-  // Set up memory warning callback
-  renderController.setMemoryWarningCallback((memoryInfo) => {
-    console.warn(
-      `[Memory] High usage: ${memoryInfo.usedMB}MB / ${memoryInfo.limitMB}MB (${memoryInfo.percent}%)`
-    );
-    showMemoryWarning(memoryInfo);
-    if (previewQualityMode === 'auto') {
-      autoPreviewHints.forceFastUntil = Date.now() + AUTO_PREVIEW_FORCE_FAST_MS;
-      adaptivePreviewMemo = { key: null, info: null };
-      if (autoPreviewController) {
-        autoPreviewController.clearPreviewCache();
-        const state = stateManager.getState();
-        if (state?.uploadedFile) {
-          autoPreviewController.onParameterChange(state.parameters);
-        }
+  /**
+   * Ensure WASM is initialized before operations that need it
+   * @returns {Promise<boolean>} True if initialized successfully
+   */
+  async function ensureWasmInitialized() {
+    const deferDownloads = shouldDeferLargeDownloads();
+    if (!hasUserAcceptedDownload) {
+      if (firstVisitModal && firstVisitModal.classList.contains('hidden')) {
+        setFirstVisitBlocking(true);
+        openModal(firstVisitModal);
+      }
+      updateStatus(
+        'Please review and accept the welcome notice before continuing.',
+        'info'
+      );
+      return false;
+    }
+    if (wasmInitialized) return true;
+
+    // Check if we should defer large downloads on metered connections
+    if (deferDownloads) {
+      const proceed = confirm(
+        'This app requires downloading ~15MB of WebAssembly files.\n\n' +
+          'You appear to be on a metered or slow connection.\n\n' +
+          'Do you want to proceed with the download?'
+      );
+      if (!proceed) {
+        updateStatus('WASM download deferred', 'info');
+        return false;
       }
     }
-  });
 
-  // Show WASM loading progress indicator
-  const wasmLoadingOverlay = showWasmLoadingIndicator();
+    // Initialize if not yet done
+    if (!renderController) {
+      renderController = new RenderController();
 
-  try {
-    const assetBaseUrl = new URL(
-      import.meta.env.BASE_URL,
-      window.location.origin
-    )
-      .toString()
-      .replace(/\/$/, '');
-    await renderController.init({
-      assetBaseUrl,
-      onProgress: (percent, message) => {
-        console.log(`[WASM Init] ${percent}% - ${message}`);
-        updateWasmLoadingProgress(wasmLoadingOverlay, percent, message);
-      },
-    });
-    console.log('OpenSCAD WASM ready');
-    hideWasmLoadingIndicator(wasmLoadingOverlay);
-  } catch (error) {
-    console.error('Failed to initialize OpenSCAD WASM:', error);
-    hideWasmLoadingIndicator(wasmLoadingOverlay);
-    updateStatus('OpenSCAD engine failed to initialize');
-    const details = error?.details ? ` Details: ${error.details}` : '';
-    alert(
-      'Failed to initialize OpenSCAD engine. Some features may not work. Error: ' +
-        error.message +
-        details
-    );
+      // Set up memory warning callback
+      renderController.setMemoryWarningCallback((memoryInfo) => {
+        console.warn(
+          `[Memory] High usage: ${memoryInfo.usedMB}MB / ${memoryInfo.limitMB}MB (${memoryInfo.percent}%)`
+        );
+        showMemoryWarning(memoryInfo);
+        if (previewQualityMode === 'auto') {
+          autoPreviewHints.forceFastUntil =
+            Date.now() + AUTO_PREVIEW_FORCE_FAST_MS;
+          adaptivePreviewMemo = { key: null, info: null };
+          if (autoPreviewController) {
+            autoPreviewController.clearPreviewCache();
+            const state = stateManager.getState();
+            if (state?.uploadedFile) {
+              autoPreviewController.onParameterChange(state.parameters);
+            }
+          }
+        }
+      });
+
+      // Handle capability detection - notify user about performance limitations
+      renderController.setCapabilitiesCallback((capabilities) => {
+        console.log('[Main] OpenSCAD capabilities detected:', capabilities);
+
+        // Store for debugging/display
+        window.__openscadCapabilities = capabilities;
+
+        // Show warning if Manifold is not available
+        if (!capabilities.hasManifold) {
+          const warningMessage =
+            'Advanced rendering optimization (Manifold) is not available in this OpenSCAD build. ' +
+            'Complex models may render slower than expected.';
+
+          // Use existing notification system if available
+          const srAnnouncer = document.getElementById('srAnnouncer');
+          if (srAnnouncer) {
+            srAnnouncer.textContent = warningMessage;
+          }
+
+          // Also log to console with helpful context
+          console.warn(
+            '[Performance] Manifold not detected. Expected speedups:\n' +
+              '- With Manifold: 5-30x faster for complex boolean operations\n' +
+              '- Current: Using slower CGAL/nef backend\n' +
+              'Check that official OpenSCAD WASM is loading from /wasm/openscad-official/'
+          );
+        }
+
+        // Show info about binary STL support
+        if (!capabilities.hasBinarySTL) {
+          console.warn(
+            '[Performance] Binary STL export may not be supported. ' +
+              'ASCII STL is ~18x slower.'
+          );
+        }
+      });
+
+      // Show WASM loading progress indicator
+      const wasmLoadingOverlay = showWasmLoadingIndicator();
+
+      try {
+        const assetBaseUrl = new URL(
+          import.meta.env.BASE_URL,
+          window.location.origin
+        )
+          .toString()
+          .replace(/\/$/, '');
+        await renderController.init({
+          assetBaseUrl,
+          onProgress: (percent, message) => {
+            console.log(`[WASM Init] ${percent}% - ${message}`);
+            updateWasmLoadingProgress(wasmLoadingOverlay, percent, message);
+          },
+        });
+        console.log('OpenSCAD WASM ready');
+        hideWasmLoadingIndicator(wasmLoadingOverlay);
+        wasmInitialized = true;
+        return true;
+      } catch (error) {
+        console.error('Failed to initialize OpenSCAD WASM:', error);
+        hideWasmLoadingIndicator(wasmLoadingOverlay);
+        updateStatus('OpenSCAD engine failed to initialize');
+        const details = error?.details ? ` Details: ${error.details}` : '';
+        alert(
+          'Failed to initialize OpenSCAD engine. Some features may not work. Error: ' +
+            error.message +
+            details
+        );
+        return false;
+      }
+    }
+
+    return wasmInitialized;
+  }
+
+  // Initialize render controller immediately for now (future: can be deferred)
+  if (hasUserAcceptedDownload) {
+    console.log('Initializing OpenSCAD WASM...');
+    await ensureWasmInitialized();
+  } else {
+    pendingWasmInit = true;
+    console.log('WASM init deferred until user consent.');
   }
 
   /**
@@ -1942,9 +2253,13 @@ async function initApp() {
   if (autoPreviewToggle) {
     autoPreviewToggle.checked = autoPreviewEnabled;
     autoPreviewToggle.addEventListener('change', () => {
-      autoPreviewEnabled = autoPreviewToggle.checked;
+      autoPreviewUserEnabled = autoPreviewToggle.checked;
+      autoPreviewEnabled = autoPreviewUserEnabled;
       if (autoPreviewController) {
-        autoPreviewController.setEnabled(autoPreviewEnabled);
+        autoPreviewController.setEnabled(
+          autoPreviewEnabled,
+          autoPreviewEnabled ? null : 'user'
+        );
       }
     });
   }
@@ -2239,10 +2554,11 @@ async function initApp() {
 
   /**
    * Update the preview status bar stats display
+   * Simplified: only shows essential info (file size and triangle count)
    * @param {Object} stats - Stats object with size and triangles
    * @param {boolean} fullQuality - Whether this is full quality render
-   * @param {string} percentText - Optional percentage text for preview quality
-   * @param {Object} timing - Optional timing breakdown { totalMs, renderMs, parseMs, wasmInitMs }
+   * @param {string} percentText - Unused, kept for API compatibility
+   * @param {Object} timing - Unused, kept for API compatibility
    */
   function updatePreviewStats(
     stats,
@@ -2258,37 +2574,8 @@ async function initApp() {
       return;
     }
 
-    const qualityText = fullQuality ? 'Full' : `Preview${percentText}`;
-
-    // Build timing breakdown string if timing data is available
-    let timingText = '';
-    if (timing && timing.totalMs > 0) {
-      const parts = [];
-
-      // Show total time
-      parts.push(formatTimingMs(timing.totalMs));
-
-      // Show breakdown if we have detailed timing
-      const details = [];
-      if (timing.renderMs > 0) {
-        details.push(`render: ${formatTimingMs(timing.renderMs)}`);
-      }
-      if (timing.parseMs > 0) {
-        details.push(`parse: ${formatTimingMs(timing.parseMs)}`);
-      }
-
-      if (details.length > 0) {
-        parts.push(`(${details.join(', ')})`);
-      }
-
-      if (timing.cached) {
-        parts.push('(cached)');
-      }
-
-      timingText = ` | ${parts.join(' ')}`;
-    }
-
-    previewStatusStats.textContent = `${qualityText} | ${formatFileSize(stats.size)} | ${stats.triangles.toLocaleString()} triangles${timingText}`;
+    // Simplified stats: just size and triangle count
+    previewStatusStats.textContent = `${formatFileSize(stats.size)} | ${stats.triangles.toLocaleString()} triangles`;
     previewStatusBar.classList.remove('no-stats');
   }
 
@@ -2306,13 +2593,26 @@ async function initApp() {
 
   /**
    * Initialize or reinitialize the AutoPreviewController
+   * @param {boolean} deferIfNotReady - If true, will attempt to init WASM first if not ready
    */
-  function initAutoPreviewController() {
+  async function initAutoPreviewController(deferIfNotReady = false) {
     if (!renderController || !previewManager) {
-      console.warn(
-        '[AutoPreview] Cannot init - missing controller or preview manager'
-      );
-      return;
+      if (deferIfNotReady && previewManager) {
+        // WASM not ready yet - try to initialize it first
+        console.log('[AutoPreview] Deferring init until WASM is ready...');
+        const wasmReady = await ensureWasmInitialized();
+        if (!wasmReady || !renderController) {
+          console.warn(
+            '[AutoPreview] Cannot init - WASM initialization failed or was declined'
+          );
+          return;
+        }
+      } else {
+        console.warn(
+          '[AutoPreview] Cannot init - missing controller or preview manager'
+        );
+        return;
+      }
     }
 
     autoPreviewController = new AutoPreviewController(
@@ -2324,6 +2624,8 @@ async function initApp() {
         debounceMs: 350,
         maxCacheSize: 10,
         enabled: autoPreviewEnabled,
+        pauseReason: autoPreviewUserEnabled ? null : 'user',
+        pausedDebounceMs: 2000,
         previewQuality: previewQualityMode === 'auto' ? null : previewQuality,
         resolvePreviewQuality:
           previewQualityMode === 'auto' ? resolveAdaptiveQuality : null,
@@ -2350,25 +2652,19 @@ async function initApp() {
         },
         onPreviewReady: (stl, stats, cached) => {
           console.log('[AutoPreview] Preview ready, cached:', cached);
+          // Update status to ready (use 'success' type to keep visible)
+          updateStatus('Preview ready', 'success');
           // Update button state - preview available but may need full render for download
           updatePrimaryActionButton();
           // Update dimensions display
           updateDimensionsDisplay();
         },
         onProgress: (percent, message, type) => {
+          // Simplified status: just show what's happening, no confusing percentages
           if (type === 'preview') {
-            if (percent < 0) {
-              updateStatus(`Preview: ${message}`);
-            } else {
-              updateStatus(`Preview: ${message} (${Math.round(percent)}%)`);
-            }
+            updateStatus('Rendering preview...');
           } else {
-            // Full render progress
-            if (percent < 0) {
-              updateStatus(message);
-            } else {
-              updateStatus(`${message} (${Math.round(percent)}%)`);
-            }
+            updateStatus('Generating STL...');
           }
         },
         onError: (error, type) => {
@@ -2448,20 +2744,35 @@ async function initApp() {
     }
   }
 
-  // Check for saved draft
-  const draft = stateManager.loadFromLocalStorage();
-  if (draft) {
-    const shouldRestore = confirm(
-      `Found a saved draft of "${draft.fileName}" from ${new Date(draft.timestamp).toLocaleString()}.\n\nWould you like to restore it?`
-    );
+  // Import shared validation constants and schemas (must be before draft restore which calls handleFile)
+  const { FILE_SIZE_LIMITS } = await import('./js/validation-constants.js');
+  const { validateFileUpload, getValidationErrorMessage } =
+    await import('./js/validation-schemas.js');
 
-    if (shouldRestore) {
-      console.log('Restoring draft...');
-      // Treat draft as uploaded file
-      handleFile({ name: draft.fileName }, draft.fileContent);
-      updateStatus('Draft restored');
+  // Check for saved draft - but only if first-visit modal is not blocking
+  // If first-visit is blocking, defer draft restoration until user accepts
+  const draft = await stateManager.loadFromLocalStorage();
+
+  if (draft) {
+    // If first-visit modal is blocking, defer draft restoration
+    if (firstVisitBlocking) {
+      console.log(
+        'Draft found, but deferring until first-visit modal is dismissed'
+      );
+      pendingDraft = draft; // Will be restored in handleFirstVisitClose
     } else {
-      stateManager.clearLocalStorage();
+      const shouldRestore = confirm(
+        `Found a saved draft of "${draft.fileName}" from ${new Date(draft.timestamp).toLocaleString()}.\n\nWould you like to restore it?`
+      );
+
+      if (shouldRestore) {
+        console.log('Restoring draft...');
+        // Treat draft as uploaded file
+        handleFile({ name: draft.fileName }, draft.fileContent);
+        updateStatus('Draft restored');
+      } else {
+        stateManager.clearLocalStorage();
+      }
     }
   }
 
@@ -2528,11 +2839,61 @@ async function initApp() {
     }
   }
 
-  // Upload size limits (configurable)
-  const UPLOAD_SIZE_LIMITS = {
-    SINGLE_FILE_MB: 5,
-    ZIP_FILE_MB: 10,
-  };
+  /**
+   * Log render performance metrics to console
+   * @param {Object} result - Render result with timing, stats, and data
+   */
+  function logRenderPerformance(result) {
+    if (!result) return;
+
+    const timing = result.timing || {};
+    const stats = result.stats || {};
+    const capabilities = renderController?.getCapabilities() || {};
+
+    // Calculate bytes per triangle (indicator of ASCII vs Binary)
+    const dataSize = result.data?.byteLength || result.stl?.byteLength || 0;
+    const bytesPerTri =
+      stats.triangles > 0 ? Math.round(dataSize / stats.triangles) : 0;
+
+    const isLikelyBinary = bytesPerTri > 0 && bytesPerTri < 80;
+    const isLikelyASCII = bytesPerTri > 100;
+
+    console.log(
+      `[Render Stats] ` +
+        `Time: ${timing.renderMs || 0}ms | ` +
+        `Triangles: ${stats.triangles?.toLocaleString() || 0} | ` +
+        `Size: ${(dataSize / 1024).toFixed(1)}KB | ` +
+        `Format: ${isLikelyBinary ? 'Binary STL ✓' : isLikelyASCII ? 'ASCII STL ⚠️' : 'Unknown'}`
+    );
+
+    // Warn if ASCII STL detected
+    if (isLikelyASCII && stats.triangles > 1000) {
+      console.warn(
+        '[Performance Warning] ASCII STL detected! ' +
+          'Add --export-format=binstl for ~18x faster exports.'
+      );
+    }
+
+    // Log Manifold status for slow renders
+    if (!capabilities.hasManifold && timing.renderMs > 5000) {
+      console.warn(
+        `[Performance Warning] Render took ${timing.renderMs}ms without Manifold. ` +
+          'With Manifold enabled, complex models can be 5-30x faster.'
+      );
+    }
+
+    // Log overall performance status
+    if (isLikelyBinary && capabilities.hasManifold) {
+      console.log(
+        '[Performance] ✓ Optimal settings: Binary STL + Manifold enabled'
+      );
+    } else if (!isLikelyBinary || !capabilities.hasManifold) {
+      const issues = [];
+      if (!isLikelyBinary) issues.push('Binary STL not active');
+      if (!capabilities.hasManifold) issues.push('Manifold not available');
+      console.log(`[Performance] ⚠️ Suboptimal settings: ${issues.join(', ')}`);
+    }
+  }
 
   // Update status
   function updateStatus(message, statusType = 'default') {
@@ -2635,14 +2996,42 @@ async function initApp() {
   ) {
     if (!file && !content) return;
 
-    let fileName = file ? file.name : 'example.scad';
+    const rawFileName =
+      typeof file?.name === 'string' && file.name.trim().length > 0
+        ? file.name
+        : '';
+    let fileName = rawFileName || 'example.scad';
     let fileContent = content;
     let projectFiles = extractedFiles; // Map of additional files for multi-file projects
     let mainFilePath = mainFilePathArg; // Path to main file in multi-file project (passed from ZIP extraction)
 
     if (file) {
-      const isZip = file.name.toLowerCase().endsWith('.zip');
-      const isScad = file.name.toLowerCase().endsWith('.scad');
+      const fileNameLower = fileName.toLowerCase();
+      // Only validate file metadata for actual File objects (user uploads)
+      // Skip validation when content is already provided (example loading path)
+      const isActualFileUpload = !content && file instanceof File;
+
+      if (isActualFileUpload) {
+        // Validate file metadata with Ajv before processing
+        const fileMeta = {
+          name: fileNameLower,
+          size: file.size,
+        };
+
+        const isValid = validateFileUpload(fileMeta);
+        if (!isValid) {
+          const errorMsg = getValidationErrorMessage(validateFileUpload.errors);
+          alert(`Invalid file: ${errorMsg}`);
+          console.error(
+            '[File Upload] Validation failed:',
+            validateFileUpload.errors
+          );
+          return;
+        }
+      }
+
+      const isZip = fileNameLower.endsWith('.zip');
+      const isScad = fileNameLower.endsWith('.scad');
 
       if (!isZip && !isScad) {
         alert('Please upload a .scad or .zip file');
@@ -2697,8 +3086,9 @@ async function initApp() {
       }
 
       // Handle single .scad files (existing logic)
-      if (file.size > UPLOAD_SIZE_LIMITS.SINGLE_FILE_MB * 1024 * 1024) {
-        alert(`File size exceeds ${UPLOAD_SIZE_LIMITS.SINGLE_FILE_MB}MB limit`);
+      if (file.size > FILE_SIZE_LIMITS.SCAD_FILE) {
+        const limitMB = FILE_SIZE_LIMITS.SCAD_FILE / (1024 * 1024);
+        alert(`File size exceeds ${limitMB}MB limit`);
         return;
       }
     }
@@ -2788,7 +3178,12 @@ async function initApp() {
       }
 
       // Calculate file size
-      const fileSizeBytes = file ? file.size : fileContent.length;
+      const fileSizeBytes =
+        typeof fileContent === 'string'
+          ? new Blob([fileContent]).size
+          : typeof file?.size === 'number'
+            ? file.size
+            : 0;
       const fileSizeStr = formatFileSize(fileSizeBytes);
 
       // Update file info (preserve file tree for multi-file projects)
@@ -3045,7 +3440,8 @@ async function initApp() {
 
       // Initialize or update AutoPreviewController
       if (!autoPreviewController) {
-        initAutoPreviewController();
+        // Pass true to defer init if WASM isn't ready yet - this will trigger WASM init
+        await initAutoPreviewController(true);
       }
       if (autoPreviewController) {
         autoPreviewController.setColorParamNames(colorParamNames);
@@ -3060,8 +3456,7 @@ async function initApp() {
         autoPreviewController.setEnabledLibraries(libsForRender);
         updatePreviewStateUI(PREVIEW_STATE.IDLE);
 
-        // Trigger initial preview immediately on first load (and also for URL-param loads).
-        // This makes the app feel responsive without requiring a first parameter change.
+        // Trigger an initial preview immediately on first load (and also for URL-param loads).
         if (autoPreviewEnabled) {
           // Use .then()/.catch() to handle errors without blocking file load completion
           autoPreviewController
@@ -3132,6 +3527,7 @@ async function initApp() {
         // Hide main interface, show welcome screen
         mainInterface.classList.add('hidden');
         welcomeScreen.classList.remove('hidden');
+        updateStorageDisplay();
 
         // Reset and hide workflow progress
         resetWorkflowProgress();
@@ -3789,19 +4185,27 @@ async function initApp() {
         if (!canAdjust) return false;
 
         if (direction === 'up') {
-          const next = _applyHfmContrastScale(_hfmContrastScale + _HFM_CONTRAST_RANGE.step);
+          const next = _applyHfmContrastScale(
+            _hfmContrastScale + _HFM_CONTRAST_RANGE.step
+          );
           return `Alt view contrast: ${_formatHfmContrastValue(next)}`;
         }
         if (direction === 'down') {
-          const next = _applyHfmContrastScale(_hfmContrastScale - _HFM_CONTRAST_RANGE.step);
+          const next = _applyHfmContrastScale(
+            _hfmContrastScale - _HFM_CONTRAST_RANGE.step
+          );
           return `Alt view contrast: ${_formatHfmContrastValue(next)}`;
         }
         if (direction === 'left') {
-          const next = _applyHfmFontScale(_hfmFontScale - _HFM_FONT_SCALE_RANGE.step);
+          const next = _applyHfmFontScale(
+            _hfmFontScale - _HFM_FONT_SCALE_RANGE.step
+          );
           return `Alt view font size: ${_formatHfmFontScaleValue(next)}`;
         }
         if (direction === 'right') {
-          const next = _applyHfmFontScale(_hfmFontScale + _HFM_FONT_SCALE_RANGE.step);
+          const next = _applyHfmFontScale(
+            _hfmFontScale + _HFM_FONT_SCALE_RANGE.step
+          );
           return `Alt view font size: ${_formatHfmFontScaleValue(next)}`;
         }
         return true;
@@ -3880,7 +4284,7 @@ async function initApp() {
               previewPanel.classList.remove('camera-drawer-open');
             }
           }
-          
+
           // Expand drawer
           drawer.classList.remove('collapsed');
           toggleBtn.setAttribute('aria-expanded', 'true');
@@ -3974,7 +4378,6 @@ async function initApp() {
     let isFocusMode = false;
     let cameraFocusExitBtn = null;
     // Assigned below; used by the camera focus exit button handler.
-    // eslint-disable-next-line prefer-const
     let toggleFocusMode = () => {};
 
     /**
@@ -4001,10 +4404,10 @@ async function initApp() {
     const calculateCameraFocusBottomOffset = () => {
       const actionsBar = document.getElementById('actionsBar');
       const cameraDrawerBody = document.getElementById('cameraDrawerBody');
-      
+
       if (actionsBar) {
         let totalHeight = 0;
-        
+
         // When camera drawer is expanded, calculate distance from viewport bottom
         // to the top of the camera drawer body
         if (isCameraDrawerExpanded() && cameraDrawerBody) {
@@ -4012,14 +4415,14 @@ async function initApp() {
           const bodyRect = cameraDrawerBody.getBoundingClientRect();
           // The offset should be from viewport bottom to the top of the drawer body
           totalHeight = window.innerHeight - bodyRect.top;
-          
+
           // Add a small buffer for visual separation
           totalHeight += 2;
         } else {
           // Fallback to actions bar height when drawer is collapsed
           totalHeight = actionsBar.offsetHeight;
         }
-        
+
         document.documentElement.style.setProperty(
           '--camera-focus-bottom-offset',
           `${totalHeight}px`
@@ -4059,7 +4462,7 @@ async function initApp() {
     const enterCameraFocusMode = () => {
       mainInterface.classList.add('camera-focus-mode');
       createCameraFocusExitBtn();
-      
+
       // Calculate offset after a short delay to ensure layout has settled
       requestAnimationFrame(() => {
         calculateCameraFocusBottomOffset();
@@ -4316,11 +4719,8 @@ async function initApp() {
             libraries: libsForRender,
             ...(exportQualityPreset ? { quality: exportQualityPreset } : {}),
             onProgress: (percent, message) => {
-              if (percent < 0) {
-                updateStatus(message);
-              } else {
-                updateStatus(`${message} (${Math.round(percent)}%)`);
-              }
+              // Simplified status: no confusing percentages
+              updateStatus('Generating STL...');
             },
           }
         );
@@ -4338,27 +4738,27 @@ async function initApp() {
         lastRenderTime: duration,
       });
 
-      updateStatus(`Full quality ${formatName} generated in ${duration}s`);
-
+      // Update detailed stats in drawer (not in status bar overlay)
       const triangleInfo =
         result.stats.triangles > 0
           ? ` | Triangles: ${result.stats.triangles.toLocaleString()}`
           : '';
       statsArea.innerHTML = `<span class="stats-quality full">Full Quality ${formatName}</span> Size: ${formatFileSize(result.stats.size)}${triangleInfo} | Time: ${duration}s`;
 
-      // Also update the preview status bar stats
+      // Update the preview status bar with minimal stats
       updatePreviewStats(result.stats, true);
 
       console.log('Full render complete:', result.stats);
+
+      // Log performance metrics
+      logRenderPerformance(result);
 
       // Update workflow progress to render complete
       completeWorkflowStep('render');
       setWorkflowStep('download');
 
-      // Do NOT auto-download. User must explicitly click Download.
-      updateStatus(
-        `${formatName} generated successfully in ${duration}s (click Download to save)`
-      );
+      // Simple status - ready to download (use 'success' type to keep visible)
+      updateStatus('STL ready', 'success');
 
       // Update preview state to show full quality
       updatePreviewStateUI(PREVIEW_STATE.CURRENT, {
@@ -4920,18 +5320,28 @@ async function initApp() {
       return;
     }
 
+    // CRITICAL: Set project content BEFORE adding variant to avoid race condition
+    // The ComparisonView subscription will try to auto-render when variant is added
+    const libsForRender = getEnabledLibrariesForRender();
+    comparisonController.setProject(
+      state.uploadedFile.content,
+      state.projectFiles,
+      state.mainFilePath,
+      libsForRender
+    );
+
     // Generate variant name
     const count = comparisonController.getVariantCount() + 1;
     const variantName = `Variant ${count}`;
 
-    // Add variant
+    // Add variant (now safe because project is already set)
     const variantId = comparisonController.addVariant(
       variantName,
       state.parameters
     );
     console.log(`Added variant ${variantId}:`, variantName);
 
-    // Switch to comparison mode
+    // Switch to comparison mode (setProject will be called again but that's fine)
     enterComparisonMode();
 
     updateStatus(`Added "${variantName}" to comparison`);
@@ -4941,6 +5351,15 @@ async function initApp() {
   window.addEventListener('comparison:add-variant', (e) => {
     const state = stateManager.getState();
     if (!state.uploadedFile) return;
+
+    // Ensure project is set before adding variant (in case called from comparison view)
+    const libsForRender = getEnabledLibrariesForRender();
+    comparisonController.setProject(
+      state.uploadedFile.content,
+      state.projectFiles,
+      state.mainFilePath,
+      libsForRender
+    );
 
     const count = comparisonController.getVariantCount() + 1;
     const providedName = e?.detail?.variantName;
@@ -5954,6 +6373,9 @@ async function initApp() {
   // Global keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     const state = stateManager.getState();
+    if (firstVisitBlocking) {
+      return;
+    }
 
     // Ctrl/Cmd + Z: Undo
     if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {

@@ -475,7 +475,7 @@ function initMobileCameraDrawer() {
    */
   function expandDrawer() {
     if (!isMobileCollapsed) return;
-    
+
     // Mobile portrait: close actions drawer first (mutual exclusion)
     const actionsDrawer = document.getElementById('actionsDrawer');
     const actionsToggle = document.getElementById('actionsDrawerToggle');
@@ -486,7 +486,7 @@ function initMobileCameraDrawer() {
         actionsToggle.setAttribute('aria-label', 'Expand actions menu');
       }
     }
-    
+
     isMobileCollapsed = false;
     drawer.classList.remove('collapsed');
     updateAria(false);

@@ -387,25 +387,6 @@ Consider adding RUM tools:
 - Debounce resize handlers
 - Use `requestAnimationFrame` for animations
 
-## Future Optimizations (Roadmap)
-
-### v2.4 (Current)
-- [x] Three.js lazy loading
-- [x] Bundle size monitoring in CI
-- [ ] Improved caching strategy
-
-### v2.5
-- [ ] WebAssembly SIMD optimization
-- [ ] Mesh simplification for preview
-- [ ] Incremental rendering
-- [ ] Web Worker pool
-
-### v3.0
-- [ ] WebGPU rendering (when widely supported)
-- [ ] Streaming STL generation
-- [ ] Predictive caching
-- [ ] Client-side compression
-
 ## Resources
 
 - [Web Performance Best Practices](https://web.dev/performance/)
@@ -414,17 +395,4 @@ Consider adding RUM tools:
 - [WebAssembly Performance](https://v8.dev/blog/wasm-compilation-pipeline)
 - [Three.js Performance Tips](https://discoverthreejs.com/tips-and-tricks/)
 
-## Contributing
-
-When optimizing performance:
-
-1. **Measure first** - Use profiling tools
-2. **Set targets** - Define success metrics
-3. **Test impact** - Verify improvements
-4. **Document changes** - Update this guide
-5. **Monitor regressions** - Add CI checks
-
-## Version History
-
-- **v2.4.0** - Performance documentation, monitoring setup
-- **v2.3.0** - Baseline performance metrics
+If you improve something here, a short note in the PR is plenty.

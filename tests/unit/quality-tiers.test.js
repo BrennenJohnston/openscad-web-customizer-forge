@@ -152,7 +152,8 @@ describe('Quality Tiers', () => {
         'export'
       );
       expect(preset).toBeDefined();
-      expect(preset.maxFn).toBe(128); // Standard medium export
+      // MANIFOLD OPTIMIZED: Standard medium export maxFn increased from 128 to 192
+      expect(preset.maxFn).toBe(192);
     });
 
     it('downgrades quality on low hardware for complex tier', () => {

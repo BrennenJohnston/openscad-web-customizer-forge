@@ -301,7 +301,8 @@ export class PreviewManager {
         this._resizeConfig.adjustCameraOnResize &&
         this._lastAspect !== null
       ) {
-        const aspectRatioChange = Math.abs(newAspect - previousAspect) / previousAspect;
+        const aspectRatioChange =
+          Math.abs(newAspect - previousAspect) / previousAspect;
 
         // Only adjust for significant changes (configurable threshold)
         if (aspectRatioChange > this._resizeConfig.aspectChangeThreshold) {
@@ -418,15 +419,13 @@ export class PreviewManager {
       if (this.gridHelper.material) {
         this.gridHelper.material.dispose();
       }
-      // Use thicker grid lines in high contrast mode
-      const gridSize = highContrast ? 3 : 2;
+      // Note: linewidth is ignored in WebGL, relying on color contrast instead
       this.gridHelper = new THREE.GridHelper(
         200,
         20,
         colors.gridPrimary,
         colors.gridSecondary
       );
-      this.gridHelper.material.linewidth = gridSize;
       // Rotate grid from XZ plane to XY plane (Z-up coordinate system)
       this.gridHelper.rotation.x = Math.PI / 2;
       // Preserve grid visibility preference when recreating grid
@@ -1237,7 +1236,9 @@ export class PreviewManager {
     const aspectRatio = newAspect / previousAspect;
 
     // Get current camera distance from target
-    const currentDistance = this.camera.position.distanceTo(this.controls.target);
+    const currentDistance = this.camera.position.distanceTo(
+      this.controls.target
+    );
 
     // Calculate adjustment factor
     // The idea: when aspect gets narrower, we need to zoom out (increase distance)
@@ -1300,7 +1301,10 @@ export class PreviewManager {
    */
   setResizeConfig(config) {
     if (typeof config.aspectChangeThreshold === 'number') {
-      this._resizeConfig.aspectChangeThreshold = Math.max(0.01, Math.min(0.5, config.aspectChangeThreshold));
+      this._resizeConfig.aspectChangeThreshold = Math.max(
+        0.01,
+        Math.min(0.5, config.aspectChangeThreshold)
+      );
     }
     if (typeof config.adjustCameraOnResize === 'boolean') {
       this._resizeConfig.adjustCameraOnResize = config.adjustCameraOnResize;
@@ -1470,7 +1474,7 @@ export class PreviewManager {
 
     // Create bounding box edges
     const boxHelper = new THREE.BoxHelper(this.mesh, lineColor);
-    boxHelper.material.linewidth = this.highContrast ? 3 : 2;
+    // Note: linewidth is ignored in WebGL, relying on color contrast instead
     this.measurementHelpers.add(boxHelper);
 
     // Add dimension lines and labels (we'll render text as sprites)
@@ -1514,9 +1518,9 @@ export class PreviewManager {
     // Create line geometry
     const points = [start, end];
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    // Note: linewidth is ignored in WebGL, relying on color contrast instead
     const material = new THREE.LineBasicMaterial({
       color: color,
-      linewidth: this.highContrast ? 3 : 2,
     });
     const line = new THREE.Line(geometry, material);
     this.measurementHelpers.add(line);

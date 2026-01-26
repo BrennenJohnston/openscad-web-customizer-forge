@@ -9,30 +9,38 @@ use <MCAD/boxes.scad>;
 
 /*[Dimensions]*/
 // Box width (mm)
-width = 50; // [20:100]
+width = 45; // [20:100]
 
 // Box depth (mm)
-depth = 30; // [20:100]
+depth = 35; // [20:100]
 
 // Box height (mm)
-height = 25; // [10:50]
+height = 28; // [10:50]
 
 // Corner radius (mm)
-radius = 5; // [1:15]
+radius = 4; // [1:15]
 
 /*[Options]*/
-// Box style
-style = "Rounded"; // [Rounded, Simple]
+// Box style (Note: "Rounded" may cause CGAL errors with certain parameter combinations)
+style = "Simple"; // [Simple, Rounded]
 
 /*[Hidden]*/
 // Fragment number for curves
 $fn = 64;
 
+/*[Style Options]*/
+// Round only the sides (faster) or all edges including top/bottom
+sidesonly = true; // [true, false]
+
 // Main module
 module main() {
     if (style == "Rounded") {
         // Use MCAD's rounded box function
-        roundedBox([width, depth, height], radius);
+        // roundedBox(size, radius, sidesonly)
+        // - size: [x, y, z] dimensions
+        // - radius: corner radius  
+        // - sidesonly: true = round only vertical edges, false = round all edges
+        roundedBox([width, depth, height], radius, sidesonly);
     } else {
         // Simple cube for comparison
         cube([width, depth, height], center=true);

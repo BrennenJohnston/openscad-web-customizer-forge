@@ -40,8 +40,10 @@ export class ComparisonController {
     libraries = []
   ) {
     this.scadContent = scadContent;
-    this.projectFiles = projectFiles;
-    this.mainFile = mainFile;
+    const hasProjectFiles =
+      projectFiles instanceof Map ? projectFiles.size > 0 : !!projectFiles;
+    this.projectFiles = hasProjectFiles ? projectFiles : null;
+    this.mainFile = hasProjectFiles ? mainFile : null;
     this.libraries = Array.isArray(libraries) ? libraries : [];
   }
 
