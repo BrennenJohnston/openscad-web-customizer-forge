@@ -59,8 +59,8 @@ test.describe('Accessibility Compliance (WCAG 2.1 AA)', () => {
     try {
       await fileInput.setInputFiles(fixturePath)
       
-      // Wait for parameters UI to render (avoid preset select)
-      await page.waitForSelector('.param-control', {
+      // Wait for parameters UI to render - file info shows parameter count
+      await page.waitForSelector('#fileInfo:has-text("parameters")', {
         timeout: 15000
       })
       
@@ -169,7 +169,7 @@ test.describe('Accessibility Compliance (WCAG 2.1 AA)', () => {
     
     try {
       await fileInput.setInputFiles(fixturePath)
-      await page.waitForSelector('.param-control', { timeout: 15000 })
+      await page.waitForSelector('#fileInfo:has-text("parameters")', { timeout: 15000 })
       
       // Check all form inputs have labels
       const unlabeledInputs = await page.locator('input:not([type="file"])').evaluateAll(inputs => {
@@ -205,7 +205,7 @@ test.describe('Accessibility Compliance (WCAG 2.1 AA)', () => {
     
     try {
       await fileInput.setInputFiles(fixturePath)
-      await page.waitForSelector('.param-control', { timeout: 15000 })
+      await page.waitForSelector('#fileInfo:has-text("parameters")', { timeout: 15000 })
       
       // Library controls should be visible (not hidden)
       const libraryControls = page.locator('#libraryControls')
@@ -236,7 +236,7 @@ test.describe('New Accessibility Features (WCAG 2.2)', () => {
     
     try {
       await fileInput.setInputFiles(fixturePath)
-      await page.waitForSelector('.param-control', { timeout: 15000 })
+      await page.waitForSelector('#fileInfo:has-text("parameters")', { timeout: 15000 })
       
       // Check that help buttons have aria-describedby pointing to tooltip
       const helpButtons = await page.locator('.param-help-button').all()
@@ -323,7 +323,7 @@ test.describe('New Accessibility Features (WCAG 2.2)', () => {
     
     try {
       await fileInput.setInputFiles(fixturePath)
-      await page.waitForSelector('.param-control', { timeout: 15000 })
+      await page.waitForSelector('#fileInfo:has-text("parameters")', { timeout: 15000 })
       
       // Check search input exists and has proper attributes
       const searchInput = page.locator('#paramSearchInput')
@@ -361,7 +361,7 @@ test.describe('New Accessibility Features (WCAG 2.2)', () => {
     
     try {
       await fileInput.setInputFiles(fixturePath)
-      await page.waitForSelector('.param-control', { timeout: 15000 })
+      await page.waitForSelector('#fileInfo:has-text("parameters")', { timeout: 15000 })
       
       // Get initial parameter count
       const initialCount = await page.locator('.param-control:not(.search-hidden)').count()
@@ -484,7 +484,7 @@ test.describe('Default Value Display (COGA)', () => {
     
     try {
       await fileInput.setInputFiles(fixturePath)
-      await page.waitForSelector('.param-control', { timeout: 15000 })
+      await page.waitForSelector('#fileInfo:has-text("parameters")', { timeout: 15000 })
       
       // Check for default value hints on slider controls
       const defaultHints = await page.locator('.param-default-value').all()
@@ -598,7 +598,7 @@ test.describe('Workflow Progress Indicator', () => {
     
     try {
       await fileInput.setInputFiles(fixturePath)
-      await page.waitForSelector('.param-control', { timeout: 15000 })
+      await page.waitForSelector('#fileInfo:has-text("parameters")', { timeout: 15000 })
       
       // Check that workflow progress is visible
       const workflowProgress = page.locator('#workflowProgress')
@@ -710,8 +710,8 @@ test.describe('Screen Reader Support', () => {
       const firstTryButton = page.locator('.btn-role-try').first()
       await firstTryButton.click()
       
-      // Wait for example to load and parameters UI to appear
-      await page.waitForSelector('.param-control', {
+      // Wait for example to load - file info shows loaded file name and parameter count
+      await page.waitForSelector('#fileInfo:has-text("parameters")', {
         timeout: 15000
       })
       
@@ -862,8 +862,8 @@ test.describe('Screen Reader Support', () => {
       const firstTryButton = page.locator('.btn-role-try').first()
       await firstTryButton.click()
       
-      // Wait for example to load
-      await page.waitForSelector('.param-control', {
+      // Wait for example to load - file info shows loaded file name and parameter count
+      await page.waitForSelector('#fileInfo:has-text("parameters")', {
         timeout: 60000
       })
       
@@ -1691,7 +1691,7 @@ test.describe('Drawer Accessibility', () => {
     
     try {
       await page.setInputFiles('#fileInput', fixturePath);
-      await page.waitForSelector('.param-control', { timeout: 30000 });
+      await page.waitForSelector('#fileInfo:has-text("parameters")', { timeout: 30000 });
       
       await page.locator('#mobileDrawerToggle').click();
       
@@ -1712,7 +1712,7 @@ test.describe('Drawer Accessibility', () => {
     
     try {
       await page.setInputFiles('#fileInput', fixturePath);
-      await page.waitForSelector('.param-control', { timeout: 30000 });
+      await page.waitForSelector('#fileInfo:has-text("parameters")', { timeout: 30000 });
       await page.locator('#mobileDrawerToggle').click();
       
       const results = await new AxeBuilder({ page })
