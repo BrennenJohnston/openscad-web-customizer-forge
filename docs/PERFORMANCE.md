@@ -13,11 +13,11 @@ The application handles computationally intensive 3D rendering and needs to rema
 
 ## Performance Targets
 
-| Metric | Target | Current (v2.3.0) |
+| Metric | Target | Current (v4.0.0) |
 |--------|--------|------------------|
 | First Contentful Paint | < 1.5s | ~1.0s ✅ |
 | Time to Interactive | < 3.0s | ~2.5s ✅ |
-| Bundle Size (gzipped) | < 200KB | 180.31KB ✅ |
+| Bundle Size (gzipped) | < 200KB | ~180KB ✅ |
 | Lighthouse Performance | > 80 | 85+ ✅ |
 
 ## Bundle Size Optimization
@@ -29,7 +29,7 @@ npm run build
 du -sh dist/
 ```
 
-**Main chunks** (v2.3.0):
+**Main chunks** (v4.0.0):
 - `index.js` - 180.31KB gzipped (main application)
 - `three.js` - Lazy loaded for 3D preview (~600KB uncompressed)
 - `openscad-wasm` - Lazy loaded from CDN (~2MB)
@@ -38,7 +38,7 @@ du -sh dist/
 
 #### 1. Code Splitting
 
-**Three.js lazy loading** (planned for v2.4):
+**Three.js lazy loading**:
 
 ```javascript
 // Before: Eager import

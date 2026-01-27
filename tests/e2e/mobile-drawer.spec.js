@@ -4,6 +4,13 @@ import path from 'path';
 
 const isCI = !!process.env.CI;
 
+// Dismiss first-visit modal so it doesn't block UI interactions
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('openscad-forge-first-visit-seen', 'true')
+  })
+})
+
 async function waitForWasmReady(page) {
   // The app shows a blocking overlay while WASM initializes.
   // Many UI listeners (including file upload) are registered after init completes.

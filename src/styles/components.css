@@ -6061,6 +6061,27 @@ body.tutorial-body-locked {
   display: none !important;
 }
 
+/* Parameter highlight (used for guided error recovery) */
+.param-control.param-highlight {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-accent) 20%, transparent);
+  border-radius: var(--border-radius-md);
+  animation: paramPulse 0.9s ease-in-out 0s 3;
+}
+
+@keyframes paramPulse {
+  0% {
+    transform: translateZ(0);
+  }
+  50% {
+    transform: translateZ(0) scale(1.01);
+  }
+  100% {
+    transform: translateZ(0);
+  }
+}
+
 .param-group.search-empty {
   display: none !important;
 }

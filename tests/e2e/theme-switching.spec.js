@@ -5,6 +5,13 @@
 
 import { test, expect } from '@playwright/test'
 
+// Dismiss first-visit modal so it doesn't block UI interactions
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('openscad-forge-first-visit-seen', 'true')
+  })
+})
+
 test.describe('Theme Switching', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')

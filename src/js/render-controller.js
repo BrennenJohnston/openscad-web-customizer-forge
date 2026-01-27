@@ -265,7 +265,10 @@ export function estimateRenderTime(scadContent, parameters = {}) {
 }
 
 /**
- * Memory warning threshold (percentage)
+ * Memory warning threshold (percentage of 1GB warning threshold)
+ * Since we can only measure allocated heap size (not actual usage),
+ * the worker reports percent as (heapMB / 1024MB) * 100.
+ * 80% of 1GB = 819MB, which is a reasonable warning threshold.
  */
 const MEMORY_WARNING_THRESHOLD = 80;
 
@@ -635,6 +638,9 @@ export class RenderController {
           // Use negative percent to indicate warning state
           this.currentRequest.onProgress(-2, payload.message);
         }
+        break;
+
+      case 'DEBUG_LOG':
         break;
 
       default:

@@ -35,6 +35,7 @@ let mountedLibraries = new Set(); // Track mounted library IDs
 let assetBaseUrl = ''; // Base URL for fetching assets (fonts, libraries, etc.)
 let wasmAssetLogShown = false;
 let openscadConsoleOutput = ''; // Accumulated console output from OpenSCAD
+let openscadCapabilities = null;
 
 function isAbsoluteUrl(value) {
   return /^[a-z]+:\/\//i.test(value);
@@ -147,6 +148,20 @@ const ERROR_TRANSLATIONS = [
     message:
       'Your model does not produce any geometry. Make sure you have at least one shape (cube, sphere, etc.) in your code.',
     code: 'NO_GEOMETRY',
+  },
+  {
+    // IMPORTANT: Detect empty geometry from OpenSCAD console output
+    pattern: /Current top[ -]?level object is empty/i,
+    message:
+      'This configuration produces no geometry. Check that the selected options are compatible (e.g., if generating a "keyguard frame", make sure "have a keyguard frame" is set to "yes").',
+    code: 'EMPTY_GEOMETRY',
+  },
+  {
+    // Detect "not supported" ECHO messages from the keyguard model
+    pattern: /is not supported for/i,
+    message:
+      'This combination of options is not supported. Please check the "generate" setting and related options.',
+    code: 'UNSUPPORTED_CONFIG',
   },
   {
     pattern: /Cannot open file/i,
@@ -333,6 +348,7 @@ async function initWASM(baseUrl = '') {
     });
 
     const detectedCapabilities = await checkCapabilities();
+    openscadCapabilities = detectedCapabilities;
 
     // Calculate total WASM init duration
     wasmInitDurationMs = Math.round(performance.now() - wasmInitStartTime);
@@ -485,9 +501,12 @@ async function checkCapabilities() {
     module.print = (text) => helpOutput.push(String(text));
     module.printErr = (text) => helpOutput.push(String(text));
 
+    let helpError = null;
+
     try {
       await module.callMain(['--help']);
-    } catch (_e) {
+    } catch (error) {
+      helpError = String(error?.message || error);
       // --help might exit with non-zero, that's okay
     }
 
@@ -500,24 +519,149 @@ async function checkCapabilities() {
     // Check for --backend option that mentions Manifold
     // The help text format is: "--backend arg   3D rendering backend to use: 'CGAL' ... or 'Manifold'"
     // Use a more flexible pattern that matches various help text formats
+    const helpTextLength = helpText.length;
     const hasManifoldBackend = /--backend\s+.*Manifold/i.test(helpText);
     const hasManifoldMention = helpText.toLowerCase().includes('manifold');
     const hasManifoldEnable = /--enable[^\n]*manifold/i.test(helpText);
+    const hasFastCSGFlag = /--enable[^\n]*fast-csg/i.test(helpText);
+    const hasLazyUnionFlag =
+      /--enable\s+arg.*lazy-union/i.test(helpText) ||
+      helpText.includes('lazy-union');
+    const hasBinarySTLFlag =
+      helpText.includes('export-format') || helpText.includes('binstl');
+
     capabilities.hasManifold =
       hasManifoldBackend || hasManifoldMention || hasManifoldEnable;
 
     // fast-csg was an older experimental flag, now integrated into Manifold backend
     // Check if it's still available as --enable option
-    capabilities.hasFastCSG = /--enable[^\n]*fast-csg/i.test(helpText);
+    capabilities.hasFastCSG = hasFastCSGFlag;
 
     // lazy-union is still an --enable flag
-    capabilities.hasLazyUnion =
-      /--enable\s+arg.*lazy-union/i.test(helpText) ||
-      helpText.includes('lazy-union');
+    capabilities.hasLazyUnion = hasLazyUnionFlag;
 
     // Check for export-format option (binary STL support)
-    capabilities.hasBinarySTL =
-      helpText.includes('export-format') || helpText.includes('binstl');
+    capabilities.hasBinarySTL = hasBinarySTLFlag;
+
+    const ENABLE_CAPABILITY_PROBE = false;
+    let probeResults = null;
+    if (helpTextLength === 0) {
+      const assumedManifold = true;
+      const assumedBinarySTL = false;
+      capabilities.hasManifold = assumedManifold;
+      capabilities.hasBinarySTL = assumedBinarySTL;
+    }
+    if (helpTextLength === 0 && ENABLE_CAPABILITY_PROBE) {
+      const runCapabilityProbe = async () => {
+        const result = {
+          manifoldExitCode: null,
+          manifoldFileBytes: null,
+          manifoldError: null,
+          binaryExitCode: null,
+          binaryFileBytes: null,
+          binaryOk: null,
+          binaryError: null,
+        };
+        if (!module.FS) return result;
+        const FS = module.FS;
+        const probeInput = '/tmp/capability-probe.scad';
+        const manifoldOutput = '/tmp/capability-probe-manifold.stl';
+        const binaryOutput = '/tmp/capability-probe-binstl.stl';
+        const probeScad = 'cube(1);';
+        try {
+          FS.mkdir('/tmp');
+        } catch (_e) {
+          /* may exist */
+        }
+        try {
+          FS.writeFile(probeInput, probeScad);
+        } catch (error) {
+          result.manifoldError = String(error?.message || error);
+          return result;
+        }
+
+        const safeStatSize = (path) => {
+          try {
+            return FS.stat(path).size;
+          } catch (_e) {
+            return null;
+          }
+        };
+
+        try {
+          result.manifoldExitCode = await module.callMain([
+            '--backend=Manifold',
+            '-o',
+            manifoldOutput,
+            probeInput,
+          ]);
+          result.manifoldFileBytes = safeStatSize(manifoldOutput);
+        } catch (error) {
+          result.manifoldError = String(error?.message || error);
+        }
+
+        try {
+          result.binaryExitCode = await module.callMain([
+            '--export-format=binstl',
+            '-o',
+            binaryOutput,
+            probeInput,
+          ]);
+          result.binaryFileBytes = safeStatSize(binaryOutput);
+          if (result.binaryFileBytes && result.binaryFileBytes >= 84) {
+            const binaryData = FS.readFile(binaryOutput);
+            if (binaryData && binaryData.byteLength >= 84) {
+              const view = new DataView(
+                binaryData.buffer,
+                binaryData.byteOffset,
+                binaryData.byteLength
+              );
+              const triangleCount = view.getUint32(80, true);
+              result.binaryOk =
+                binaryData.byteLength === 84 + triangleCount * 50;
+            }
+          }
+          if (result.binaryOk === null) {
+            result.binaryOk = false;
+          }
+        } catch (error) {
+          result.binaryError = String(error?.message || error);
+        }
+
+        try {
+          FS.unlink(probeInput);
+        } catch (_e) {
+          /* ignore */
+        }
+        try {
+          FS.unlink(manifoldOutput);
+        } catch (_e) {
+          /* ignore */
+        }
+        try {
+          FS.unlink(binaryOutput);
+        } catch (_e) {
+          /* ignore */
+        }
+
+        return result;
+      };
+
+      const probeHeapBeforeMB = module?.HEAP8
+        ? Math.round(module.HEAP8.length / 1024 / 1024)
+        : null;
+      probeResults = await runCapabilityProbe();
+      const probeHeapAfterMB = module?.HEAP8
+        ? Math.round(module.HEAP8.length / 1024 / 1024)
+        : null;
+      const manifoldSupported =
+        probeResults.manifoldExitCode === 0 &&
+        (probeResults.manifoldFileBytes || 0) > 0;
+      const binarySupported = probeResults.binaryOk === true;
+      capabilities.hasManifold = manifoldSupported;
+      capabilities.hasBinarySTL = binarySupported;
+
+    }
 
     // Try to extract version
     const versionMatch =
@@ -1024,12 +1168,25 @@ async function renderWithCallMain(
   // Performance flags: Use Manifold backend for 5-30x faster CSG operations
   // Note: Modern OpenSCAD uses --backend=Manifold instead of --enable=manifold
   // lazy-union is still opt-in via --enable flag
-  const enableLazyUnion = Boolean(renderOptions?.enableLazyUnion);
-  const performanceFlags = ['--backend=Manifold'];
+  const capabilities = openscadCapabilities || {};
+  const supportsManifold = Boolean(capabilities.hasManifold);
+  const supportsLazyUnion = Boolean(capabilities.hasLazyUnion);
+  const supportsBinarySTL = Boolean(capabilities.hasBinarySTL);
+  const enableLazyUnion =
+    Boolean(renderOptions?.enableLazyUnion) && supportsLazyUnion;
+  const performanceFlags = [];
+  if (supportsManifold) {
+    performanceFlags.push('--backend=Manifold');
+  }
   if (enableLazyUnion) {
     performanceFlags.push('--enable=lazy-union');
   }
-  const shouldRetryWithoutFlags = performanceFlags.length > 0;
+  const exportFlags = [];
+  if (format === 'stl' && supportsBinarySTL) {
+    exportFlags.push('--export-format=binstl');
+  }
+  const shouldRetryWithoutFlags =
+    performanceFlags.length > 0 || exportFlags.length > 0;
 
   try {
     const module = await ensureOpenSCADModule();
@@ -1060,7 +1217,7 @@ async function renderWithCallMain(
     // Note: removed -I flag as it's not supported by this OpenSCAD WASM build
     const args = [
       ...performanceFlags,
-      '--export-format=binstl', // Force binary STL output (18x faster than ASCII)
+      ...exportFlags,
       ...defineArgs,
       '-o',
       outputFile,
@@ -1085,15 +1242,45 @@ async function renderWithCallMain(
     // Execute OpenSCAD with fail-open retry logic
     try {
       const exitCode = await module.callMain(args);
-
+      
       // Check exit code - non-zero means compilation failed
       if (exitCode !== 0) {
         throw new Error(
           `OpenSCAD compilation failed with exit code ${exitCode}. Output: ${openscadConsoleOutput.substring(0, 500)}`
         );
       }
+      
+      // Check for empty geometry - OpenSCAD returns exit code 0 but produces no output
+      // This happens when configuration is invalid (e.g., "keyguard frame" with "have a keyguard frame" = "no")
+      if (openscadConsoleOutput.includes('Current top level object is empty') ||
+          openscadConsoleOutput.includes('top-level object is empty')) {
+        throw new Error(
+          `Current top level object is empty. Output: ${openscadConsoleOutput.substring(0, 500)}`
+        );
+      }
+      
+      // Check for "not supported" ECHO messages which indicate invalid configurations
+      const notSupportedMatch = openscadConsoleOutput.match(/ECHO:.*is not supported/i);
+      if (notSupportedMatch) {
+        throw new Error(
+          `Configuration is not supported. Output: ${openscadConsoleOutput.substring(0, 500)}`
+        );
+      }
     } catch (error) {
-      if (shouldRetryWithoutFlags) {
+      // Only retry-without-flags for "silent" numeric aborts where we got no useful output.
+      // If OpenSCAD produced a meaningful error (like empty geometry / unsupported config),
+      // retrying tends to destroy the useful message and replace it with another abort code.
+      const hasUsefulOutput =
+        typeof openscadConsoleOutput === 'string' &&
+        openscadConsoleOutput.trim().length > 0;
+      const isNumericAbort =
+        typeof error === 'number' ||
+        /^\d+$/.test(String(error)) ||
+        (/\b\d{6,}\b/.test(String(error)) && !hasUsefulOutput);
+      const shouldAttemptRetryWithoutFlags =
+        shouldRetryWithoutFlags && !hasUsefulOutput && isNumericAbort;
+
+      if (shouldAttemptRetryWithoutFlags) {
         console.warn(
           '[Worker] Render failed with performance flags, retrying without flags'
         );
@@ -1102,11 +1289,40 @@ async function renderWithCallMain(
         // Clear console output for retry
         openscadConsoleOutput = '';
 
-        const retryExitCode = await module.callMain(argsWithoutFlags);
+        let retryExitCode;
+        try {
+          retryExitCode = await module.callMain(argsWithoutFlags);
+        } catch (retryError) {
+          // If the retry throws (often a numeric abort), surface any console output
+          // so the UI can guide the user (e.g., dependency/toggle errors).
+          const retryErrStr = String(retryError);
+          const outputHint = openscadConsoleOutput
+            ? ` Output: ${openscadConsoleOutput.substring(0, 500)}`
+            : '';
+          throw new Error(`OpenSCAD render failed on retry.${outputHint} Raw: ${retryErrStr.substring(0, 80)}`);
+        }
 
         if (retryExitCode !== 0) {
           throw new Error(
             `OpenSCAD compilation failed with exit code ${retryExitCode}. Output: ${openscadConsoleOutput.substring(0, 500)}`
+          );
+        }
+
+        // Retry may return 0 even when it produced empty geometry.
+        if (
+          openscadConsoleOutput.includes('Current top level object is empty') ||
+          openscadConsoleOutput.includes('top-level object is empty')
+        ) {
+          throw new Error(
+            `Current top level object is empty. Output: ${openscadConsoleOutput.substring(0, 500)}`
+          );
+        }
+
+        const retryNotSupportedMatch =
+          openscadConsoleOutput.match(/ECHO:.*is not supported/i);
+        if (retryNotSupportedMatch) {
+          throw new Error(
+            `Configuration is not supported. Output: ${openscadConsoleOutput.substring(0, 500)}`
           );
         }
 
@@ -1195,9 +1411,11 @@ async function _renderWithExport(scadContent, format) {
 }
 
 /**
- * Memory warning threshold (percentage)
+ * Memory warning threshold - use absolute size instead of percentage
+ * since we can only measure allocated heap size, not actual usage.
+ * 1GB is a reasonable threshold for complex models.
  */
-const MEMORY_WARNING_THRESHOLD = 80;
+const MEMORY_WARNING_THRESHOLD_MB = 1024; // 1GB
 
 /**
  * Check memory usage and send warning if high
@@ -1208,28 +1426,31 @@ function checkMemoryBeforeRender(requestId) {
   if (!openscadModule || !openscadModule.HEAP8) {
     return { percent: 0, warning: false };
   }
+  // Get WASM heap info - note HEAP8.length is allocated size, not usage
+  const heapAllocatedBytes = openscadModule.HEAP8.length;
+  const heapAllocatedMB = Math.round(heapAllocatedBytes / 1024 / 1024);
 
-  const used = openscadModule.HEAP8.length;
-  const limit = 512 * 1024 * 1024; // 512MB default limit
-  const percent = Math.round((used / limit) * 100);
-  const usedMB = Math.round(used / 1024 / 1024);
-  const limitMB = Math.round(limit / 1024 / 1024);
+  // NOTE: We can only measure the allocated heap size, not actual usage.
+  // HEAP8.length == buffer.byteLength, so percentage-based checks are meaningless.
+  // Instead, warn based on absolute heap size (e.g., warn when heap > 1GB).
+  const usedMB = heapAllocatedMB;
+  const limitMB = MEMORY_WARNING_THRESHOLD_MB;
 
-  if (percent >= MEMORY_WARNING_THRESHOLD) {
+  if (heapAllocatedMB >= MEMORY_WARNING_THRESHOLD_MB) {
     self.postMessage({
       type: 'WARNING',
       payload: {
         requestId,
         code: 'HIGH_MEMORY',
-        message: `Memory usage is high (${usedMB}MB of ${limitMB}MB, ${percent}%). Complex models may fail. Consider refreshing the page if renders are slow.`,
+        message: `Memory allocation is high (${usedMB}MB). Complex models may fail. Consider refreshing the page to free memory.`,
         severity: 'warning',
-        memoryUsage: { used, limit, percent, usedMB, limitMB },
+        memoryUsage: { used: heapAllocatedBytes, limit: limitMB * 1024 * 1024, percent: Math.round((usedMB / limitMB) * 100), usedMB, limitMB },
       },
     });
-    return { percent, warning: true, usedMB, limitMB };
+    return { percent: Math.round((usedMB / limitMB) * 100), warning: true, usedMB, limitMB };
   }
 
-  return { percent, warning: false, usedMB, limitMB };
+  return { percent: Math.round((usedMB / limitMB) * 100), warning: false, usedMB, limitMB };
 }
 
 /**
@@ -1504,17 +1725,40 @@ async function render(payload) {
     }
 
     console.error('[Worker] Render failed:', error);
+
     // Translate error to user-friendly message
     // Pass the entire error object to translateError which now handles all types
     const translated = translateError(error);
+
+    // Include captured OpenSCAD console output in details so the UI can provide
+    // actionable guidance (e.g., which toggle/parameter to change).
+    const consoleDetails = openscadConsoleOutput
+      ? `\n\n[OpenSCAD output]\n${openscadConsoleOutput.substring(0, 1200)}`
+      : '';
+    const details = (error?.stack || translated.raw || '') + consoleDetails;
+
+    // If the translated code is generic but the console output indicates empty geometry,
+    // override to EMPTY_GEOMETRY so the UI can show dependency guidance.
+    let code = translated.code;
+    let message = translated.message;
+    if (
+      code === 'INTERNAL_ERROR' &&
+      openscadConsoleOutput &&
+      (openscadConsoleOutput.includes('Current top level object is empty') ||
+        openscadConsoleOutput.includes('top-level object is empty'))
+    ) {
+      code = 'EMPTY_GEOMETRY';
+      message =
+        'This configuration produces no geometry. Check that required options are enabled/disabled for this selection.';
+    }
 
     self.postMessage({
       type: 'ERROR',
       payload: {
         requestId,
-        code: translated.code,
-        message: translated.message,
-        details: error?.stack || translated.raw,
+        code,
+        message,
+        details,
       },
     });
   }
@@ -1545,11 +1789,15 @@ function cancelRender(requestId) {
  */
 function getMemoryUsage() {
   if (!openscadModule || !openscadModule.HEAP8) {
-    return { used: 0, limit: 512 * 1024 * 1024, percent: 0, available: true };
+    return { used: 0, limit: MEMORY_WARNING_THRESHOLD_MB * 1024 * 1024, percent: 0, available: true };
   }
 
-  const used = openscadModule.HEAP8.length;
-  const limit = 512 * 1024 * 1024; // 512MB default limit
+  // IMPORTANT: heapTotalBytes is the ALLOCATED heap size, not actual used memory
+  // We use the warning threshold (1GB) as the "limit" for reporting purposes
+  const heapTotalBytes = openscadModule.HEAP8.length;
+  const heapTotalMB = Math.round(heapTotalBytes / 1024 / 1024);
+  const used = heapTotalBytes;
+  const limit = MEMORY_WARNING_THRESHOLD_MB * 1024 * 1024;
   const percent = Math.round((used / limit) * 100);
 
   return {
@@ -1557,8 +1805,8 @@ function getMemoryUsage() {
     limit,
     percent,
     available: true,
-    usedMB: Math.round(used / 1024 / 1024),
-    limitMB: Math.round(limit / 1024 / 1024),
+    usedMB: heapTotalMB,
+    limitMB: MEMORY_WARNING_THRESHOLD_MB,
   };
 }
 

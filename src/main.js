@@ -9,6 +9,9 @@ import {
   renderParameterUI,
   setLimitsUnlocked,
   getAllDefaults,
+  focusParameter,
+  locateParameterKey,
+  setParameterValue,
 } from './js/ui-generator.js';
 import { stateManager, getShareableURL } from './js/state.js';
 import {
@@ -1999,7 +2002,24 @@ async function initApp() {
         <div class="memory-warning-text">
           <strong>High Memory Usage</strong>
           <p>Memory: ${memoryInfo.usedMB}MB / ${memoryInfo.limitMB}MB (${memoryInfo.percent}%)</p>
-          <p class="memory-warning-hint">Consider simplifying your model or reducing $fn value.</p>
+          <p class="memory-warning-hint">
+            This warning is about the OpenSCAD engine’s allocated memory (it may stay high until the engine is restarted).
+            If you also see an error like “produces no geometry”, fix that first—memory may not be the cause.
+          </p>
+          <div class="memory-warning-actions" role="group" aria-label="Memory warning actions">
+            <button type="button" class="btn btn-sm btn-outline" data-action="preview-fast">
+              Use Fast preview
+            </button>
+            <button type="button" class="btn btn-sm btn-outline" data-action="export-low">
+              Set Export quality: Low
+            </button>
+            <button type="button" class="btn btn-sm btn-outline" data-action="focus-resolution">
+              Find resolution setting
+            </button>
+            <button type="button" class="btn btn-sm btn-outline" data-action="restart-engine">
+              Restart engine
+            </button>
+          </div>
         </div>
         <button class="btn btn-sm btn-outline memory-warning-dismiss" aria-label="Dismiss warning">×</button>
       </div>
@@ -2014,12 +2034,259 @@ async function initApp() {
         warning.remove();
       });
 
+    // Action buttons
+    warning.addEventListener('click', async (e) => {
+      const btn = e.target?.closest?.('button[data-action]');
+      if (!btn) return;
+      const action = btn.dataset.action;
+
+      if (action === 'preview-fast') {
+        const select = document.getElementById('previewQualitySelect');
+        if (select) {
+          select.value = 'fast';
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+          updateStatus('Preview quality set to Fast', 'success');
+        }
+      } else if (action === 'export-low') {
+        const select = document.getElementById('exportQualitySelect');
+        if (select) {
+          select.value = 'low';
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+          updateStatus('Export quality set to Low', 'success');
+        }
+      } else if (action === 'focus-resolution') {
+        const candidates = ['$fn', 'smoothness_of_circles_and_arcs', '$fa', '$fs'];
+        let found = false;
+        for (const name of candidates) {
+          const res = focusParameter(name);
+          if (res.found) {
+            updateStatus(`Adjust "${name}" to reduce resolution`, 'info');
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          updateStatus(
+            'Try searching parameters for “$fn”, “smoothness”, “resolution”, or “quality”.',
+            'info'
+          );
+        }
+      } else if (action === 'restart-engine') {
+        try {
+          if (renderController) {
+            updateStatus('Restarting engine...', 'info');
+            await renderController.restart();
+            updateStatus('Engine restarted. Try generating again.', 'success');
+          }
+        } catch (err) {
+          console.error('Failed to restart engine:', err);
+          updateStatus('Could not restart engine. Try refreshing the page.', 'error');
+        }
+      }
+    });
+
     // Auto-dismiss after 15 seconds
     setTimeout(() => {
       if (warning.parentElement) {
         warning.remove();
       }
     }, 15000);
+  }
+
+  /**
+   * Provide actionable guidance for configuration-dependent “no geometry” errors.
+   * Returns true if it handled the error.
+   */
+  function handleConfigDependencyError(error) {
+    const code = error?.code;
+    const msg = error?.message || '';
+    const details = error?.details || '';
+    const detailsStr = String(details || '');
+    const hasDependencyHint =
+      /'[^']+?'\s+is set to\s+'(no|off)'/i.test(detailsStr) ||
+      /Current top[ -]?level object is empty|top-level object is empty/i.test(
+        detailsStr
+      );
+    const isEmpty =
+      code === 'EMPTY_GEOMETRY' ||
+      /produces no geometry|top level object is empty/i.test(msg) ||
+      hasDependencyHint;
+
+    if (!isEmpty) return false;
+
+    // Hide memory warning so the real root cause is not obscured
+    const existingWarning = document.getElementById('memoryWarning');
+    if (existingWarning) existingWarning.remove();
+
+    // Extract all toggle hints from OpenSCAD output (there can be multiple).
+    const matches = Array.from(
+      detailsStr.matchAll(/'([^']+?)'\s+is set to\s+'([^']+?)'/gi)
+    ).map((m) => ({
+      label: m?.[1] ? m[1].trim() : null,
+      current: m?.[2] ? m[2].trim() : null,
+    }));
+
+    const invertToggleValue = (value) => {
+      const v = String(value || '').trim().toLowerCase();
+      if (v === 'no') return 'yes';
+      if (v === 'yes') return 'no';
+      if (v === 'off') return 'on';
+      if (v === 'on') return 'off';
+      return null;
+    };
+
+    let chosen =
+      matches.length > 0 ? matches[0] : { label: null, current: null };
+    let targetKey = null;
+
+    // Prefer a match we can actually find in the UI (prevents “wrong toggle” guidance).
+    for (const candidate of matches) {
+      if (!candidate.label) continue;
+      const keyGuess = candidate.label
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+      const foundKey = locateParameterKey(keyGuess, {
+        labelHint: candidate.label,
+      });
+      if (foundKey) {
+        chosen = candidate;
+        targetKey = foundKey;
+        break;
+      }
+    }
+
+    const label = chosen.label;
+    const current = chosen.current;
+    const suggested = invertToggleValue(current);
+
+    const headline = label
+      ? `This selection is blocked because "${label}" is currently "${current ?? 'unknown'}".`
+      : 'This selection produces no geometry with the current settings.';
+
+    const nextStep = label
+      ? suggested
+        ? `Change it to "${suggested}" and try again.`
+        : `Change that option (toggle it) and try again.`
+      : 'Look for a required option (often “enable/show/include/has…”) and try again.';
+
+    const findHint = label
+      ? `Tip: use the “Search parameters” box and type "${label}".`
+      : '';
+
+    updateStatus(`${headline} ${nextStep} ${findHint}`.trim(), 'error');
+    showDependencyGuidanceModal({
+      label,
+      current,
+      suggested,
+      targetKey,
+    });
+    return true;
+  }
+
+  /**
+   * Show an accessible modal that guides the user to a blocking toggle/setting.
+   * @param {Object} info
+   * @param {string|null} info.label
+   * @param {string|null} info.current
+   * @param {string|null} info.suggested
+   * @param {string|null} info.targetKey - Param key to focus/highlight
+   */
+  function showDependencyGuidanceModal(info) {
+    const { label, current, suggested, targetKey } = info || {};
+
+    // Reuse a single modal instance
+    let modal = document.getElementById('dependencyGuidanceModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'dependencyGuidanceModal';
+      modal.className = 'preset-modal confirm-modal dependency-guidance-modal hidden';
+      modal.setAttribute('role', 'alertdialog');
+      modal.setAttribute('aria-modal', 'true');
+      modal.setAttribute('aria-labelledby', 'dependencyGuidanceTitle');
+      modal.setAttribute('aria-describedby', 'dependencyGuidanceMessage');
+      modal.style.zIndex = '10005';
+      modal.innerHTML = `
+        <div class="preset-modal-content confirm-modal-content">
+          <div class="preset-modal-header">
+            <h3 id="dependencyGuidanceTitle" class="preset-modal-title">Action needed</h3>
+          </div>
+          <div class="confirm-modal-body">
+            <p id="dependencyGuidanceMessage"></p>
+          </div>
+          <div class="preset-form-actions">
+            <button type="button" class="btn btn-primary" data-action="goto">Take me to the setting</button>
+            <button type="button" class="btn btn-secondary" data-action="search">Search for it</button>
+            <button type="button" class="btn btn-outline" data-action="close">Close</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      modal.addEventListener('click', (e) => {
+        const btn = e.target?.closest?.('button[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        if (action === 'close') {
+          closeModal(modal);
+          return;
+        }
+        if (action === 'goto') {
+          closeModal(modal);
+          if (modal._targetKey) {
+            focusParameter(modal._targetKey);
+          }
+          return;
+        }
+        if (action === 'search') {
+          closeModal(modal);
+          const searchInput = document.getElementById('paramSearchInput');
+          if (searchInput && modal._label) {
+            searchInput.value = modal._label;
+            searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+            searchInput.focus();
+          }
+          return;
+        }
+      });
+
+      // Click outside closes
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal(modal);
+      });
+    }
+
+    const messageEl = modal.querySelector('#dependencyGuidanceMessage');
+    const gotoBtn = modal.querySelector('button[data-action="goto"]');
+    const searchBtn = modal.querySelector('button[data-action="search"]');
+
+    const hasTarget = Boolean(targetKey);
+    if (gotoBtn) gotoBtn.disabled = !hasTarget;
+    if (searchBtn) searchBtn.disabled = !label;
+
+    modal._targetKey = targetKey || null;
+    modal._label = label || null;
+
+    const parts = [];
+    if (label) {
+      parts.push(`"${label}" is currently "${current ?? 'unknown'}".`);
+      if (suggested) {
+        parts.push(`Change it to "${suggested}" to continue.`);
+      } else {
+        parts.push('Change that option (toggle it) to continue.');
+      }
+    } else {
+      parts.push(
+        'This selection produces no geometry with the current settings. A required option may be off/on.'
+      );
+    }
+    parts.push('Then try again.');
+
+    if (messageEl) {
+      messageEl.textContent = parts.join(' ');
+    }
+
+    openModal(modal, { focusTarget: gotoBtn || searchBtn || undefined });
   }
 
   /**
@@ -2670,7 +2937,14 @@ async function initApp() {
         onError: (error, type) => {
           if (type === 'preview') {
             console.error('[AutoPreview] Preview error:', error);
-            updateStatus(`Preview failed: ${error.message}`);
+            // If the backend indicates a blocked/empty-geometry configuration,
+            // guide the user to the required toggle instead of a generic failure.
+            if (handleConfigDependencyError(error)) {
+              return;
+            }
+
+            const friendly = translateError(error?.message || String(error));
+            updateStatus(`Preview failed: ${friendly.title}`, 'error');
           }
         },
       }
@@ -4767,6 +5041,11 @@ async function initApp() {
       });
     } catch (error) {
       console.error('Generation failed:', error);
+
+      // Special-case: configuration dependency / empty geometry guidance
+      if (handleConfigDependencyError(error)) {
+        return;
+      }
 
       // Use COGA-compliant friendly error translation
       const friendlyError = translateError(error.message);

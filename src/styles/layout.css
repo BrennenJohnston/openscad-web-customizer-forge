@@ -4,6 +4,8 @@ body {
   font-size: var(--font-size-base);
   color: var(--color-text-primary);
   background-color: var(--color-bg-primary);
+  /* Prevent outer page scroll; app uses internal scroll regions (e.g. .welcome-screen) */
+  overflow: hidden;
 }
 
 #app {

@@ -31,10 +31,12 @@ const loadSimpleBoxExample = async (page) => {
 
 test.describe('Preset Workflow', () => {
   test.beforeEach(async ({ page }) => {
-    // Clear localStorage before each test
+    // Clear localStorage before each test, but preserve first-visit-seen to avoid blocking modal
+    await page.addInitScript(() => {
+      localStorage.clear()
+      localStorage.setItem('openscad-forge-first-visit-seen', 'true')
+    })
     await page.goto('/')
-    await page.evaluate(() => localStorage.clear())
-    await page.reload()
   })
 
   test('should save a preset with custom name', async ({ page }) => {

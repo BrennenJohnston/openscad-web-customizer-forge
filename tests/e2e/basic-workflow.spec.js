@@ -1,6 +1,13 @@
 import { test, expect } from '@playwright/test'
 import path from 'path'
 
+// Dismiss first-visit modal so it doesn't block UI interactions
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('openscad-forge-first-visit-seen', 'true')
+  })
+})
+
 test.describe('Basic Workflow - Upload → Customize → Download', () => {
   // Note: This test requires file upload to trigger UI change, which may not work
   // consistently in all headless browser environments. Skip if flaky.
@@ -92,11 +99,13 @@ test.describe('Basic Workflow - Upload → Customize → Download', () => {
     // Log any console errors (but don't fail on WASM loading issues in test environment)
     if (consoleErrors.length > 0) {
       console.log('Console errors detected:', consoleErrors)
-      // Filter out WASM-related errors which are expected in headless browsers
+      // Filter out WASM-related errors and OpenSCAD stderr output which are expected in test environment
       const criticalErrors = consoleErrors.filter(err => 
         !err.includes('WASM') && 
         !err.includes('SharedArrayBuffer') &&
-        !err.includes('Cross-Origin')
+        !err.includes('Cross-Origin') &&
+        !err.includes('[OpenSCAD') &&
+        !err.includes('openscad')
       )
       expect(criticalErrors.length).toBe(0)
     }

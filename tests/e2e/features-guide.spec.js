@@ -3,6 +3,13 @@ import path from 'path'
 
 const isCI = !!process.env.CI
 
+// Dismiss first-visit modal so it doesn't block UI interactions
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('openscad-forge-first-visit-seen', 'true')
+  })
+})
+
 test.describe('Features Guide Modal', () => {
   test('should open Features Guide from Help button', async ({ page }) => {
     test.skip(isCI, 'WASM file processing is slow/unreliable in CI')

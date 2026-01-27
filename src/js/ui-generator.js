@@ -102,6 +102,149 @@ export function getAllDefaults() {
 }
 
 /**
+ * Clear the parameter search filter (if active)
+ */
+export function clearParameterSearch() {
+  const searchInput = document.getElementById('paramSearchInput');
+  if (!searchInput) return;
+  if (!searchInput.value) return;
+  searchInput.value = '';
+  // Trigger the existing input handler which calls filterParameters()
+  searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+/**
+ * Attempt to locate a parameter control by paramName or by label text.
+ * @param {string} paramName - Parameter name (key)
+ * @param {string|null} labelHint - Optional label text from backend errors
+ * @returns {HTMLElement|null}
+ */
+function findParamControl(paramName, labelHint = null) {
+  if (paramName) {
+    const direct = document.querySelector(
+      `.param-control[data-param-name="${paramName}"]`
+    );
+    if (direct) return direct;
+  }
+
+  // Fallback: try to match by label text in metadata (more reliable than DOM text).
+  if (labelHint) {
+    const hint = String(labelHint).trim().toLowerCase();
+    for (const [name, meta] of Object.entries(parameterMetadata || {})) {
+      const lbl = String(meta?.label || '').trim().toLowerCase();
+      if (lbl && lbl === hint) {
+        const byLabel = document.querySelector(
+          `.param-control[data-param-name="${name}"]`
+        );
+        if (byLabel) return byLabel;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Locate a parameter key in the UI without side effects (no scrolling/focus).
+ * @param {string} paramName - Parameter name (key guess)
+ * @param {Object} options
+ * @param {string|null} options.labelHint - Optional label text for fallback lookup
+ * @returns {string|null} The found parameter key (data-param-name), or null
+ */
+export function locateParameterKey(paramName, options = {}) {
+  const { labelHint = null } = options;
+  const control = findParamControl(paramName, labelHint);
+  return control?.dataset?.paramName || null;
+}
+
+/**
+ * Focus and visually highlight a parameter control in the UI.
+ * If the target is hidden due to a dependency, focus the dependency toggle instead.
+ *
+ * @param {string} paramName - Parameter name to focus (key)
+ * @param {Object} options
+ * @param {string|null} options.labelHint - Optional label text for fallback lookup
+ * @param {number} options.highlightMs - How long to keep highlight class
+ * @returns {{focusedParam: string|null, found: boolean}}
+ */
+export function focusParameter(paramName, options = {}) {
+  const { labelHint = null, highlightMs = 4500 } = options;
+  clearParameterSearch();
+
+  const control = findParamControl(paramName, labelHint);
+  if (!control) return { focusedParam: null, found: false };
+
+  // If hidden by dependency, focus the dependency controller instead.
+  const isHiddenByDependency = control.getAttribute('aria-hidden') === 'true';
+  if (isHiddenByDependency) {
+    const dependsOn = control.dataset.depends;
+    if (dependsOn) {
+      const dep = findParamControl(dependsOn, null);
+      if (dep) {
+        dep.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        dep.classList.add('param-highlight');
+        const depInput = dep.querySelector('input, select, textarea, button');
+        if (depInput) depInput.focus();
+        window.setTimeout(() => dep.classList.remove('param-highlight'), 2500);
+        announceChange(
+          `This option is hidden. Change ${dependsOn.replace(/_/g, ' ')} first.`
+        );
+        return { focusedParam: dependsOn, found: true };
+      }
+    }
+  }
+
+  // Expand containing group if applicable
+  const group = control.closest('.param-group');
+  if (group) group.open = true;
+
+  control.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  control.classList.add('param-highlight');
+  const input = control.querySelector('input, select, textarea, button');
+  if (input) input.focus();
+
+  window.setTimeout(() => {
+    control.classList.remove('param-highlight');
+  }, highlightMs);
+
+  announceChange(`Highlighted ${paramName.replace(/_/g, ' ')}`);
+  return { focusedParam: paramName, found: true };
+}
+
+/**
+ * Set a parameter value via its UI control (and dispatch change events).
+ * Intended for guided fixes (e.g., toggles required by the model).
+ *
+ * @param {string} paramName
+ * @param {string|number|boolean} value
+ * @returns {boolean} true if set successfully
+ */
+export function setParameterValue(paramName, value) {
+  const control = findParamControl(paramName, null);
+  if (!control) return false;
+
+  const input = control.querySelector('input, select, textarea');
+  if (!input) return false;
+
+  if (input.type === 'checkbox') {
+    input.checked = String(value).toLowerCase() === 'yes' || value === true;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  } else if (input.tagName === 'SELECT') {
+    input.value = String(value);
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  } else if (input.type === 'range') {
+    input.value = String(value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  } else {
+    input.value = String(value);
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  currentParameterValues[paramName] = String(value);
+  return true;
+}
+
+/**
  * Reset a single parameter to its default value
  * @param {string} paramName - Parameter name to reset
  * @param {Function} onChange - Callback to notify of change

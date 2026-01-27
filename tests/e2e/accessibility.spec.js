@@ -1001,7 +1001,7 @@ test.describe('Screen Reader Support', () => {
       expect(progressText).toMatch(/Step \d+ of \d+/)
     })
 
-    test('should spotlight Actions drawer toggle (mobile tutorial step 8)', async ({ page }) => {
+    test('should spotlight Actions drawer toggle (mobile tutorial step 9)', async ({ page }) => {
       // Skip in CI - requires WASM for example loading
       test.skip(isCI, 'WASM example loading is slow/unreliable in CI')
 
@@ -1031,11 +1031,20 @@ test.describe('Screen Reader Support', () => {
       await nextBtn.click()
       await expect(stepTitle).toHaveText('Open and close Parameters', { timeout: 60000 })
 
-      // Step 3 -> Step 4 (requires width input)
+      // Step 3 -> Step 4 (expand parameter group)
+      await nextBtn.click()
+      await expect(stepTitle).toHaveText('Expand a parameter group', { timeout: 60000 })
+
+      // Complete step 4 by expanding the Dimensions group
+      const dimensionsGroup = page.locator('.param-group[data-group-id="Dimensions"]')
+      await dimensionsGroup.locator('summary').click()
+      await expect(nextBtn).not.toBeDisabled({ timeout: 20000 })
+
+      // Step 4 -> Step 5 (requires width input)
       await nextBtn.click()
       await expect(stepTitle).toHaveText('Adjust a parameter', { timeout: 60000 })
 
-      // Complete step 4 to enable Next.
+      // Complete step 5 to enable Next.
       // IMPORTANT: do this via a real click/fill so we catch cases where the tutorial panel
       // is covering the control on small portrait screens.
       await page.waitForSelector('#param-width', { timeout: 15000 })
@@ -1062,11 +1071,11 @@ test.describe('Screen Reader Support', () => {
       await widthInput.dispatchEvent('input')
       await expect(nextBtn).not.toBeDisabled()
 
-      // Step 4 -> Step 5
+      // Step 5 -> Step 6
       await nextBtn.click()
       await expect(stepTitle).toHaveText('See the preview update')
 
-      // Step 5 -> Step 6 (requires opening Presets details)
+      // Step 6 -> Step 7 (requires opening Presets details)
       await nextBtn.click()
       await expect(stepTitle).toHaveText('Save a preset (optional, but helpful)')
 
@@ -1076,11 +1085,11 @@ test.describe('Screen Reader Support', () => {
       // Toggle event can be delayed by animations/layout; give it a moment.
       await expect(nextBtn).not.toBeDisabled({ timeout: 20000 })
 
-      // Step 6 -> Step 7
+      // Step 7 -> Step 8
       await nextBtn.click()
       await expect(stepTitle).toHaveText('Preview Settings & Info')
 
-      // Step 7 -> Step 8 (Actions menu)
+      // Step 8 -> Step 9 (Actions menu)
       await nextBtn.click()
       await expect(stepTitle).toHaveText('Actions menu')
 

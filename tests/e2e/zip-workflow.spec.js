@@ -12,6 +12,13 @@ import { fileURLToPath } from 'url'
 // Skip WASM-dependent tests in CI - WASM initialization is slow/unreliable
 const isCI = !!process.env.CI
 
+// Dismiss first-visit modal so it doesn't block UI interactions
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('openscad-forge-first-visit-seen', 'true')
+  })
+})
+
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
