@@ -11,7 +11,7 @@ import {
   getAllDefaults,
   focusParameter,
   locateParameterKey,
-  setParameterValue,
+  setParameterValue as _setParameterValue,
 } from './js/ui-generator.js';
 import { stateManager, getShareableURL } from './js/state.js';
 import {
@@ -71,6 +71,15 @@ import { initDrawerController } from './js/drawer-controller.js';
 import { initPreviewSettingsDrawer } from './js/preview-settings-drawer.js';
 import { initCameraPanelController } from './js/camera-panel-controller.js';
 import { initSequenceDetector } from './js/_seq.js';
+import {
+  createGamepadController,
+  isGamepadSupported,
+} from './js/gamepad-controller.js';
+import {
+  initKeyboardShortcuts,
+  keyboardConfig,
+  initShortcutsModal,
+} from './js/keyboard-config.js';
 import Split from 'split.js';
 
 /**
@@ -1477,6 +1486,20 @@ async function initApp() {
   // Initialize static modal focus management (WCAG 2.2 SC 2.4.11 Focus Not Obscured)
   initStaticModals();
 
+  // Initialize configurable keyboard shortcuts
+  initKeyboardShortcuts();
+
+  // Initialize gamepad controller (if supported)
+  let gamepadController = null;
+  if (isGamepadSupported()) {
+    gamepadController = createGamepadController({
+      cameraSensitivity: 2.0,
+      parameterSensitivity: 1.0,
+      deadzone: 0.15,
+    });
+    console.log('[Input] Gamepad controller initialized');
+  }
+
   // Storage UI - Update storage display
   const formatStorageUsage = (usage) => {
     if (typeof usage !== 'number' || !Number.isFinite(usage) || usage < 0) {
@@ -1713,6 +1736,23 @@ async function initApp() {
       'aria-label',
       `High contrast mode: ${initialState ? 'ON' : 'OFF'}. Click to ${initialState ? 'disable' : 'enable'}.`
     );
+  }
+
+  // Initialize keyboard shortcuts toggle button
+  const shortcutsBtn = document.getElementById('shortcutsToggle');
+  if (shortcutsBtn) {
+    shortcutsBtn.addEventListener('click', () => {
+      const modal = document.getElementById('shortcutsModal');
+      const modalBody = document.getElementById('shortcutsModalBody');
+      if (modal && modalBody) {
+        // Initialize modal wiring once to avoid duplicate listeners.
+        if (!modal.dataset.initialized) {
+          initShortcutsModal(modalBody, () => closeModal(modal));
+          modal.dataset.initialized = 'true';
+        }
+        openModal(modal);
+      }
+    });
   }
 
   // Declare format selector elements
@@ -2055,7 +2095,12 @@ async function initApp() {
           updateStatus('Export quality set to Low', 'success');
         }
       } else if (action === 'focus-resolution') {
-        const candidates = ['$fn', 'smoothness_of_circles_and_arcs', '$fa', '$fs'];
+        const candidates = [
+          '$fn',
+          'smoothness_of_circles_and_arcs',
+          '$fa',
+          '$fs',
+        ];
         let found = false;
         for (const name of candidates) {
           const res = focusParameter(name);
@@ -2080,7 +2125,10 @@ async function initApp() {
           }
         } catch (err) {
           console.error('Failed to restart engine:', err);
-          updateStatus('Could not restart engine. Try refreshing the page.', 'error');
+          updateStatus(
+            'Could not restart engine. Try refreshing the page.',
+            'error'
+          );
         }
       }
     });
@@ -2127,7 +2175,9 @@ async function initApp() {
     }));
 
     const invertToggleValue = (value) => {
-      const v = String(value || '').trim().toLowerCase();
+      const v = String(value || '')
+        .trim()
+        .toLowerCase();
       if (v === 'no') return 'yes';
       if (v === 'yes') return 'no';
       if (v === 'off') return 'on';
@@ -2200,7 +2250,8 @@ async function initApp() {
     if (!modal) {
       modal = document.createElement('div');
       modal.id = 'dependencyGuidanceModal';
-      modal.className = 'preset-modal confirm-modal dependency-guidance-modal hidden';
+      modal.className =
+        'preset-modal confirm-modal dependency-guidance-modal hidden';
       modal.setAttribute('role', 'alertdialog');
       modal.setAttribute('aria-modal', 'true');
       modal.setAttribute('aria-labelledby', 'dependencyGuidanceTitle');
@@ -2813,7 +2864,7 @@ async function initApp() {
    * @param {number} ms - Duration in milliseconds
    * @returns {string} Formatted duration string
    */
-  function formatTimingMs(ms) {
+  function _formatTimingMs(ms) {
     if (typeof ms !== 'number' || ms <= 0) return '';
     if (ms < 1000) return `${ms}ms`;
     return `${(ms / 1000).toFixed(1)}s`;
@@ -2829,9 +2880,9 @@ async function initApp() {
    */
   function updatePreviewStats(
     stats,
-    fullQuality = false,
-    percentText = '',
-    timing = null
+    _fullQuality = false,
+    _percentText = '',
+    _timing = null
   ) {
     if (!previewStatusStats || !previewStatusBar) return;
 
@@ -4992,7 +5043,7 @@ async function initApp() {
             mainFile: state.mainFilePath,
             libraries: libsForRender,
             ...(exportQualityPreset ? { quality: exportQualityPreset } : {}),
-            onProgress: (percent, message) => {
+            onProgress: (_percent, _message) => {
               // Simplified status: no confusing percentages
               updateStatus('Generating STL...');
             },
@@ -6649,7 +6700,133 @@ async function initApp() {
 
   // ========== END FEATURES GUIDE MODAL ==========
 
-  // Global keyboard shortcuts
+  // ========== CONFIGURABLE KEYBOARD SHORTCUTS ==========
+  // Register handlers for configurable keyboard actions
+  // These complement the existing shortcuts and provide customization
+
+  keyboardConfig.on('render', () => {
+    const state = stateManager.getState();
+    if (state.uploadedFile && !primaryActionBtn.disabled) {
+      primaryActionBtn.click();
+    }
+  });
+
+  keyboardConfig.on('preview', () => {
+    const state = stateManager.getState();
+    if (state.uploadedFile && autoPreviewController) {
+      autoPreviewController.onParameterChange(state.parameters);
+    }
+  });
+
+  keyboardConfig.on('cancelRender', () => {
+    if (renderController && renderController.isRendering()) {
+      renderController.cancel();
+    }
+  });
+
+  keyboardConfig.on('download', () => {
+    const state = stateManager.getState();
+    if (state.stl) {
+      primaryActionBtn.click();
+    }
+  });
+
+  keyboardConfig.on('focusMode', () => {
+    const focusModeBtn = document.getElementById('focusModeBtn');
+    focusModeBtn?.click();
+  });
+
+  keyboardConfig.on('toggleParameters', () => {
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+      sidebar.classList.toggle('collapsed');
+    }
+  });
+
+  keyboardConfig.on('resetView', () => {
+    if (previewManager) {
+      previewManager.resetCamera();
+    }
+  });
+
+  keyboardConfig.on('resetAllParams', () => {
+    const state = stateManager.getState();
+    if (state.uploadedFile) {
+      resetBtn?.click();
+    }
+  });
+
+  keyboardConfig.on('toggleTheme', () => {
+    themeManager.toggle();
+  });
+
+  keyboardConfig.on('showShortcutsModal', () => {
+    const modal = document.getElementById('shortcutsModal');
+    const modalBody = document.getElementById('shortcutsModalBody');
+    if (modal && modalBody) {
+      // Initialize modal wiring once to avoid duplicate listeners.
+      if (!modal.dataset.initialized) {
+        initShortcutsModal(modalBody, () => closeModal(modal));
+        modal.dataset.initialized = 'true';
+      }
+      openModal(modal);
+    }
+  });
+
+  // ========== GAMEPAD CONTROLLER INTEGRATION ==========
+  if (gamepadController) {
+    // Camera controls - use rotateHorizontal/rotateVertical for orbit
+    gamepadController.on('camera:rotate', ({ x, y }) => {
+      if (previewManager) {
+        previewManager.rotateHorizontal(x * 0.02);
+        previewManager.rotateVertical(y * 0.02);
+      }
+    });
+
+    gamepadController.on('camera:zoom', ({ delta }) => {
+      if (previewManager) {
+        previewManager.zoomCamera(delta * 0.1);
+      }
+    });
+
+    gamepadController.on('camera:pan', ({ x }) => {
+      if (previewManager) {
+        previewManager.panCamera(x * 0.5, 0);
+      }
+    });
+
+    // Action buttons
+    gamepadController.on('action:render', () => {
+      const state = stateManager.getState();
+      if (state.uploadedFile && !primaryActionBtn.disabled) {
+        primaryActionBtn.click();
+      }
+    });
+
+    gamepadController.on('action:download', () => {
+      const state = stateManager.getState();
+      if (state.stl && primaryActionBtn.dataset.action === 'download') {
+        primaryActionBtn.click();
+      }
+    });
+
+    gamepadController.on('action:cancel', () => {
+      if (renderController && renderController.isRendering()) {
+        renderController.cancel();
+      }
+    });
+
+    // Gamepad connection feedback
+    gamepadController.on('connected', (info) => {
+      updateStatus(`Gamepad connected: ${info.id.split(' (')[0]}`);
+    });
+
+    gamepadController.on('disconnected', () => {
+      updateStatus('Gamepad disconnected');
+    });
+  }
+
+  // Global keyboard shortcuts (legacy - kept for backward compatibility)
   document.addEventListener('keydown', (e) => {
     const state = stateManager.getState();
     if (firstVisitBlocking) {

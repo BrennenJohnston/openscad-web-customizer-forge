@@ -164,3 +164,231 @@ export function getValidationErrorMessage(errors) {
 
   return messages.join('; ');
 }
+
+/**
+ * Create a parameter validator from JSON Schema
+ * This validates parameter values against their schema constraints
+ * @param {Object} schema - JSON Schema (from schema-generator.js)
+ * @returns {Function} Validator function (params) => {valid, errors, sanitized}
+ */
+export function createParameterValidator(schema) {
+  if (!schema || !schema.properties) {
+    return () => ({ valid: true, errors: [], sanitized: {} });
+  }
+
+  // Compile the schema
+  const validate = ajv.compile(schema);
+
+  /**
+   * Validate parameter values
+   * @param {Object} params - Parameter values to validate
+   * @returns {{valid: boolean, errors: Array, sanitized: Object}}
+   */
+  return function validateParameters(params) {
+    if (!params || typeof params !== 'object') {
+      return {
+        valid: false,
+        errors: ['Parameters must be an object'],
+        sanitized: {},
+      };
+    }
+
+    // Clone params to avoid mutation
+    const data = { ...params };
+
+    // Run validation
+    const valid = validate(data);
+
+    if (valid) {
+      return {
+        valid: true,
+        errors: [],
+        sanitized: data,
+      };
+    }
+
+    // Convert errors to user-friendly format
+    const errors = (validate.errors || []).map((err) => {
+      const paramName = err.instancePath?.replace(/^\//, '') || 'unknown';
+      const constraint = err.keyword;
+      const expected = err.params;
+
+      switch (constraint) {
+        case 'minimum':
+          return `${paramName}: value must be at least ${expected.limit}`;
+        case 'maximum':
+          return `${paramName}: value must be at most ${expected.limit}`;
+        case 'type':
+          return `${paramName}: expected ${expected.type}`;
+        case 'enum':
+          return `${paramName}: must be one of: ${expected.allowedValues?.join(', ')}`;
+        case 'pattern':
+          return `${paramName}: invalid format`;
+        case 'multipleOf':
+          return `${paramName}: must be a multiple of ${expected.multipleOf}`;
+        default:
+          return `${paramName}: ${err.message || 'invalid value'}`;
+      }
+    });
+
+    return {
+      valid: false,
+      errors,
+      sanitized: data,
+    };
+  };
+}
+
+/**
+ * Validate a single parameter value against schema constraints
+ * @param {string} paramName - Parameter name
+ * @param {*} value - Value to validate
+ * @param {Object} propertySchema - JSON Schema property definition
+ * @returns {{valid: boolean, error: string|null, coerced: *}}
+ */
+export function validateParameterValue(paramName, value, propertySchema) {
+  if (!propertySchema) {
+    return { valid: true, error: null, coerced: value };
+  }
+
+  let coerced = value;
+  const errors = [];
+
+  // Type coercion
+  if (propertySchema.type === 'integer') {
+    const parsed = parseInt(value, 10);
+    if (isNaN(parsed)) {
+      errors.push(`${paramName}: must be an integer`);
+    } else {
+      coerced = parsed;
+    }
+  } else if (propertySchema.type === 'number') {
+    const parsed = parseFloat(value);
+    if (isNaN(parsed)) {
+      errors.push(`${paramName}: must be a number`);
+    } else {
+      coerced = parsed;
+    }
+  } else if (propertySchema.type === 'boolean') {
+    if (typeof value === 'string') {
+      coerced = value.toLowerCase() === 'true' || value.toLowerCase() === 'yes';
+    } else {
+      coerced = Boolean(value);
+    }
+  }
+
+  // Range validation (for numeric types)
+  if (typeof coerced === 'number') {
+    if (
+      propertySchema.minimum !== undefined &&
+      coerced < propertySchema.minimum
+    ) {
+      errors.push(`${paramName}: must be at least ${propertySchema.minimum}`);
+    }
+    if (
+      propertySchema.maximum !== undefined &&
+      coerced > propertySchema.maximum
+    ) {
+      errors.push(`${paramName}: must be at most ${propertySchema.maximum}`);
+    }
+    if (
+      propertySchema.multipleOf !== undefined &&
+      coerced % propertySchema.multipleOf !== 0
+    ) {
+      errors.push(
+        `${paramName}: must be a multiple of ${propertySchema.multipleOf}`
+      );
+    }
+  }
+
+  // Enum validation
+  if (propertySchema.enum && !propertySchema.enum.includes(coerced)) {
+    // Try case-insensitive match for strings
+    if (typeof coerced === 'string') {
+      const match = propertySchema.enum.find(
+        (e) => String(e).toLowerCase() === coerced.toLowerCase()
+      );
+      if (match) {
+        coerced = match;
+      } else {
+        errors.push(
+          `${paramName}: must be one of: ${propertySchema.enum.join(', ')}`
+        );
+      }
+    } else {
+      errors.push(
+        `${paramName}: must be one of: ${propertySchema.enum.join(', ')}`
+      );
+    }
+  }
+
+  // Color validation
+  if (propertySchema.format === 'color') {
+    const colorPattern = /^#?[0-9A-Fa-f]{6}$/;
+    if (!colorPattern.test(String(coerced))) {
+      errors.push(
+        `${paramName}: must be a valid hex color (e.g., FF0000 or #FF0000)`
+      );
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    error: errors.length > 0 ? errors.join('; ') : null,
+    coerced,
+  };
+}
+
+/**
+ * Clamp parameter values to their schema constraints
+ * Useful for sanitizing URL parameters or external input
+ * @param {Object} params - Parameter values
+ * @param {Object} schema - JSON Schema
+ * @returns {Object} Clamped parameter values
+ */
+export function clampParameterValues(params, schema) {
+  if (!params || !schema?.properties) {
+    return params;
+  }
+
+  const result = { ...params };
+
+  for (const [name, value] of Object.entries(params)) {
+    const prop = schema.properties[name];
+    if (!prop) continue;
+
+    let clamped = value;
+
+    // Coerce to number if needed
+    if (prop.type === 'integer' || prop.type === 'number') {
+      const num =
+        prop.type === 'integer' ? parseInt(value, 10) : parseFloat(value);
+      if (!isNaN(num)) {
+        clamped = num;
+
+        // Clamp to range
+        if (prop.minimum !== undefined && clamped < prop.minimum) {
+          clamped = prop.minimum;
+        }
+        if (prop.maximum !== undefined && clamped > prop.maximum) {
+          clamped = prop.maximum;
+        }
+
+        // Round to step
+        if (prop.multipleOf !== undefined) {
+          clamped = Math.round(clamped / prop.multipleOf) * prop.multipleOf;
+        }
+      }
+    }
+
+    // Validate enum
+    if (prop.enum && !prop.enum.includes(clamped)) {
+      // Use default if available, otherwise first enum value
+      clamped = prop.default !== undefined ? prop.default : prop.enum[0];
+    }
+
+    result[name] = clamped;
+  }
+
+  return result;
+}

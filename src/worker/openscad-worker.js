@@ -501,12 +501,12 @@ async function checkCapabilities() {
     module.print = (text) => helpOutput.push(String(text));
     module.printErr = (text) => helpOutput.push(String(text));
 
-    let helpError = null;
+    let _helpError = null;
 
     try {
       await module.callMain(['--help']);
     } catch (error) {
-      helpError = String(error?.message || error);
+      _helpError = String(error?.message || error);
       // --help might exit with non-zero, that's okay
     }
 
@@ -647,11 +647,11 @@ async function checkCapabilities() {
         return result;
       };
 
-      const probeHeapBeforeMB = module?.HEAP8
+      const _probeHeapBeforeMB = module?.HEAP8
         ? Math.round(module.HEAP8.length / 1024 / 1024)
         : null;
       probeResults = await runCapabilityProbe();
-      const probeHeapAfterMB = module?.HEAP8
+      const _probeHeapAfterMB = module?.HEAP8
         ? Math.round(module.HEAP8.length / 1024 / 1024)
         : null;
       const manifoldSupported =
@@ -660,7 +660,6 @@ async function checkCapabilities() {
       const binarySupported = probeResults.binaryOk === true;
       capabilities.hasManifold = manifoldSupported;
       capabilities.hasBinarySTL = binarySupported;
-
     }
 
     // Try to extract version
@@ -1226,11 +1225,11 @@ async function renderWithCallMain(
 
     console.log('[Worker] Calling OpenSCAD with args:', args);
     let inputExists = false;
-    let inputSize = null;
+    let _inputSize = null;
     try {
       inputExists = module.FS.analyzePath(inputFile).exists;
       if (inputExists) {
-        inputSize = module.FS.stat(inputFile).size;
+        _inputSize = module.FS.stat(inputFile).size;
       }
     } catch (_e) {
       inputExists = false;
@@ -1242,25 +1241,29 @@ async function renderWithCallMain(
     // Execute OpenSCAD with fail-open retry logic
     try {
       const exitCode = await module.callMain(args);
-      
+
       // Check exit code - non-zero means compilation failed
       if (exitCode !== 0) {
         throw new Error(
           `OpenSCAD compilation failed with exit code ${exitCode}. Output: ${openscadConsoleOutput.substring(0, 500)}`
         );
       }
-      
+
       // Check for empty geometry - OpenSCAD returns exit code 0 but produces no output
       // This happens when configuration is invalid (e.g., "keyguard frame" with "have a keyguard frame" = "no")
-      if (openscadConsoleOutput.includes('Current top level object is empty') ||
-          openscadConsoleOutput.includes('top-level object is empty')) {
+      if (
+        openscadConsoleOutput.includes('Current top level object is empty') ||
+        openscadConsoleOutput.includes('top-level object is empty')
+      ) {
         throw new Error(
           `Current top level object is empty. Output: ${openscadConsoleOutput.substring(0, 500)}`
         );
       }
-      
+
       // Check for "not supported" ECHO messages which indicate invalid configurations
-      const notSupportedMatch = openscadConsoleOutput.match(/ECHO:.*is not supported/i);
+      const notSupportedMatch = openscadConsoleOutput.match(
+        /ECHO:.*is not supported/i
+      );
       if (notSupportedMatch) {
         throw new Error(
           `Configuration is not supported. Output: ${openscadConsoleOutput.substring(0, 500)}`
@@ -1299,7 +1302,9 @@ async function renderWithCallMain(
           const outputHint = openscadConsoleOutput
             ? ` Output: ${openscadConsoleOutput.substring(0, 500)}`
             : '';
-          throw new Error(`OpenSCAD render failed on retry.${outputHint} Raw: ${retryErrStr.substring(0, 80)}`);
+          throw new Error(
+            `OpenSCAD render failed on retry.${outputHint} Raw: ${retryErrStr.substring(0, 80)}`
+          );
         }
 
         if (retryExitCode !== 0) {
@@ -1318,8 +1323,9 @@ async function renderWithCallMain(
           );
         }
 
-        const retryNotSupportedMatch =
-          openscadConsoleOutput.match(/ECHO:.*is not supported/i);
+        const retryNotSupportedMatch = openscadConsoleOutput.match(
+          /ECHO:.*is not supported/i
+        );
         if (retryNotSupportedMatch) {
           throw new Error(
             `Configuration is not supported. Output: ${openscadConsoleOutput.substring(0, 500)}`
@@ -1444,13 +1450,29 @@ function checkMemoryBeforeRender(requestId) {
         code: 'HIGH_MEMORY',
         message: `Memory allocation is high (${usedMB}MB). Complex models may fail. Consider refreshing the page to free memory.`,
         severity: 'warning',
-        memoryUsage: { used: heapAllocatedBytes, limit: limitMB * 1024 * 1024, percent: Math.round((usedMB / limitMB) * 100), usedMB, limitMB },
+        memoryUsage: {
+          used: heapAllocatedBytes,
+          limit: limitMB * 1024 * 1024,
+          percent: Math.round((usedMB / limitMB) * 100),
+          usedMB,
+          limitMB,
+        },
       },
     });
-    return { percent: Math.round((usedMB / limitMB) * 100), warning: true, usedMB, limitMB };
+    return {
+      percent: Math.round((usedMB / limitMB) * 100),
+      warning: true,
+      usedMB,
+      limitMB,
+    };
   }
 
-  return { percent: Math.round((usedMB / limitMB) * 100), warning: false, usedMB, limitMB };
+  return {
+    percent: Math.round((usedMB / limitMB) * 100),
+    warning: false,
+    usedMB,
+    limitMB,
+  };
 }
 
 /**
@@ -1789,7 +1811,12 @@ function cancelRender(requestId) {
  */
 function getMemoryUsage() {
   if (!openscadModule || !openscadModule.HEAP8) {
-    return { used: 0, limit: MEMORY_WARNING_THRESHOLD_MB * 1024 * 1024, percent: 0, available: true };
+    return {
+      used: 0,
+      limit: MEMORY_WARNING_THRESHOLD_MB * 1024 * 1024,
+      percent: 0,
+      available: true,
+    };
   }
 
   // IMPORTANT: heapTotalBytes is the ALLOCATED heap size, not actual used memory

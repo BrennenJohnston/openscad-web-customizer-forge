@@ -5,6 +5,38 @@ All notable changes to the OpenSCAD Assistive Forge project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Work in progress since v4.0.0.
+
+### Added
+
+- **Gamepad support** - Full gamepad controller for 3D navigation and parameter adjustment
+- **Keyboard configuration** - Configurable keyboard shortcuts with persistent storage
+- **Service worker manager** - Better update detection and user notifications
+- **Version module** - Build info (version, commit SHA, timestamp) injected at build time
+- **Schema generator** - Convert parameters to standard JSON Schema format
+- **Enhanced validation** - More robust parameter validation schemas
+
+### Changed
+
+- Service worker cache versioning now uses commit SHA (CI) or build timestamp (local)
+- UI generator refactored for better maintainability
+- Vite config updated for version injection
+
+### Documentation
+
+- Added `docs/RELEASING.md` - streamlined release process notes
+- Added code audit notes (Jan 26)
+- Simplified documentation style across notes
+
+### Infrastructure
+
+- Added `pixi.toml` for optional reproducible environment setup (not required)
+- Added `.cursor/` to gitignore
+
+---
+
 ## [4.0.0] - 2026-01-22
 
 ### Major Stable Release

@@ -503,7 +503,7 @@ export class AutoPreviewController {
       qualityKey,
       quality
     );
-    const overrideKeys = Object.keys(previewParameters).filter(
+    const _overrideKeys = Object.keys(previewParameters).filter(
       (key) => previewParameters[key] !== parameters[key]
     );
 
