@@ -278,6 +278,58 @@ body {
   }
 }
 
+/* Keyboard Shortcuts Toggle Button */
+.shortcuts-toggle {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-text-primary);
+  border-radius: var(--border-radius-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  padding: var(--space-sm);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  height: var(--size-touch-target);
+  flex-shrink: 0;
+}
+
+.shortcuts-toggle:hover {
+  background: var(--color-hover-bg);
+  transform: scale(1.05);
+}
+
+.shortcuts-toggle:focus,
+.shortcuts-toggle:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.shortcuts-toggle:active {
+  transform: scale(0.95);
+}
+
+.shortcuts-icon {
+  flex-shrink: 0;
+}
+
+.shortcuts-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .shortcuts-label {
+    display: none;
+  }
+
+  .shortcuts-toggle {
+    width: 44px;
+    padding: var(--space-sm);
+  }
+}
+
 /* Theme Toggle Button */
 .theme-toggle {
   /* Ensure strong separation from the accent header background across themes */

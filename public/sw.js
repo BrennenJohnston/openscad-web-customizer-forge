@@ -1,7 +1,7 @@
 /**
  * OpenSCAD Assistive Forge - Service Worker
  * Provides offline functionality and caching for PWA
- * Version: 4.0.0
+ * Version: 4.1.0
  */
 
 const CACHE_VERSION = '__SW_CACHE_VERSION__';
@@ -56,7 +56,7 @@ self.addEventListener('install', (event) => {
 });
 
 /**
- * Activate event - clean up old caches
+ * Activate event - clean up old caches and notify clients
  */
 self.addEventListener('activate', (event) => {
   console.log('[Service Worker] Activating version:', CACHE_VERSION);
@@ -74,6 +74,16 @@ self.addEventListener('activate', (event) => {
     }).then(() => {
       // Take control of all pages immediately
       return self.clients.claim();
+    }).then(() => {
+      // Notify all clients that a new version is active
+      return self.clients.matchAll().then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({
+            type: 'SW_UPDATED',
+            version: CACHE_VERSION,
+          });
+        });
+      });
     })
   );
 });

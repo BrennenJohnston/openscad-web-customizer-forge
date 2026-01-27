@@ -64,6 +64,21 @@
               </svg>
               <span class="github-label">GitHub</span>
             </a>
+            <button id="shortcutsToggle" class="btn btn-sm btn-secondary shortcuts-toggle" aria-label="Keyboard shortcuts" title="Keyboard shortcuts">
+              <svg class="shortcuts-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+                <line x1="6" y1="8" x2="6" y2="8"></line>
+                <line x1="10" y1="8" x2="10" y2="8"></line>
+                <line x1="14" y1="8" x2="14" y2="8"></line>
+                <line x1="18" y1="8" x2="18" y2="8"></line>
+                <line x1="6" y1="12" x2="6" y2="12"></line>
+                <line x1="10" y1="12" x2="10" y2="12"></line>
+                <line x1="14" y1="12" x2="14" y2="12"></line>
+                <line x1="18" y1="12" x2="18" y2="12"></line>
+                <line x1="8" y1="16" x2="16" y2="16"></line>
+              </svg>
+              <span class="shortcuts-label">Keys</span>
+            </button>
             <button id="contrastToggle" class="btn btn-sm btn-secondary contrast-toggle" aria-label="Toggle high contrast" title="Toggle high contrast mode" data-tutorial-target="contrast-toggle">
               <svg class="contrast-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <circle cx="12" cy="12" r="10"></circle>
@@ -168,6 +183,18 @@
               <span class="upload-text">Drop .scad or .zip file here or click to browse</span>
               <input type="file" id="fileInput" accept=".scad,.zip" class="file-input" />
             </label>
+            
+            <!-- Saved Projects Section -->
+            <section class="saved-projects-panel" id="savedProjectsPanel" aria-labelledby="saved-projects-heading">
+              <h3 id="saved-projects-heading">Saved Projects</h3>
+              <p class="saved-projects-description">Your previously saved files (stored in this browser)</p>
+              <div class="saved-projects-list" id="savedProjectsList" role="list" aria-label="Saved projects">
+                <!-- Dynamically populated -->
+              </div>
+              <p class="saved-projects-empty hidden" id="savedProjectsEmpty">
+                No saved projects yet. Upload a file and choose to save it.
+              </p>
+            </section>
             
               <div class="features-overview" role="region" aria-labelledby="features-heading">
               <h3 id="features-heading">Discover features (optional)</h3>
@@ -1562,6 +1589,29 @@ secondary_color = "E74C3C"; // [color]</code></pre>
         <div class="modal-footer confirm-modal-footer">
           <button id="resetConfirmCancel" class="btn btn-secondary">Cancel</button>
           <button id="resetConfirmOk" class="btn btn-primary">Reset All</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Keyboard Shortcuts Modal -->
+    <div class="modal hidden" id="shortcutsModal" role="dialog" aria-labelledby="shortcutsModalTitle" aria-modal="true">
+      <div class="modal-overlay" id="shortcutsModalOverlay"></div>
+      <div class="modal-content modal-large shortcuts-modal-content">
+        <div class="modal-header">
+          <h2 id="shortcutsModalTitle">Keyboard Shortcuts</h2>
+          <button class="modal-close" id="shortcutsModalClose" aria-label="Close keyboard shortcuts">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body shortcuts-modal-body" id="shortcutsModalBody">
+          <!-- Content populated by JavaScript -->
+        </div>
+        <div class="modal-footer shortcuts-modal-footer">
+          <button id="shortcutsResetAll" class="btn btn-secondary">Reset All to Defaults</button>
+          <button id="shortcutsModalDone" class="btn btn-primary">Done</button>
         </div>
       </div>
     </div>

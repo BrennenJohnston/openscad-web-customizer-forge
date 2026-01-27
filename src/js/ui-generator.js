@@ -3,6 +3,64 @@
  * @license GPL-3.0-or-later
  */
 
+import { formatFileSize } from './download.js';
+
+/**
+ * Format a parameter name for display (replaces underscores with spaces)
+ * @param {string} name - Parameter name
+ * @returns {string} Formatted name
+ */
+function formatParamName(name) {
+  return name.replace(/_/g, ' ');
+}
+
+/**
+ * Create a label container with optional help tooltip and reset button
+ * Consolidates duplicated label creation logic across control types
+ * @param {Object} param - Parameter definition
+ * @param {Object} options - Creation options
+ * @param {boolean} [options.includeResetButton=false] - Include individual reset button
+ * @param {boolean} [options.useLabel=true] - Use <label> element (false uses <span>)
+ * @param {Function} [options.onChange] - Change handler (required if includeResetButton is true)
+ * @returns {HTMLElement} Label container element
+ */
+function createLabelContainer(param, options = {}) {
+  const {
+    includeResetButton = false,
+    useLabel = true,
+    onChange = null,
+  } = options;
+
+  const labelContainer = document.createElement('div');
+  labelContainer.className = 'param-label-container';
+
+  // Create either <label> or <span> for the text
+  if (useLabel) {
+    const label = document.createElement('label');
+    label.htmlFor = `param-${param.name}`;
+    label.textContent = formatParamName(param.name);
+    labelContainer.appendChild(label);
+  } else {
+    const labelText = document.createElement('span');
+    labelText.textContent = formatParamName(param.name);
+    labelContainer.appendChild(labelText);
+  }
+
+  // Add help tooltip if description exists
+  const helpTooltip = createHelpTooltip(param);
+  if (helpTooltip) {
+    labelContainer.appendChild(helpTooltip);
+  }
+
+  // Add individual reset button if requested
+  if (includeResetButton && onChange) {
+    const resetBtn = createParameterResetButton(param, onChange);
+    labelContainer.appendChild(resetBtn);
+  }
+
+  return labelContainer;
+}
+
 // Store current parameter values for dependency checking
 let currentParameterValues = {};
 
@@ -131,7 +189,9 @@ function findParamControl(paramName, labelHint = null) {
   if (labelHint) {
     const hint = String(labelHint).trim().toLowerCase();
     for (const [name, meta] of Object.entries(parameterMetadata || {})) {
-      const lbl = String(meta?.label || '').trim().toLowerCase();
+      const lbl = String(meta?.label || '')
+        .trim()
+        .toLowerCase();
       if (lbl && lbl === hint) {
         const byLabel = document.querySelector(
           `.param-control[data-param-name="${name}"]`
@@ -187,7 +247,7 @@ export function focusParameter(paramName, options = {}) {
         if (depInput) depInput.focus();
         window.setTimeout(() => dep.classList.remove('param-highlight'), 2500);
         announceChange(
-          `This option is hidden. Change ${dependsOn.replace(/_/g, ' ')} first.`
+          `This option is hidden. Change ${formatParamName(dependsOn)} first.`
         );
         return { focusedParam: dependsOn, found: true };
       }
@@ -207,7 +267,7 @@ export function focusParameter(paramName, options = {}) {
     control.classList.remove('param-highlight');
   }, highlightMs);
 
-  announceChange(`Highlighted ${paramName.replace(/_/g, ' ')}`);
+  announceChange(`Highlighted ${formatParamName(paramName)}`);
   return { focusedParam: paramName, found: true };
 }
 
@@ -345,7 +405,7 @@ export function updateDependentParameters(changedParam, newValue) {
         inputs.forEach((input) => input.removeAttribute('tabindex'));
 
         // Announce to screen readers
-        announceChange(`${paramName.replace(/_/g, ' ')} is now visible`);
+        announceChange(`${formatParamName(paramName)} is now visible`);
       } else {
         control.style.display = 'none';
         control.setAttribute('aria-hidden', 'true');
@@ -354,7 +414,7 @@ export function updateDependentParameters(changedParam, newValue) {
         const inputs = control.querySelectorAll('input, select, textarea');
         inputs.forEach((input) => input.setAttribute('tabindex', '-1'));
 
-        announceChange(`${paramName.replace(/_/g, ' ')} is now hidden`);
+        announceChange(`${formatParamName(paramName)} is now hidden`);
       }
     }
   });
@@ -439,10 +499,7 @@ function createHelpTooltip(param) {
   const button = document.createElement('button');
   button.className = 'param-help-button';
   button.type = 'button';
-  button.setAttribute(
-    'aria-label',
-    `Help for ${param.name.replace(/_/g, ' ')}`
-  );
+  button.setAttribute('aria-label', `Help for ${formatParamName(param.name)}`);
   button.setAttribute('aria-expanded', 'false');
   // WCAG: Link trigger to tooltip content for SR announcement
   button.setAttribute('aria-describedby', tooltipId);
@@ -743,26 +800,10 @@ function createSliderControl(param, onChange) {
   };
 
   // Label container with help tooltip and reset button
-  const labelContainer = document.createElement('div');
-  labelContainer.className = 'param-label-container';
-
-  const label = document.createElement('label');
-  label.htmlFor = `param-${param.name}`;
-  const paramLabel = param.name.replace(/_/g, ' ');
-  label.textContent = paramLabel;
-
-  labelContainer.appendChild(label);
-
-  // Add help tooltip if description exists
-  const helpTooltip = createHelpTooltip(param);
-  if (helpTooltip) {
-    labelContainer.appendChild(helpTooltip);
-  }
-
-  // Add individual reset button
-  const resetBtn = createParameterResetButton(param, onChange);
-  labelContainer.appendChild(resetBtn);
-
+  const labelContainer = createLabelContainer(param, {
+    includeResetButton: true,
+    onChange,
+  });
   container.appendChild(labelContainer);
 
   const sliderContainer = document.createElement('div');
@@ -784,7 +825,7 @@ function createSliderControl(param, onChange) {
   input.setAttribute('aria-valuenow', param.default);
   input.setAttribute(
     'aria-label',
-    `${param.name.replace(/_/g, ' ')}: ${param.default}${param.unit ? ' ' + param.unit : ''}`
+    `${formatParamName(param.name)}: ${param.default}${param.unit ? ' ' + param.unit : ''}`
   );
 
   const output = document.createElement('output');
@@ -806,7 +847,7 @@ function createSliderControl(param, onChange) {
     input.setAttribute('aria-valuenow', value);
     input.setAttribute(
       'aria-label',
-      `${param.name.replace(/_/g, ' ')}: ${value}${param.unit ? ' ' + param.unit : ''}`
+      `${formatParamName(param.name)}: ${value}${param.unit ? ' ' + param.unit : ''}`
     );
 
     // Check if value is out of original range
@@ -861,10 +902,10 @@ function createParameterResetButton(param, onChange) {
   resetBtn.type = 'button';
   resetBtn.className = 'param-reset-btn';
   resetBtn.textContent = '↩';
-  resetBtn.title = `Reset ${param.name.replace(/_/g, ' ')} to default`;
+  resetBtn.title = `Reset ${formatParamName(param.name)} to default`;
   resetBtn.setAttribute(
     'aria-label',
-    `Reset ${param.name.replace(/_/g, ' ')} to default value`
+    `Reset ${formatParamName(param.name)} to default value`
   );
   resetBtn.dataset.paramName = param.name;
 
@@ -916,25 +957,10 @@ function createNumberInput(param, onChange) {
   }
 
   // Label container with help tooltip and reset button
-  const labelContainer = document.createElement('div');
-  labelContainer.className = 'param-label-container';
-
-  const label = document.createElement('label');
-  label.htmlFor = `param-${param.name}`;
-  label.textContent = param.name.replace(/_/g, ' ');
-
-  labelContainer.appendChild(label);
-
-  // Add help tooltip if description exists
-  const helpTooltip = createHelpTooltip(param);
-  if (helpTooltip) {
-    labelContainer.appendChild(helpTooltip);
-  }
-
-  // Add individual reset button
-  const resetBtn = createParameterResetButton(param, onChange);
-  labelContainer.appendChild(resetBtn);
-
+  const labelContainer = createLabelContainer(param, {
+    includeResetButton: true,
+    onChange,
+  });
   container.appendChild(labelContainer);
 
   // Create wrapper for input + unit
@@ -947,7 +973,7 @@ function createNumberInput(param, onChange) {
   input.value = param.default;
   input.setAttribute(
     'aria-label',
-    `Enter ${param.name.replace(/_/g, ' ')}${param.unit ? ' in ' + param.unit : ''}`
+    `Enter ${formatParamName(param.name)}${param.unit ? ' in ' + param.unit : ''}`
   );
 
   // Only apply limits if not unlocked
@@ -1038,26 +1064,12 @@ function createSelectControl(param, onChange) {
   container.dataset.paramName = param.name;
 
   // Label container with help tooltip
-  const labelContainer = document.createElement('div');
-  labelContainer.className = 'param-label-container';
-
-  const label = document.createElement('label');
-  label.htmlFor = `param-${param.name}`;
-  label.textContent = param.name.replace(/_/g, ' ');
-
-  labelContainer.appendChild(label);
-
-  // Add help tooltip if description exists
-  const helpTooltip = createHelpTooltip(param);
-  if (helpTooltip) {
-    labelContainer.appendChild(helpTooltip);
-  }
-
+  const labelContainer = createLabelContainer(param);
   container.appendChild(labelContainer);
 
   const select = document.createElement('select');
   select.id = `param-${param.name}`;
-  select.setAttribute('aria-label', `Select ${param.name.replace(/_/g, ' ')}`);
+  select.setAttribute('aria-label', `Select ${formatParamName(param.name)}`);
 
   param.enum.forEach((value) => {
     const option = document.createElement('option');
@@ -1090,20 +1102,7 @@ function createToggleControl(param, onChange) {
   container.dataset.paramName = param.name;
 
   // Label container with help tooltip
-  const labelContainer = document.createElement('div');
-  labelContainer.className = 'param-label-container';
-
-  const labelText = document.createElement('span');
-  labelText.textContent = param.name.replace(/_/g, ' ');
-
-  labelContainer.appendChild(labelText);
-
-  // Add help tooltip if description exists
-  const helpTooltip = createHelpTooltip(param);
-  if (helpTooltip) {
-    labelContainer.appendChild(helpTooltip);
-  }
-
+  const labelContainer = createLabelContainer(param, { useLabel: false });
   container.appendChild(labelContainer);
 
   const toggleContainer = document.createElement('div');
@@ -1114,13 +1113,13 @@ function createToggleControl(param, onChange) {
   input.id = `param-${param.name}`;
   input.setAttribute('role', 'switch');
   input.checked = param.default.toLowerCase() === 'yes';
-  input.setAttribute('aria-label', `Toggle ${param.name.replace(/_/g, ' ')}`);
+  input.setAttribute('aria-label', `Toggle ${formatParamName(param.name)}`);
   input.setAttribute('aria-checked', param.default.toLowerCase() === 'yes');
 
   const label = document.createElement('label');
   label.htmlFor = `param-${param.name}`;
   label.className = 'toggle-label';
-  label.textContent = param.name.replace(/_/g, ' ');
+  label.textContent = formatParamName(param.name);
 
   input.addEventListener('change', (e) => {
     const value = e.target.checked ? 'yes' : 'no';
@@ -1148,28 +1147,14 @@ function createTextInput(param, onChange) {
   container.dataset.paramName = param.name;
 
   // Label container with help tooltip
-  const labelContainer = document.createElement('div');
-  labelContainer.className = 'param-label-container';
-
-  const label = document.createElement('label');
-  label.htmlFor = `param-${param.name}`;
-  label.textContent = param.name.replace(/_/g, ' ');
-
-  labelContainer.appendChild(label);
-
-  // Add help tooltip if description exists
-  const helpTooltip = createHelpTooltip(param);
-  if (helpTooltip) {
-    labelContainer.appendChild(helpTooltip);
-  }
-
+  const labelContainer = createLabelContainer(param);
   container.appendChild(labelContainer);
 
   const input = document.createElement('input');
   input.type = 'text';
   input.id = `param-${param.name}`;
   input.value = param.default;
-  input.setAttribute('aria-label', `Enter ${param.name.replace(/_/g, ' ')}`);
+  input.setAttribute('aria-label', `Enter ${formatParamName(param.name)}`);
 
   input.addEventListener('change', (e) => {
     onChange(param.name, e.target.value);
@@ -1190,21 +1175,7 @@ function createColorControl(param, onChange) {
   container.className = 'param-control param-control--color';
 
   // Label container with help tooltip
-  const labelContainer = document.createElement('div');
-  labelContainer.className = 'param-label-container';
-
-  const label = document.createElement('label');
-  label.htmlFor = `param-${param.name}`;
-  label.textContent = param.name.replace(/_/g, ' ');
-
-  labelContainer.appendChild(label);
-
-  // Add help tooltip if description exists
-  const helpTooltip = createHelpTooltip(param);
-  if (helpTooltip) {
-    labelContainer.appendChild(helpTooltip);
-  }
-
+  const labelContainer = createLabelContainer(param);
   container.appendChild(labelContainer);
 
   const colorContainer = document.createElement('div');
@@ -1235,7 +1206,7 @@ function createColorControl(param, onChange) {
   colorInput.className = 'color-picker';
   colorInput.setAttribute(
     'aria-label',
-    `Select color for ${param.name.replace(/_/g, ' ')}`
+    `Select color for ${formatParamName(param.name)}`
   );
 
   const hexInput = document.createElement('input');
@@ -1246,7 +1217,7 @@ function createColorControl(param, onChange) {
   hexInput.maxLength = 6;
   hexInput.setAttribute(
     'aria-label',
-    `Hex color code for ${param.name.replace(/_/g, ' ')}`
+    `Hex color code for ${formatParamName(param.name)}`
   );
 
   const preview = document.createElement('div');
@@ -1298,21 +1269,7 @@ function createFileControl(param, onChange) {
   container.className = 'param-control param-control--file';
 
   // Label container with help tooltip
-  const labelContainer = document.createElement('div');
-  labelContainer.className = 'param-label-container';
-
-  const label = document.createElement('label');
-  label.htmlFor = `param-${param.name}`;
-  label.textContent = param.name.replace(/_/g, ' ');
-
-  labelContainer.appendChild(label);
-
-  // Add help tooltip if description exists
-  const helpTooltip = createHelpTooltip(param);
-  if (helpTooltip) {
-    labelContainer.appendChild(helpTooltip);
-  }
-
+  const labelContainer = createLabelContainer(param);
   container.appendChild(labelContainer);
 
   const fileContainer = document.createElement('div');
@@ -1324,7 +1281,7 @@ function createFileControl(param, onChange) {
   fileInput.className = 'file-input';
   fileInput.setAttribute(
     'aria-label',
-    `Upload file for ${param.name.replace(/_/g, ' ')}`
+    `Upload file for ${formatParamName(param.name)}`
   );
 
   // Set accepted file types if specified
@@ -1340,7 +1297,7 @@ function createFileControl(param, onChange) {
   fileButton.textContent = '📁 Choose File';
   fileButton.setAttribute(
     'aria-label',
-    `Choose file for ${param.name.replace(/_/g, ' ')}`
+    `Choose file for ${formatParamName(param.name)}`
   );
 
   const fileInfo = document.createElement('div');
@@ -1356,7 +1313,7 @@ function createFileControl(param, onChange) {
   clearButton.title = 'Clear file';
   clearButton.setAttribute(
     'aria-label',
-    `Clear file for ${param.name.replace(/_/g, ' ')}`
+    `Clear file for ${formatParamName(param.name)}`
   );
   clearButton.style.display = 'none';
 
@@ -1418,18 +1375,7 @@ function createFileControl(param, onChange) {
   return container;
 }
 
-/**
- * Format file size for display
- * @param {number} bytes - File size in bytes
- * @returns {string} Formatted file size
- */
-function formatFileSize(bytes) {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
-}
+// formatFileSize is now imported from download.js
 
 /**
  * Render parameter UI from extracted parameters
@@ -1475,7 +1421,7 @@ export function renderParameterUI(
 
     // Store metadata for search functionality
     parameterMetadata[param.name] = {
-      label: param.name.replace(/_/g, ' '),
+      label: formatParamName(param.name),
       description: param.description || '',
       group: param.group,
       type: param.type,
@@ -1492,6 +1438,9 @@ export function renderParameterUI(
   // Populate the jump-to-group dropdown
   populateGroupJumpSelect(sortedGroups);
 
+  // Track if first group has been rendered (for auto-open)
+  let isFirstGroup = true;
+
   // Render each group
   sortedGroups.forEach((group) => {
     const groupParams = paramsByGroup[group.id] || [];
@@ -1502,7 +1451,9 @@ export function renderParameterUI(
 
     const details = document.createElement('details');
     details.className = 'param-group';
-    details.open = false; // Collapsed by default - users can expand if needed
+    // Open first group by default for better discoverability (WCAG/COGA)
+    details.open = isFirstGroup;
+    isFirstGroup = false;
     // Add data attribute for jump-to navigation
     details.dataset.groupId = group.id;
 
@@ -1566,4 +1517,54 @@ export function renderParameterUI(
   initParameterSearch();
 
   return currentValues;
+}
+
+/**
+ * Render parameter UI from JSON Schema
+ * This is the schema-driven rendering entry point
+ * @public
+ * @param {Object} schema - JSON Schema with x-* extensions
+ * @param {HTMLElement} container - Container to render into
+ * @param {Function} onChange - Called when parameter changes
+ * @param {Object} [initialValues] - Optional initial values to override defaults
+ * @returns {Object} Current parameter values
+ * @note Currently not integrated into main workflow, but exported as part of the
+ *       public API for schema-based UI generation. Planned for future integration.
+ */
+export function renderFromSchema(
+  schema,
+  container,
+  onChange,
+  initialValues = null
+) {
+  // Lazy import to avoid circular dependency
+  // The schema-generator module is imported dynamically
+  return import('./schema-generator.js').then(({ fromJsonSchema }) => {
+    const extracted = fromJsonSchema(schema);
+    return renderParameterUI(extracted, container, onChange, initialValues);
+  });
+}
+
+/**
+ * Synchronous version of renderFromSchema
+ * Requires schema-generator to be pre-imported
+ * @public
+ * @param {Object} schema - JSON Schema with x-* extensions
+ * @param {Function} converter - The fromJsonSchema function
+ * @param {HTMLElement} container - Container to render into
+ * @param {Function} onChange - Called when parameter changes
+ * @param {Object} [initialValues] - Optional initial values to override defaults
+ * @returns {Object} Current parameter values
+ * @note Currently not integrated into main workflow, but exported as part of the
+ *       public API for schema-based UI generation. Planned for future integration.
+ */
+export function renderFromSchemaSync(
+  schema,
+  converter,
+  container,
+  onChange,
+  initialValues = null
+) {
+  const extracted = converter(schema);
+  return renderParameterUI(extracted, container, onChange, initialValues);
 }

@@ -82,6 +82,7 @@ This project stands on a lot of good work:
 - OpenSCAD WASM builds (`https://github.com/openscad/openscad-wasm`)
 - OpenSCAD Playground (helpful reference UI) (`https://github.com/openscad/openscad-playground`)
 - Three.js (`https://threejs.org/`)
+- Tony Fast (`https://github.com/tonyfast`) — expert accessibility feedback
 
 See `THIRD_PARTY_NOTICES.md` for the full list.
 
