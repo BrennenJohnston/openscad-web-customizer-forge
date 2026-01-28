@@ -464,61 +464,6 @@ body {
   border-color: var(--color-accent) !important;
 }
 
-/* Auto-Rotate Toggle Button (shown in camera D-pad center when alt-view is active) */
-.alt-rotate-toggle {
-  /* Match camera button styling */
-  background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-sm);
-  color: var(--color-text-primary);
-  cursor: pointer;
-  padding: var(--space-xs);
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  min-height: 44px;
-}
-
-.alt-rotate-toggle:hover {
-  background: var(--color-hover-bg);
-  transform: scale(1.05);
-}
-
-.alt-rotate-toggle:focus,
-.alt-rotate-toggle:focus-visible {
-  outline: 3px solid var(--color-focus);
-  outline-offset: 2px;
-}
-
-.alt-rotate-toggle:active {
-  transform: scale(0.95);
-}
-
-/* Active state when auto-rotate is on */
-.alt-rotate-toggle[aria-pressed='true'],
-.alt-rotate-toggle.active {
-  background: var(--color-accent);
-  color: var(--color-accent-text);
-  border-color: var(--color-accent);
-}
-
-/* No spinning animation - keep icon static for reduced motion */
-
-/* High contrast mode for rotate toggle */
-:root[data-high-contrast='true'] .alt-rotate-toggle {
-  border: 2px solid var(--color-border);
-}
-
-:root[data-high-contrast='true'] .alt-rotate-toggle:focus,
-:root[data-high-contrast='true'] .alt-rotate-toggle:active,
-:root[data-high-contrast='true'] .alt-rotate-toggle:hover {
-  background: var(--color-accent) !important;
-  color: var(--color-accent-text) !important;
-  border-color: var(--color-accent) !important;
-}
-
 /* Alt Adjust Toggle Button (placed in PAN D-pad center when alt-view is active) */
 .alt-pan-toggle {
   background: var(--color-bg-tertiary);
@@ -3393,15 +3338,6 @@ details summary:focus,
     height: var(--camera-btn-size) !important;
     min-width: var(--camera-btn-size) !important;
     min-height: var(--camera-btn-size) !important;
-  }
-
-  /* Hidden/alt view: auto-rotate toggle must match D-pad sizing */
-  .camera-drawer:not(.collapsed) .camera-drawer-dpad .alt-rotate-toggle {
-    width: var(--camera-btn-size) !important;
-    height: var(--camera-btn-size) !important;
-    min-width: var(--camera-btn-size) !important;
-    min-height: var(--camera-btn-size) !important;
-    padding: 0 !important;
   }
 
   /* Hidden/alt view: pan-adjust toggle must match D-pad sizing */

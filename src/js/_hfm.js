@@ -17,11 +17,6 @@ let _sampleCtx = null;
 let _lastFrameMs = 0;
 let _lastSizeKey = '';
 
-// Auto-rotation state (enabled by default)
-let _autoRotateEnabled = true;
-let _autoRotateSpeed = 0.00075; // radians per frame (~0.043 deg/frame at 60fps)
-let _controlsRef = null; // reference to OrbitControls for rotation
-
 // Character model cache (recomputed when font metrics change)
 let _charModel = null;
 let _lookupCache = new Map();
@@ -529,12 +524,9 @@ function _renderToText({
  * @returns {Object} API for controlling the alternate view
  */
 export async function initAltView(previewManager) {
-  const { renderer, scene, camera, container, controls } = previewManager;
+  const { renderer, scene, camera, container } = previewManager;
 
   _ensureOverlay(container);
-
-  // Store controls reference for auto-rotation
-  _controlsRef = controls;
 
   // Pick a conservative font size for performance/readability.
   // (We intentionally do not add UI controls for tuning here.)
@@ -560,7 +552,6 @@ export async function initAltView(previewManager) {
   return {
     enable() {
       isEnabled = true;
-      _autoRotateEnabled = true; // Reset to enabled by default
       _overlayEl.style.display = 'block';
       if (canvasOpacity === null) {
         canvasOpacity = renderer.domElement.style.opacity || '';
@@ -569,7 +560,6 @@ export async function initAltView(previewManager) {
     },
     disable() {
       isEnabled = false;
-      _autoRotateEnabled = false; // Stop rotation when disabling
       _overlayEl.style.display = 'none';
       renderer.domElement.style.opacity = canvasOpacity ?? '';
     },
@@ -578,24 +568,8 @@ export async function initAltView(previewManager) {
       return isEnabled;
     },
     render() {
-      // Apply auto-rotation if enabled (rotates around Z-axis for OpenSCAD Z-up)
-      if (_autoRotateEnabled && _controlsRef) {
-        // Rotate camera position around the target (Z-up axis)
-        const pos = camera.position.clone().sub(_controlsRef.target);
-        const cosA = Math.cos(_autoRotateSpeed);
-        const sinA = Math.sin(_autoRotateSpeed);
-        const newX = pos.x * cosA - pos.y * sinA;
-        const newY = pos.x * sinA + pos.y * cosA;
-        camera.position.set(
-          newX + _controlsRef.target.x,
-          newY + _controlsRef.target.y,
-          pos.z + _controlsRef.target.z
-        );
-        camera.lookAt(_controlsRef.target);
-        _controlsRef.update();
-      }
-
       // Always render the underlying scene so controls + animation stay correct.
+      // Auto-rotation is handled by the main PreviewManager's OrbitControls.
       renderer.render(scene, camera);
 
       if (!isEnabled) return;
@@ -638,8 +612,6 @@ export async function initAltView(previewManager) {
     },
     dispose() {
       isEnabled = false;
-      _autoRotateEnabled = false;
-      _controlsRef = null;
       if (canvasOpacity !== null) {
         renderer.domElement.style.opacity = canvasOpacity;
       }
@@ -651,22 +623,5 @@ export async function initAltView(previewManager) {
       _lookupCache = new Map();
     },
     isEnabled: () => isEnabled,
-
-    // Auto-rotation API
-    enableAutoRotate() {
-      _autoRotateEnabled = true;
-    },
-    disableAutoRotate() {
-      _autoRotateEnabled = false;
-    },
-    toggleAutoRotate() {
-      _autoRotateEnabled = !_autoRotateEnabled;
-      return _autoRotateEnabled;
-    },
-    isAutoRotateEnabled: () => _autoRotateEnabled,
-    setAutoRotateSpeed(speed) {
-      // speed: radians per frame (default ~0.003)
-      _autoRotateSpeed = Math.max(0.0005, Math.min(0.02, speed));
-    },
   };
 }

@@ -994,42 +994,6 @@ function _injectAltToggle() {
   // Insert after themeToggle (before next sibling)
   themeToggle.parentElement.insertBefore(toggleBtn, themeToggle.nextSibling);
 
-  // Create auto-rotate toggle button (placed in camera D-pad center)
-  const rotateBtn = document.createElement('button');
-  rotateBtn.id = '_hfmRotate';
-  rotateBtn.className = 'btn btn-sm btn-icon alt-rotate-toggle dpad-center';
-  rotateBtn.setAttribute('aria-pressed', 'true'); // On by default
-  rotateBtn.setAttribute('aria-label', 'Toggle auto rotation');
-  rotateBtn.setAttribute('title', 'Auto rotate');
-  rotateBtn.style.display = 'none'; // Hidden until alt view is enabled
-  rotateBtn.innerHTML = `
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
-      <path d="M21 3v5h-5" />
-    </svg>
-  `;
-  rotateBtn.classList.add('active'); // Active by default
-
-  // Insert into the desktop camera panel's Rotate View D-pad (center position)
-  const desktopDpad = document.querySelector(
-    '#cameraPanel .camera-control-dpad'
-  );
-  if (desktopDpad) {
-    desktopDpad.appendChild(rotateBtn);
-  }
-
-  // Create a clone for the mobile camera drawer
-  const mobileRotateBtn = rotateBtn.cloneNode(true);
-  mobileRotateBtn.id = '_hfmRotateMobile';
-
-  // Replace the label in the mobile drawer's D-pad
-  const mobileDpadLabel = document.querySelector(
-    '.camera-drawer-dpad .camera-drawer-dpad-label'
-  );
-  if (mobileDpadLabel) {
-    mobileDpadLabel.parentNode.replaceChild(mobileRotateBtn, mobileDpadLabel);
-  }
-
   // Create "Alt adjust" toggle button (placed in PAN D-pad center)
   const panToggleBtn = document.createElement('button');
   panToggleBtn.id = '_hfmPanAdjust';
@@ -1079,24 +1043,6 @@ function _injectAltToggle() {
   panToggleBtn.addEventListener('click', handlePanToggleClick);
   mobilePanToggleBtn.addEventListener('click', handlePanToggleClick);
 
-  // Sync function to keep both buttons in sync
-  const syncRotateState = (isRotating) => {
-    [rotateBtn, mobileRotateBtn].forEach((btn) => {
-      btn.setAttribute('aria-pressed', isRotating ? 'true' : 'false');
-      btn.classList.toggle('active', isRotating);
-    });
-  };
-
-  // Wire auto-rotate toggle handler for both buttons
-  const handleRotateClick = () => {
-    if (!_hfmAltView) return;
-    const isRotating = _hfmAltView.toggleAutoRotate();
-    syncRotateState(isRotating);
-  };
-
-  rotateBtn.addEventListener('click', handleRotateClick);
-  mobileRotateBtn.addEventListener('click', handleRotateClick);
-
   // Wire toggle click handler
   toggleBtn.addEventListener('click', async () => {
     const root = document.documentElement;
@@ -1119,23 +1065,15 @@ function _injectAltToggle() {
     }
 
     if (!isCurrentlyEnabled) {
-      await _enableAltViewWithPreview(
-        toggleBtn,
-        rotateBtn,
-        mobileRotateBtn,
-        syncRotateState
-      );
+      await _enableAltViewWithPreview(toggleBtn);
     } else {
-      _disableAltViewWithPreview(toggleBtn, rotateBtn, mobileRotateBtn);
+      _disableAltViewWithPreview(toggleBtn);
     }
   });
 
   // Keep injected control consistent if dev auto-enabled already ran
   if (_hfmEnabled) {
     toggleBtn.setAttribute('aria-pressed', 'true');
-    rotateBtn.style.display = 'flex';
-    mobileRotateBtn.style.display = 'flex';
-    syncRotateState(true);
     _initHfmContrastControls().setEnabled(true);
     _initHfmFontScaleControls().setEnabled(true);
     _enableHfmZoomTracking();
@@ -1176,12 +1114,7 @@ function _handleUnlock() {
   }
 }
 
-async function _enableAltViewWithPreview(
-  toggleBtn,
-  rotateBtn,
-  mobileRotateBtn,
-  syncRotateState
-) {
+async function _enableAltViewWithPreview(toggleBtn) {
   if (!previewManager) return;
 
   const root = document.documentElement;
@@ -1227,9 +1160,6 @@ async function _enableAltViewWithPreview(
     }
   });
 
-  // Enable auto-rotation by default
-  _hfmAltView.enableAutoRotate();
-
   previewManager.setRenderOverride(() => _hfmAltView.render());
   previewManager.setResizeHook(({ width, height }) =>
     _hfmAltView.resize(width, height)
@@ -1248,11 +1178,6 @@ async function _enableAltViewWithPreview(
   _hfmEnabled = true;
   _hfmPendingEnable = false;
 
-  // Show the rotate buttons when alt view is enabled (already active by default)
-  if (rotateBtn) rotateBtn.style.display = 'flex';
-  if (mobileRotateBtn) mobileRotateBtn.style.display = 'flex';
-  syncRotateState?.(true);
-
   // Show pan-adjust toggles (default OFF so pan works normally)
   if (_hfmPanToggleButtons?.desktop)
     _hfmPanToggleButtons.desktop.style.display = 'flex';
@@ -1261,7 +1186,7 @@ async function _enableAltViewWithPreview(
   _setHfmPanAdjustEnabled(false);
 }
 
-function _disableAltViewWithPreview(toggleBtn, rotateBtn, mobileRotateBtn) {
+function _disableAltViewWithPreview(toggleBtn) {
   const root = document.documentElement;
 
   // Disabling
@@ -1294,9 +1219,6 @@ function _disableAltViewWithPreview(toggleBtn, rotateBtn, mobileRotateBtn) {
   _hfmEnabled = false;
   _hfmPendingEnable = false;
 
-  // Hide the rotate buttons when alt view is disabled
-  if (rotateBtn) rotateBtn.style.display = 'none';
-  if (mobileRotateBtn) mobileRotateBtn.style.display = 'none';
   // Reset pan-adjust mode and hide toggles
   _hfmPanAdjustEnabled = false;
   if (_hfmPanToggleButtons?.desktop)
@@ -3958,21 +3880,8 @@ async function initApp() {
         // If user toggled the alt view on from the welcome screen, enable it now.
         if (_hfmPendingEnable && !_hfmEnabled) {
           const toggleBtn = document.getElementById('_hfmToggle');
-          const rotateBtn = document.getElementById('_hfmRotate');
-          const mobileRotateBtn = document.getElementById('_hfmRotateMobile');
-          if (toggleBtn && rotateBtn && mobileRotateBtn) {
-            const syncRotateState = (isRotating) => {
-              [rotateBtn, mobileRotateBtn].forEach((btn) => {
-                btn.setAttribute('aria-pressed', isRotating ? 'true' : 'false');
-                btn.classList.toggle('active', isRotating);
-              });
-            };
-            await _enableAltViewWithPreview(
-              toggleBtn,
-              rotateBtn,
-              mobileRotateBtn,
-              syncRotateState
-            );
+          if (toggleBtn) {
+            await _enableAltViewWithPreview(toggleBtn);
           }
         }
 
