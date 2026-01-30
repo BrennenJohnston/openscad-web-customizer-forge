@@ -19,6 +19,7 @@ const SCHEMA_VERSION = 1;
 
 let db = null;
 let storageType = null; // 'indexeddb' or 'localstorage'
+let initPromise = null; // Track initialization promise to avoid race conditions
 
 /**
  * Generate a simple UUID-like ID
@@ -29,60 +30,115 @@ function generateId() {
 }
 
 /**
+ * Ensure the database is initialized before any operation
+ * @returns {Promise<void>}
+ */
+async function ensureInitialized() {
+  if (storageType !== null && (storageType === 'localstorage' || db !== null)) {
+    return; // Already initialized
+  }
+
+  // If initialization is in progress, wait for it
+  if (initPromise) {
+    await initPromise;
+    return;
+  }
+
+  // Re-initialize if needed
+  console.warn('[Saved Projects] Re-initializing database connection');
+  await initSavedProjectsDB();
+}
+
+/**
  * Initialize IndexedDB database
  * @returns {Promise<{available: boolean, type: string}>}
  */
 export async function initSavedProjectsDB() {
+  // If already initialized with a valid connection, return early
+  if (storageType === 'indexeddb' && db !== null) {
+    return { available: true, type: 'indexeddb' };
+  }
+  if (storageType === 'localstorage') {
+    return { available: true, type: 'localstorage' };
+  }
+
   // Check if IndexedDB is available
   if (!window.indexedDB) {
-    console.warn('IndexedDB not available, falling back to localStorage');
+    console.warn('[Saved Projects] IndexedDB not available, falling back to localStorage');
     storageType = 'localstorage';
     return { available: true, type: 'localstorage' };
   }
 
-  try {
-    return await new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
+  // Create and track the initialization promise
+  initPromise = (async () => {
+    try {
+      return await new Promise((resolve, _reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-      request.onerror = () => {
-        console.warn(
-          'IndexedDB open failed, falling back to localStorage:',
-          request.error
-        );
-        storageType = 'localstorage';
-        resolve({ available: true, type: 'localstorage' });
-      };
+        request.onerror = () => {
+          console.warn(
+            '[Saved Projects] IndexedDB open failed, falling back to localStorage:',
+            request.error
+          );
+          db = null;
+          storageType = 'localstorage';
+          resolve({ available: true, type: 'localstorage' });
+        };
 
-      request.onsuccess = () => {
-        db = request.result;
-        storageType = 'indexeddb';
-        console.log('IndexedDB initialized for saved projects');
-        resolve({ available: true, type: 'indexeddb' });
-      };
+        request.onsuccess = () => {
+          db = request.result;
+          storageType = 'indexeddb';
+          console.log('[Saved Projects] IndexedDB initialized successfully');
 
-      request.onupgradeneeded = (event) => {
-        const database = event.target.result;
+          // Handle connection errors (e.g., database deleted while in use)
+          db.onerror = (event) => {
+            console.error('[Saved Projects] IndexedDB error:', event.target.error);
+          };
 
-        // Create object store if it doesn't exist
-        if (!database.objectStoreNames.contains(STORE_NAME)) {
-          const objectStore = database.createObjectStore(STORE_NAME, {
-            keyPath: 'id',
-          });
-          objectStore.createIndex('savedAt', 'savedAt', { unique: false });
-          objectStore.createIndex('lastLoadedAt', 'lastLoadedAt', {
-            unique: false,
-          });
-        }
-      };
-    });
-  } catch (error) {
-    console.warn(
-      'IndexedDB initialization error, falling back to localStorage:',
-      error
-    );
-    storageType = 'localstorage';
-    return { available: true, type: 'localstorage' };
-  }
+          // Handle version change (another tab upgraded the database)
+          db.onversionchange = () => {
+            console.warn('[Saved Projects] Database version changed, closing connection');
+            db.close();
+            db = null;
+          };
+
+          resolve({ available: true, type: 'indexeddb' });
+        };
+
+        request.onupgradeneeded = (event) => {
+          console.log('[Saved Projects] Upgrading database schema');
+          const database = event.target.result;
+
+          // Create object store if it doesn't exist
+          if (!database.objectStoreNames.contains(STORE_NAME)) {
+            const objectStore = database.createObjectStore(STORE_NAME, {
+              keyPath: 'id',
+            });
+            objectStore.createIndex('savedAt', 'savedAt', { unique: false });
+            objectStore.createIndex('lastLoadedAt', 'lastLoadedAt', {
+              unique: false,
+            });
+          }
+        };
+
+        request.onblocked = () => {
+          console.warn('[Saved Projects] IndexedDB blocked - close other tabs and try again');
+        };
+      });
+    } catch (error) {
+      console.warn(
+        '[Saved Projects] IndexedDB initialization error, falling back to localStorage:',
+        error
+      );
+      db = null;
+      storageType = 'localstorage';
+      return { available: true, type: 'localstorage' };
+    } finally {
+      initPromise = null;
+    }
+  })();
+
+  return initPromise;
 }
 
 /**
@@ -90,15 +146,40 @@ export async function initSavedProjectsDB() {
  * @returns {Promise<Array>}
  */
 async function getFromIndexedDB() {
-  if (!db) return [];
+  // If db connection is lost, try to reconnect
+  if (!db) {
+    console.warn('[Saved Projects] IndexedDB connection lost, attempting reconnect');
+    await initSavedProjectsDB();
+
+    // If still no connection after reinit, return empty
+    if (!db) {
+      console.warn('[Saved Projects] Could not reconnect to IndexedDB');
+      return [];
+    }
+  }
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readonly');
-    const objectStore = transaction.objectStore(STORE_NAME);
-    const request = objectStore.getAll();
+    try {
+      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const objectStore = transaction.objectStore(STORE_NAME);
+      const request = objectStore.getAll();
 
-    request.onsuccess = () => resolve(request.result || []);
-    request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => {
+        console.error('[Saved Projects] Error reading from IndexedDB:', request.error);
+        reject(request.error);
+      };
+
+      transaction.onerror = () => {
+        console.error('[Saved Projects] Transaction error:', transaction.error);
+        reject(transaction.error);
+      };
+    } catch (error) {
+      console.error('[Saved Projects] Exception reading from IndexedDB:', error);
+      // Connection might be invalid, reset it
+      db = null;
+      reject(error);
+    }
   });
 }
 
@@ -189,12 +270,24 @@ function saveToLocalStorage(projects) {
  */
 export async function listSavedProjects() {
   try {
+    // Ensure database is initialized
+    await ensureInitialized();
+
     let projects = [];
 
     if (storageType === 'indexeddb') {
-      projects = await getFromIndexedDB();
+      try {
+        projects = await getFromIndexedDB();
+        console.log(`[Saved Projects] Retrieved ${projects.length} project(s) from IndexedDB`);
+      } catch (indexedDbError) {
+        console.error('[Saved Projects] IndexedDB read failed, trying localStorage:', indexedDbError);
+        // Fall back to localStorage if IndexedDB fails
+        projects = getFromLocalStorage();
+        console.log(`[Saved Projects] Fallback: Retrieved ${projects.length} project(s) from localStorage`);
+      }
     } else {
       projects = getFromLocalStorage();
+      console.log(`[Saved Projects] Retrieved ${projects.length} project(s) from localStorage`);
     }
 
     // Sort by lastLoadedAt (most recent first), then savedAt
@@ -207,7 +300,7 @@ export async function listSavedProjects() {
 
     return projects;
   } catch (error) {
-    console.error('Error listing saved projects:', error);
+    console.error('[Saved Projects] Error listing saved projects:', error);
     return [];
   }
 }
@@ -234,6 +327,9 @@ export async function saveProject({
   notes = '',
 }) {
   try {
+    // Ensure database is initialized
+    await ensureInitialized();
+
     // Check project count limit
     const existingProjects = await listSavedProjects();
     if (existingProjects.length >= STORAGE_LIMITS.MAX_SAVED_PROJECTS_COUNT) {
@@ -278,18 +374,43 @@ export async function saveProject({
       };
     }
 
-    // Save to storage
+    // Save to storage with dual-write for redundancy
     if (storageType === 'indexeddb') {
-      await saveToIndexedDB(project);
+      try {
+        await saveToIndexedDB(project);
+        console.log(`[Saved Projects] Project saved to IndexedDB: ${project.name}`);
+      } catch (indexedDbError) {
+        console.error('[Saved Projects] IndexedDB save failed:', indexedDbError);
+        // Fall back to localStorage
+        const projects = getFromLocalStorage();
+        projects.push(project);
+        saveToLocalStorage(projects);
+        console.log(`[Saved Projects] Fallback: Project saved to localStorage: ${project.name}`);
+      }
+
+      // Also save to localStorage as backup (best-effort, ignore errors)
+      try {
+        const lsProjects = getFromLocalStorage();
+        // Don't add duplicates
+        if (!lsProjects.find((p) => p.id === project.id)) {
+          lsProjects.push(project);
+          saveToLocalStorage(lsProjects);
+          console.log('[Saved Projects] Backup copy saved to localStorage');
+        }
+      } catch (lsError) {
+        // localStorage backup failed - not critical
+        console.warn('[Saved Projects] localStorage backup failed:', lsError.message);
+      }
     } else {
       const projects = getFromLocalStorage();
       projects.push(project);
       saveToLocalStorage(projects);
+      console.log(`[Saved Projects] Project saved to localStorage: ${project.name}`);
     }
 
     return { success: true, id: project.id };
   } catch (error) {
-    console.error('Error saving project:', error);
+    console.error('[Saved Projects] Error saving project:', error);
     return {
       success: false,
       error: error.message || 'Failed to save project',
@@ -304,15 +425,29 @@ export async function saveProject({
  */
 export async function getProject(id) {
   try {
-    let projects = [];
+    // Ensure database is initialized
+    await ensureInitialized();
 
+    let project = null;
+
+    // Try IndexedDB first
     if (storageType === 'indexeddb') {
-      projects = await getFromIndexedDB();
-    } else {
-      projects = getFromLocalStorage();
+      try {
+        const projects = await getFromIndexedDB();
+        project = projects.find((p) => p.id === id);
+      } catch (indexedDbError) {
+        console.error('[Saved Projects] IndexedDB read failed:', indexedDbError);
+      }
     }
 
-    const project = projects.find((p) => p.id === id);
+    // Fall back to localStorage if not found in IndexedDB
+    if (!project) {
+      const lsProjects = getFromLocalStorage();
+      project = lsProjects.find((p) => p.id === id);
+      if (project && storageType === 'indexeddb') {
+        console.log('[Saved Projects] Project found in localStorage fallback');
+      }
+    }
 
     if (
       project &&
@@ -323,14 +458,14 @@ export async function getProject(id) {
       try {
         project.projectFiles = JSON.parse(project.projectFiles);
       } catch (e) {
-        console.error('Error parsing projectFiles:', e);
+        console.error('[Saved Projects] Error parsing projectFiles:', e);
         project.projectFiles = null;
       }
     }
 
     return project || null;
   } catch (error) {
-    console.error('Error getting project:', error);
+    console.error('[Saved Projects] Error getting project:', error);
     return null;
   }
 }
@@ -342,6 +477,9 @@ export async function getProject(id) {
  */
 export async function touchProject(id) {
   try {
+    // Ensure database is initialized
+    await ensureInitialized();
+
     const project = await getProject(id);
     if (!project) return false;
 
@@ -352,19 +490,28 @@ export async function touchProject(id) {
       if (project.projectFiles && typeof project.projectFiles === 'object') {
         project.projectFiles = JSON.stringify(project.projectFiles);
       }
-      await saveToIndexedDB(project);
-    } else {
-      const projects = getFromLocalStorage();
-      const index = projects.findIndex((p) => p.id === id);
-      if (index >= 0) {
-        projects[index].lastLoadedAt = Date.now();
-        saveToLocalStorage(projects);
+      try {
+        await saveToIndexedDB(project);
+      } catch (indexedDbError) {
+        console.error('[Saved Projects] IndexedDB touch failed:', indexedDbError);
+      }
+    }
+
+    // Also update localStorage (dual-write)
+    const lsProjects = getFromLocalStorage();
+    const index = lsProjects.findIndex((p) => p.id === id);
+    if (index >= 0) {
+      lsProjects[index].lastLoadedAt = project.lastLoadedAt;
+      try {
+        saveToLocalStorage(lsProjects);
+      } catch (lsError) {
+        console.warn('[Saved Projects] localStorage touch failed:', lsError.message);
       }
     }
 
     return true;
   } catch (error) {
-    console.error('Error touching project:', error);
+    console.error('[Saved Projects] Error touching project:', error);
     return false;
   }
 }
@@ -379,6 +526,9 @@ export async function touchProject(id) {
  */
 export async function updateProject({ id, name, notes }) {
   try {
+    // Ensure database is initialized
+    await ensureInitialized();
+
     const project = await getProject(id);
     if (!project) {
       return { success: false, error: 'Project not found' };
@@ -415,24 +565,38 @@ export async function updateProject({ id, name, notes }) {
       };
     }
 
-    // Save updated project
+    // Prepare project for storage
+    const projectToSave = { ...project };
+    if (projectToSave.projectFiles && typeof projectToSave.projectFiles === 'object') {
+      projectToSave.projectFiles = JSON.stringify(projectToSave.projectFiles);
+    }
+
+    // Save updated project with dual-write
     if (storageType === 'indexeddb') {
-      if (project.projectFiles && typeof project.projectFiles === 'object') {
-        project.projectFiles = JSON.stringify(project.projectFiles);
+      try {
+        await saveToIndexedDB(projectToSave);
+      } catch (indexedDbError) {
+        console.error('[Saved Projects] IndexedDB update failed:', indexedDbError);
       }
-      await saveToIndexedDB(project);
+    }
+
+    // Also update localStorage (dual-write)
+    const lsProjects = getFromLocalStorage();
+    const index = lsProjects.findIndex((p) => p.id === id);
+    if (index >= 0) {
+      lsProjects[index] = projectToSave;
     } else {
-      const projects = getFromLocalStorage();
-      const index = projects.findIndex((p) => p.id === id);
-      if (index >= 0) {
-        projects[index] = project;
-        saveToLocalStorage(projects);
-      }
+      lsProjects.push(projectToSave);
+    }
+    try {
+      saveToLocalStorage(lsProjects);
+    } catch (lsError) {
+      console.warn('[Saved Projects] localStorage update failed:', lsError.message);
     }
 
     return { success: true };
   } catch (error) {
-    console.error('Error updating project:', error);
+    console.error('[Saved Projects] Error updating project:', error);
     return {
       success: false,
       error: error.message || 'Failed to update project',
@@ -447,17 +611,32 @@ export async function updateProject({ id, name, notes }) {
  */
 export async function deleteProject(id) {
   try {
+    // Ensure database is initialized
+    await ensureInitialized();
+
+    // Delete from both storage locations (dual-delete)
     if (storageType === 'indexeddb') {
-      await deleteFromIndexedDB(id);
-    } else {
-      const projects = getFromLocalStorage();
-      const filtered = projects.filter((p) => p.id !== id);
+      try {
+        await deleteFromIndexedDB(id);
+        console.log(`[Saved Projects] Deleted from IndexedDB: ${id}`);
+      } catch (indexedDbError) {
+        console.error('[Saved Projects] IndexedDB delete failed:', indexedDbError);
+      }
+    }
+
+    // Also delete from localStorage
+    const projects = getFromLocalStorage();
+    const filtered = projects.filter((p) => p.id !== id);
+    try {
       saveToLocalStorage(filtered);
+      console.log(`[Saved Projects] Deleted from localStorage: ${id}`);
+    } catch (lsError) {
+      console.warn('[Saved Projects] localStorage delete failed:', lsError.message);
     }
 
     return { success: true };
   } catch (error) {
-    console.error('Error deleting project:', error);
+    console.error('[Saved Projects] Error deleting project:', error);
     return {
       success: false,
       error: error.message || 'Failed to delete project',
@@ -485,7 +664,7 @@ export async function getSavedProjectsSummary() {
 
     return { count, totalApproxBytes };
   } catch (error) {
-    console.error('Error getting saved projects summary:', error);
+    console.error('[Saved Projects] Error getting saved projects summary:', error);
     return { count: 0, totalApproxBytes: 0 };
   }
 }
@@ -496,18 +675,78 @@ export async function getSavedProjectsSummary() {
  */
 export async function clearAllSavedProjects() {
   try {
+    // Clear both storage locations
     if (storageType === 'indexeddb') {
-      await clearIndexedDB();
-    } else {
+      try {
+        await clearIndexedDB();
+        console.log('[Saved Projects] Cleared IndexedDB');
+      } catch (indexedDbError) {
+        console.error('[Saved Projects] IndexedDB clear failed:', indexedDbError);
+      }
+    }
+
+    // Also clear localStorage
+    try {
       localStorage.removeItem(LS_KEY);
+      console.log('[Saved Projects] Cleared localStorage');
+    } catch (lsError) {
+      console.warn('[Saved Projects] localStorage clear failed:', lsError.message);
     }
 
     return { success: true };
   } catch (error) {
-    console.error('Error clearing saved projects:', error);
+    console.error('[Saved Projects] Error clearing saved projects:', error);
     return {
       success: false,
       error: error.message || 'Failed to clear saved projects',
     };
   }
+}
+
+/**
+ * Get storage diagnostic information (for debugging)
+ * @returns {Promise<Object>}
+ */
+export async function getStorageDiagnostics() {
+  const diagnostics = {
+    storageType,
+    indexedDbAvailable: !!window.indexedDB,
+    indexedDbConnected: db !== null,
+    localStorageAvailable: false,
+    indexedDbProjectCount: 0,
+    localStorageProjectCount: 0,
+    timestamp: new Date().toISOString(),
+  };
+
+  // Check localStorage availability
+  try {
+    const testKey = '__storage_test__';
+    localStorage.setItem(testKey, testKey);
+    localStorage.removeItem(testKey);
+    diagnostics.localStorageAvailable = true;
+  } catch (e) {
+    diagnostics.localStorageAvailable = false;
+    diagnostics.localStorageError = e.message;
+  }
+
+  // Count IndexedDB projects
+  if (db) {
+    try {
+      const projects = await getFromIndexedDB();
+      diagnostics.indexedDbProjectCount = projects.length;
+    } catch (e) {
+      diagnostics.indexedDbError = e.message;
+    }
+  }
+
+  // Count localStorage projects
+  try {
+    const projects = getFromLocalStorage();
+    diagnostics.localStorageProjectCount = projects.length;
+  } catch (e) {
+    diagnostics.localStorageReadError = e.message;
+  }
+
+  console.log('[Saved Projects] Storage diagnostics:', diagnostics);
+  return diagnostics;
 }

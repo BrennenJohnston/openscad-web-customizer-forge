@@ -75,6 +75,10 @@ export class AutoPreviewController {
     // Cache: paramHash -> { stl, stats, timestamp }
     this.previewCache = new Map();
 
+    // Track whether initial preview for current file has been shown
+    // Used to determine if camera should be preserved on subsequent loads
+    this.initialPreviewDone = false;
+
     // Full quality STL for download (separate from preview)
     this.fullQualitySTL = null;
     this.fullQualityStats = null;
@@ -227,6 +231,8 @@ export class AutoPreviewController {
     this.currentParamHash = null;
     this.pendingParameters = null;
     this.pendingParamHash = null;
+    // Reset initial preview flag - new file needs camera fit
+    this.initialPreviewDone = false;
     this.setState(PREVIEW_STATE.IDLE);
   }
 
@@ -423,9 +429,14 @@ export class AutoPreviewController {
       if (this.previewManager?.setColorOverride && previewColor !== null) {
         this.previewManager.setColorOverride(previewColor);
       }
-      const loadResult = await this.previewManager.loadSTL(cached.stl);
+      // Preserve camera position on subsequent loads (after initial preview)
+      const loadResult = await this.previewManager.loadSTL(cached.stl, {
+        preserveCamera: this.initialPreviewDone,
+      });
       this.previewParamHash = paramHash;
       this.previewCacheKey = cacheKey;
+      // Mark initial preview as done after successful load
+      this.initialPreviewDone = true;
 
       // Include timing info (cached timing + fresh parse time)
       const timing = {
@@ -557,7 +568,12 @@ export class AutoPreviewController {
           this.previewManager.setColorOverride(previewColor);
         }
       }
-      const loadResult = await this.previewManager.loadSTL(result.stl);
+      // Preserve camera position on subsequent loads (after initial preview)
+      const loadResult = await this.previewManager.loadSTL(result.stl, {
+        preserveCamera: this.initialPreviewDone,
+      });
+      // Mark initial preview as done after successful load
+      this.initialPreviewDone = true;
 
       // Collect timing breakdown
       const timing = {
@@ -736,9 +752,14 @@ export class AutoPreviewController {
           this.previewManager.setColorOverride(previewColor);
         }
       }
-      await this.previewManager.loadSTL(result.stl);
+      // Preserve camera position on subsequent loads (after initial preview)
+      await this.previewManager.loadSTL(result.stl, {
+        preserveCamera: this.initialPreviewDone,
+      });
       this.previewParamHash = paramHash;
       this.previewCacheKey = cacheKey;
+      // Mark initial preview as done after successful load
+      this.initialPreviewDone = true;
       this.addToCache(cacheKey, result, null);
       this.setState(PREVIEW_STATE.CURRENT, {
         stats: result.stats,
