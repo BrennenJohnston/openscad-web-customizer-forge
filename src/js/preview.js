@@ -970,9 +970,12 @@ export class PreviewManager {
   /**
    * Load and display STL from ArrayBuffer
    * @param {ArrayBuffer} stlData - Binary STL data
+   * @param {Object} [options] - Load options
+   * @param {boolean} [options.preserveCamera=false] - If true, preserve current camera position instead of auto-fitting
    * @returns {Promise<{parseMs: number}>} Parse timing info
    */
-  loadSTL(stlData) {
+  loadSTL(stlData, options = {}) {
+    const { preserveCamera = false } = options;
     return new Promise((resolve, reject) => {
       try {
         const parseStartTime = performance.now();
@@ -1054,8 +1057,10 @@ export class PreviewManager {
         // Reset rotation centering state (new mesh needs fresh application)
         this.rotationCenteringEnabled = false;
 
-        // Auto-fit camera to model
-        this.fitCameraToModel();
+        // Auto-fit camera to model (unless preserveCamera is set)
+        if (!preserveCamera) {
+          this.fitCameraToModel();
+        }
 
         // Call post-load hook (e.g., for re-applying rotation centering)
         if (this._postLoadHook) {
@@ -1787,16 +1792,22 @@ export class PreviewManager {
       return;
     }
 
-    // Move mesh down by half the auto-bed offset to center around origin
-    // The object was moved up by autoBedOffset, so its center is at Z = autoBedOffset/2
-    // We want the center at Z = 0, so we move down by autoBedOffset/2
-    const centeringOffset = -this.autoBedOffset / 2;
+    // Move mesh down to center around origin
+    // After geometry.center() + applyAutoBed(), the geometry center is at Z = autoBedOffset
+    // (because center() puts it at 0, then auto-bed shifts it up by autoBedOffset)
+    // We want the center at Z = 0, so we move the mesh down by autoBedOffset
+    const centeringOffset = -this.autoBedOffset;
     this.mesh.position.z += centeringOffset;
 
     this.rotationCenteringEnabled = true;
 
-    // Refit camera to the new centered position
-    this.fitCameraToModel();
+    // Adjust both camera position AND orbit controls target by the same offset
+    // This preserves the exact same view while the mesh moves
+    if (this.controls && this.camera) {
+      this.camera.position.z += centeringOffset;
+      this.controls.target.z += centeringOffset;
+      this.controls.update();
+    }
 
     console.log(
       `[Preview] Rotation centering enabled: mesh moved by ${centeringOffset.toFixed(3)} mm on Z`
@@ -1811,14 +1822,19 @@ export class PreviewManager {
       return;
     }
 
-    // Restore mesh position
-    const restorationOffset = this.autoBedOffset / 2;
+    // Restore mesh position (undo the centeringOffset applied in enableRotationCentering)
+    const restorationOffset = this.autoBedOffset;
     this.mesh.position.z += restorationOffset;
 
     this.rotationCenteringEnabled = false;
 
-    // Refit camera to restored position
-    this.fitCameraToModel();
+    // Adjust both camera position AND orbit controls target by the same offset
+    // This preserves the exact same view while the mesh moves back
+    if (this.controls && this.camera) {
+      this.camera.position.z += restorationOffset;
+      this.controls.target.z += restorationOffset;
+      this.controls.update();
+    }
 
     console.log(
       `[Preview] Rotation centering disabled: mesh restored by ${restorationOffset.toFixed(3)} mm on Z`

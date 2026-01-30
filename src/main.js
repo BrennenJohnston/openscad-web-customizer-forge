@@ -95,6 +95,7 @@ import {
   deleteProject,
   getSavedProjectsSummary,
   clearAllSavedProjects,
+  getStorageDiagnostics,
 } from './js/saved-projects-manager.js';
 import Split from 'split.js';
 
@@ -1432,13 +1433,28 @@ async function initApp() {
 
   // Initialize saved projects database
   try {
-    const { available, type } = await initSavedProjectsDB();
+    const { type } = await initSavedProjectsDB();
     console.log(`[Saved Projects] Initialized with ${type}`);
+
+    // Log diagnostics in development mode or if there are potential issues
+    const diagnostics = await getStorageDiagnostics();
+    if (diagnostics.indexedDbProjectCount !== diagnostics.localStorageProjectCount) {
+      console.warn('[Saved Projects] Storage mismatch detected:', {
+        indexedDb: diagnostics.indexedDbProjectCount,
+        localStorage: diagnostics.localStorageProjectCount,
+      });
+    }
 
     // Render saved projects list on welcome screen
     await renderSavedProjectsList();
   } catch (error) {
     console.error('[Saved Projects] Initialization failed:', error);
+    // Still try to render from localStorage as fallback
+    try {
+      await renderSavedProjectsList();
+    } catch (renderError) {
+      console.error('[Saved Projects] Render fallback also failed:', renderError);
+    }
   }
 
   // Initialize gamepad controller (if supported)
@@ -2629,7 +2645,8 @@ async function initApp() {
         const currentStl = stateManager.getState()?.stl;
         if (needsRerender && currentStl) {
           // Re-render to apply the new auto-bed setting
-          previewManager.loadSTL(currentStl);
+          // Preserve camera position since user is just toggling a display setting
+          previewManager.loadSTL(currentStl, { preserveCamera: true });
           updateDimensionsDisplay();
         }
       }

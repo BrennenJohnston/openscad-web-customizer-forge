@@ -288,7 +288,7 @@ describe('AutoPreviewController', () => {
       await controller.loadCachedPreview(hash, cacheKey, qualityKey)
 
       expect(previewManager.setColorOverride).toHaveBeenCalledWith('#00ff00')
-      expect(previewManager.loadSTL).toHaveBeenCalledWith(cached.stl)
+      expect(previewManager.loadSTL).toHaveBeenCalledWith(cached.stl, { preserveCamera: false })
       expect(controller.state).toBe(PREVIEW_STATE.CURRENT)
       expect(previewReady).toHaveBeenCalledWith(
         cached.stl,
