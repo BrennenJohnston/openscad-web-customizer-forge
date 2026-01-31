@@ -494,13 +494,17 @@ export class PresetManager {
     // Handle boolean/string comparison (OpenSCAD "yes"/"no")
     if (typeof a === 'boolean' && typeof b === 'string') {
       const bLower = b.toLowerCase();
-      return (a === true && (bLower === 'yes' || bLower === 'true')) ||
-             (a === false && (bLower === 'no' || bLower === 'false'));
+      return (
+        (a === true && (bLower === 'yes' || bLower === 'true')) ||
+        (a === false && (bLower === 'no' || bLower === 'false'))
+      );
     }
     if (typeof a === 'string' && typeof b === 'boolean') {
       const aLower = a.toLowerCase();
-      return (b === true && (aLower === 'yes' || aLower === 'true')) ||
-             (b === false && (aLower === 'no' || aLower === 'false'));
+      return (
+        (b === true && (aLower === 'yes' || aLower === 'true')) ||
+        (b === false && (aLower === 'no' || aLower === 'false'))
+      );
     }
 
     // Default strict equality
@@ -520,11 +524,15 @@ export class PresetManager {
     // Count changes
     const changeCount = Object.keys(changed).length;
     if (changeCount === 0) {
-      return JSON.stringify({
-        message: 'No parameters have been changed from defaults',
-        modelName,
-        exported: new Date().toISOString(),
-      }, null, 2);
+      return JSON.stringify(
+        {
+          message: 'No parameters have been changed from defaults',
+          modelName,
+          exported: new Date().toISOString(),
+        },
+        null,
+        2
+      );
     }
 
     // Build export structure
@@ -548,7 +556,12 @@ export class PresetManager {
    * @param {string} conflictStrategy - 'keep', 'overwrite', or 'rename'
    * @returns {Object} Merge result
    */
-  importAndMergePresets(jsonStrings, modelName, paramSchema = {}, conflictStrategy = 'rename') {
+  importAndMergePresets(
+    jsonStrings,
+    modelName,
+    paramSchema = {},
+    conflictStrategy = 'rename'
+  ) {
     const allResults = [];
     let totalImported = 0;
     let totalSkipped = 0;
@@ -557,7 +570,7 @@ export class PresetManager {
 
     // Get existing preset names
     const existingPresets = this.getPresetsForModel(modelName);
-    existingPresets.forEach(p => presetNames.add(p.name));
+    existingPresets.forEach((p) => presetNames.add(p.name));
 
     for (let i = 0; i < jsonStrings.length; i++) {
       try {
@@ -579,7 +592,7 @@ export class PresetManager {
               parameters: data.preset.parameters,
             });
           } else {
-            presetsToImport = data.presets.map(p => ({
+            presetsToImport = data.presets.map((p) => ({
               name: p.name,
               parameters: p.parameters,
             }));
@@ -620,7 +633,12 @@ export class PresetManager {
             modelName,
             finalName,
             preset.parameters,
-            { description: preset.name !== finalName ? `Renamed from "${preset.name}"` : '' }
+            {
+              description:
+                preset.name !== finalName
+                  ? `Renamed from "${preset.name}"`
+                  : '',
+            }
           );
           allResults.push(result);
           totalImported++;
@@ -955,7 +973,7 @@ export class PresetManager {
   analyzePresetCompatibility(presetParams, currentSchema) {
     const presetKeys = new Set(Object.keys(presetParams));
     const schemaKeys = new Set(Object.keys(currentSchema));
-    
+
     // Find parameters that exist in preset but not in schema (removed/renamed)
     const extraParams = [];
     for (const key of presetKeys) {
@@ -963,7 +981,7 @@ export class PresetManager {
         extraParams.push(key);
       }
     }
-    
+
     // Find parameters in schema that are missing from preset (new params)
     const missingParams = [];
     for (const key of schemaKeys) {
@@ -971,38 +989,61 @@ export class PresetManager {
         missingParams.push(key);
       }
     }
-    
+
     // Find type mismatches for overlapping parameters
     const typeMismatches = [];
     for (const key of presetKeys) {
       if (schemaKeys.has(key) && currentSchema[key]) {
         const presetValue = presetParams[key];
         const expectedType = currentSchema[key].type;
-        const actualType = Array.isArray(presetValue) ? 'array' : typeof presetValue;
-        
+        const actualType = Array.isArray(presetValue)
+          ? 'array'
+          : typeof presetValue;
+
         // Check for obvious type mismatches
-        if (expectedType === 'boolean' && typeof presetValue === 'string' && 
-            !['true', 'false', 'yes', 'no'].includes(presetValue.toLowerCase())) {
-          typeMismatches.push({ key, expected: expectedType, actual: actualType });
-        } else if (expectedType === 'integer' && typeof presetValue === 'string' &&
-            isNaN(parseInt(presetValue, 10))) {
-          typeMismatches.push({ key, expected: expectedType, actual: actualType });
-        } else if (expectedType === 'number' && typeof presetValue === 'string' &&
-            isNaN(parseFloat(presetValue))) {
-          typeMismatches.push({ key, expected: expectedType, actual: actualType });
+        if (
+          expectedType === 'boolean' &&
+          typeof presetValue === 'string' &&
+          !['true', 'false', 'yes', 'no'].includes(presetValue.toLowerCase())
+        ) {
+          typeMismatches.push({
+            key,
+            expected: expectedType,
+            actual: actualType,
+          });
+        } else if (
+          expectedType === 'integer' &&
+          typeof presetValue === 'string' &&
+          isNaN(parseInt(presetValue, 10))
+        ) {
+          typeMismatches.push({
+            key,
+            expected: expectedType,
+            actual: actualType,
+          });
+        } else if (
+          expectedType === 'number' &&
+          typeof presetValue === 'string' &&
+          isNaN(parseFloat(presetValue))
+        ) {
+          typeMismatches.push({
+            key,
+            expected: expectedType,
+            actual: actualType,
+          });
         }
       }
     }
-    
+
     const isCompatible = extraParams.length === 0 && missingParams.length === 0;
     const hasMinorIssues = typeMismatches.length > 0;
-    
+
     return {
       isCompatible,
       hasMinorIssues,
-      extraParams,      // In preset but not in schema (may be obsolete)
-      missingParams,    // In schema but not in preset (will use defaults)
-      typeMismatches,   // Type coercion may be needed
+      extraParams, // In preset but not in schema (may be obsolete)
+      missingParams, // In schema but not in preset (will use defaults)
+      typeMismatches, // Type coercion may be needed
       compatibleCount: presetKeys.size - extraParams.length,
       totalPresetParams: presetKeys.size,
       totalSchemaParams: schemaKeys.size,
@@ -1021,7 +1062,7 @@ export class PresetManager {
  */
 export function extractScadVersion(scadContent) {
   if (!scadContent) return null;
-  
+
   // Common version patterns
   const patterns = [
     // "// Version: v74" or "// Version: 74"
@@ -1035,7 +1076,7 @@ export function extractScadVersion(scadContent) {
     // "version = 74;" variable
     /^\s*version\s*=\s*(\d+(?:\.\d+)*)\s*;/im,
   ];
-  
+
   for (const pattern of patterns) {
     const match = scadContent.match(pattern);
     if (match) {
@@ -1045,7 +1086,7 @@ export function extractScadVersion(scadContent) {
       };
     }
   }
-  
+
   return null;
 }
 
@@ -1058,17 +1099,17 @@ export function extractScadVersion(scadContent) {
 export function compareVersions(v1, v2) {
   const parts1 = v1.split('.').map(Number);
   const parts2 = v2.split('.').map(Number);
-  
+
   const maxLength = Math.max(parts1.length, parts2.length);
-  
+
   for (let i = 0; i < maxLength; i++) {
     const p1 = parts1[i] || 0;
     const p2 = parts2[i] || 0;
-    
+
     if (p1 < p2) return -1;
     if (p1 > p2) return 1;
   }
-  
+
   return 0;
 }
 

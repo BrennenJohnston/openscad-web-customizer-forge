@@ -13,6 +13,8 @@ body {
   flex-direction: column;
   height: 100vh;
   min-height: 100vh;
+  /* Prevent outer scrollbar - only welcome-screen should scroll */
+  overflow: hidden;
 }
 
 /* Use dynamic viewport height on mobile browsers */
@@ -546,6 +548,7 @@ body {
   padding-bottom: calc(var(--space-lg) + env(safe-area-inset-bottom, 0px));
   padding-left: calc(var(--space-lg) + env(safe-area-inset-left, 0px));
   padding-right: calc(var(--space-lg) + env(safe-area-inset-right, 0px));
+  overflow-x: hidden;
   overflow-y: auto;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
@@ -580,6 +583,9 @@ body {
   /* margin: auto centers vertically when content fits in container,
      but allows scrolling from top when content overflows */
   margin: auto;
+  /* Prevent horizontal overflow from child content */
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 @media (max-height: 720px) {
@@ -595,11 +601,15 @@ body {
   .welcome-screen {
     /* align-items: flex-start is now the default */
     padding-top: calc(var(--space-md) + env(safe-area-inset-top, 0px));
+    /* Remove scrollbar gutter reservation on mobile - use native overlay scrollbars */
+    scrollbar-gutter: auto;
   }
 
   .welcome-content {
     /* On mobile, always start at top instead of centering */
     margin-top: 0;
+    /* Ensure content doesn't overflow viewport width */
+    max-width: 100%;
   }
 }
 
@@ -1041,7 +1051,9 @@ body {
 .memory-bar-fill {
   height: 100%;
   background: var(--color-accent);
-  transition: width 0.3s ease, background-color 0.3s ease;
+  transition:
+    width 0.3s ease,
+    background-color 0.3s ease;
   border-radius: 3px;
 }
 
@@ -1075,12 +1087,12 @@ body {
   .memory-indicator {
     border-left-color: CanvasText;
   }
-  
+
   .memory-bar {
     border: 1px solid CanvasText;
     background: Canvas;
   }
-  
+
   .memory-bar-fill {
     background: Highlight;
   }
@@ -1226,12 +1238,12 @@ body {
   .echo-drawer {
     border: 2px solid CanvasText;
   }
-  
+
   .echo-drawer-toggle {
     background: Canvas;
     border-bottom: 1px solid CanvasText;
   }
-  
+
   .echo-drawer-label,
   .echo-drawer-arrow,
   .echo-messages {
