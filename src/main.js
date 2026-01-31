@@ -105,6 +105,7 @@ import {
   clearAllSavedProjects,
   getStorageDiagnostics,
   // v2: Folder operations
+  createFolder,
   getFolder,
   listFolders,
   renameFolder,

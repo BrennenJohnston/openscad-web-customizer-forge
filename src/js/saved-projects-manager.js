@@ -119,6 +119,7 @@ export async function initSavedProjectsDB() {
     return { available: true, type: 'localstorage' };
   }
 
+
   // Create and track the initialization promise
   initPromise = (async () => {
     try {
