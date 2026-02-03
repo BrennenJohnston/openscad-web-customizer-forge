@@ -9778,6 +9778,16 @@ if (rounded) {
     const hasSelection =
       state.currentPresetId || state.currentPresetName || presetSelect?.value;
 
+    // Debug logging to help identify unexpected clears
+    if (hasSelection) {
+      console.log('[Preset] Clearing selection:', {
+        currentPresetId: state.currentPresetId,
+        currentPresetName: state.currentPresetName,
+        dropdownValue: presetSelect?.value,
+        callerStack: new Error().stack?.split('\n').slice(1, 4).join('\n')
+      });
+    }
+
     currentPresetSignature = null;
 
     if (hasSelection) {
@@ -9837,9 +9847,18 @@ if (rounded) {
     }
 
     const valuesToCheck = currentValues || state.parameters;
-    if (valuesToCheck && doesPresetMatchParams(valuesToCheck)) {
+    const paramsMatch = valuesToCheck && doesPresetMatchParams(valuesToCheck);
+    
+    if (paramsMatch) {
       return;
     }
+
+    // Debug: Log why we're clearing the selection
+    console.log('[Preset] Parameters changed, clearing selection:', {
+      presetName: state.currentPresetName,
+      signatureMatch: paramsMatch,
+      hasSignature: !!currentPresetSignature
+    });
 
     forceClearPresetSelection();
   }
@@ -9849,6 +9868,12 @@ if (rounded) {
       forceClearPresetSelection();
       return;
     }
+
+    console.log('[Preset] Setting selection:', {
+      id: preset.id,
+      name: preset.name,
+      paramCount: Object.keys(preset.parameters || {}).length
+    });
 
     setCurrentPresetSignature(preset.parameters);
     stateManager.setState({
@@ -10494,6 +10519,9 @@ if (rounded) {
 
       // If there are compatibility issues, show a warning dialog
       if (!compatibility.isCompatible) {
+        // Remember previous selection to restore on cancel
+        const previousPresetId = state.currentPresetId || '';
+        
         const action = await showPresetCompatibilityWarning(
           preset,
           compatibility,
@@ -10501,9 +10529,11 @@ if (rounded) {
         );
 
         if (action === 'cancel') {
-          // Reset dropdown selection
+          // Restore dropdown to previous selection (not just clear it)
           const presetSelectEl = document.getElementById('presetSelect');
-          if (presetSelectEl) presetSelectEl.value = '';
+          if (presetSelectEl) {
+            presetSelectEl.value = previousPresetId;
+          }
           return;
         }
         // action === 'apply' - continue with loading
